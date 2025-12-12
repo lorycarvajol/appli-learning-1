@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { fetchCurrentUser, logoutUser } from '../features/auth/authSlice'
@@ -7,11 +7,15 @@ function Dashboard() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { user, loading } = useSelector((state) => state.auth)
+  const [hasFetched, setHasFetched] = useState(false)
 
   useEffect(() => {
-    // Fetch user data on mount
-    dispatch(fetchCurrentUser())
-  }, [dispatch])
+    // Only fetch once if user data is not already present
+    if (!user && !hasFetched) {
+      setHasFetched(true)
+      dispatch(fetchCurrentUser())
+    }
+  }, [dispatch, user, hasFetched])
 
   const handleLogout = async () => {
     await dispatch(logoutUser())
