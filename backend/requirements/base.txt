@@ -1,0 +1,33 @@
+# Django Core
+Django==5.0.3
+djangorestframework==3.14.0
+djangorestframework-simplejwt==5.3.1
+
+# Database
+psycopg2-binary==2.9.9
+
+# Redis & Caching
+redis==5.0.1
+django-redis==5.4.0
+
+# Django Channels (WebSocket)
+channels==4.0.0
+channels-redis==4.2.0
+daphne==4.1.0
+
+# Celery (Async Tasks)
+celery==5.3.6
+celery[redis]
+
+# CORS & Security
+django-cors-headers==4.3.1
+
+# Utilities
+python-decouple==3.8
+django-filter==23.5
+Pillow==10.2.0
+bleach==6.1.0
+markdown==3.5.2
+
+# WSGI Server
+gunicorn==21.2.0
