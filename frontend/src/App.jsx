@@ -3,6 +3,9 @@ import Login from './features/auth/Login'
 import Register from './features/auth/Register'
 import Dashboard from './components/Dashboard'
 import PrivateRoute from './features/auth/PrivateRoute'
+import ChaptersList from './features/chapters/ChaptersList'
+import ChapterDetail from './features/chapters/ChapterDetail'
+import LessonView from './features/chapters/LessonView'
 
 function App() {
   return (
@@ -14,6 +17,30 @@ function App() {
         element={
           <PrivateRoute>
             <Dashboard />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/chapters"
+        element={
+          <PrivateRoute>
+            <ChaptersList />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/chapters/:slug"
+        element={
+          <PrivateRoute>
+            <ChapterDetail />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/lessons/:slug"
+        element={
+          <PrivateRoute>
+            <LessonView />
           </PrivateRoute>
         }
       />

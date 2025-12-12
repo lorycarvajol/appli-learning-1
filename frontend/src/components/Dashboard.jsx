@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { fetchCurrentUser, logoutUser } from '../features/auth/authSlice'
 
 function Dashboard() {
@@ -87,10 +87,20 @@ function Dashboard() {
                 ✅ L'authentification fonctionne correctement !
               </p>
               <p className="text-gray-600 mt-2">
-                Vous êtes connecté avec succès. Les prochaines étapes incluent :
+                Vous êtes connecté avec succès.
               </p>
+
+              <div className="mt-4">
+                <Link
+                  to="/chapters"
+                  className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Accéder aux chapitres
+                </Link>
+              </div>
+
+              <p className="text-gray-600 mt-4">Les prochaines fonctionnalités incluent :</p>
               <ul className="list-disc list-inside text-gray-600 mt-2 space-y-1">
-                <li>Création des chapitres et leçons</li>
                 <li>Système de progression</li>
                 <li>Éditeur de code intégré</li>
                 <li>Gamification (badges, points)</li>
