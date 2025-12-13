@@ -90,13 +90,22 @@ function Dashboard() {
                 Vous êtes connecté avec succès.
               </p>
 
-              <div className="mt-4">
+              <div className="mt-4 flex flex-wrap gap-3">
                 <Link
                   to="/chapters"
                   className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
                 >
                   Accéder aux chapitres
                 </Link>
+
+                {user?.role && (user.role === 'TRAINER' || user.role === 'ADMIN') && (
+                  <Link
+                    to="/trainer"
+                    className="inline-block bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition-colors"
+                  >
+                    Dashboard Trainer
+                  </Link>
+                )}
               </div>
 
               <p className="text-gray-600 mt-4">Les prochaines fonctionnalités incluent :</p>

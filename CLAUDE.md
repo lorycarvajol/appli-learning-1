@@ -15,6 +15,318 @@ This is a **web-based learning platform** for teaching web development, featurin
 **Target Users:** 3 roles - Learner (students), Trainer (instructors), Admin
 **Tech Stack:** Django 5.0+ (backend), React 18+ (frontend), PostgreSQL, Redis, Celery, Django Channels
 
+## État Actuel du Développement (Mis à jour: 2025-12-12)
+
+### ✅ Fonctionnalités Complétées
+
+#### Infrastructure Docker
+- **Docker Compose configuré** avec 7 services:
+  - `postgres` (PostgreSQL 15)
+  - `redis` (Redis 7)
+  - `backend` (Django + Gunicorn)
+  - `daphne` (ASGI server pour WebSocket)
+  - `celery` (async tasks)
+  - `celery-beat` (scheduled tasks)
+  - `frontend` (React + Vite)
+- **Scripts de démarrage**: `start.bat` (Windows) et `start.sh` (Linux/Mac)
+- **Volumes persistants**: Base de données et médias conservés entre redémarrages
+
+#### Backend Django (100% Fonctionnel)
+
+**Configuration:**
+- Settings modulaires: `base.py`, `development.py`, `production.py`
+- JWT authentication avec SimpleJWT (access 1h, refresh 7j)
+- CORS configuré pour localhost:5173
+- Rate limiting désactivé en développement
+- Logging en console (pas de fichiers pour Docker)
+
+**App Accounts (Authentification):**
+- ✅ Modèle User personnalisé avec UUID et email-based auth
+- ✅ Modèle Profile avec gamification (points, level)
+- ✅ Rôles: LEARNER, TRAINER, ADMIN
+- ✅ API complète: register, login, logout, token refresh, current user
+- ✅ Admin interface configurée
+- ✅ Migrations appliquées et testées
+- ✅ Système de blacklist des tokens lors du logout
+
+**App Courses (Gestion du contenu):**
+- ✅ 5 Modèles créés et migrés:
+  - `Chapter`: Chapitres avec ordre, durée estimée, publication
+  - `Lesson`: Leçons (3 types: THEORY, EXERCISE, QUIZ)
+  - `Exercise`: Exercices de code avec starter_code, solution, tests (JSONB)
+  - `Quiz`: Quiz avec questions (JSONB), passing_score, randomisation
+  - `Project`: Projets finaux avec évaluation et critères
+- ✅ Serializers pour tous les modèles avec permissions
+- ✅ ViewSets read-only avec filtres et ordering
+- ✅ URLs configurées: `/api/courses/chapters/`, `/api/courses/lessons/`, etc.
+- ✅ Admin interface complète avec inline editing
+- ✅ Relations: Chapter → Lessons, Lesson ↔ Exercise/Quiz
+
+**Endpoints Backend Disponibles:**
+```
+POST   /api/auth/register/           - Inscription
+POST   /api/auth/login/              - Connexion (retourne JWT)
+POST   /api/auth/logout/             - Déconnexion (blacklist token)
+POST   /api/auth/token/refresh/      - Rafraîchir access token
+GET    /api/auth/me/                 - Infos utilisateur courant
+PUT    /api/auth/me/                 - Modifier profil
+PUT    /api/auth/change-password/    - Changer mot de passe
+
+GET    /api/courses/chapters/        - Liste des chapitres
+GET    /api/courses/chapters/{slug}/ - Détails chapitre avec leçons
+GET    /api/courses/lessons/         - Liste des leçons
+GET    /api/courses/lessons/{slug}/  - Détails leçon avec exercise/quiz
+GET    /api/courses/exercises/{id}/  - Détails exercice
+GET    /api/courses/quizzes/{id}/    - Détails quiz
+GET    /api/courses/projects/        - Liste des projets
+GET    /api/courses/projects/{slug}/ - Détails projet
+
+GET    /admin/                       - Interface admin Django
+```
+
+#### Frontend React (100% Fonctionnel)
+
+**Configuration:**
+- Vite + React 18
+- Redux Toolkit pour state management
+- React Router v6 pour navigation
+- Tailwind CSS pour styling
+- Axios avec intercepteurs JWT
+
+**Features Authentification:**
+- ✅ Page Login avec formulaire et validation
+- ✅ Page Register avec confirmation password
+- ✅ Stockage tokens dans localStorage
+- ✅ Auto-refresh des tokens sur 401
+- ✅ PrivateRoute pour protection des routes
+- ✅ Redux slice authSlice avec async thunks
+- ✅ Dashboard utilisateur avec profil et stats
+- ✅ Logout fonctionnel avec redirection
+
+**Features Courses:**
+- ✅ Redux slice chaptersSlice pour state management
+- ✅ API service coursesApi.js avec tous les endpoints
+- ✅ Page ChaptersList: Grille de cartes avec tous les chapitres
+- ✅ Page ChapterDetail: Détails chapitre + liste des leçons
+- ✅ Page LessonView: Affichage du contenu selon le type
+  - Théorie: Contenu Markdown + vidéo optionnelle
+  - Exercice: Instructions + code de départ (éditeur à venir)
+  - Quiz: Instructions + métadonnées (interface à venir)
+- ✅ Navigation breadcrumb fonctionnelle
+- ✅ Bouton "Accéder aux chapitres" dans le Dashboard
+
+**Routes Frontend Disponibles:**
+```
+/login              - Connexion
+/register           - Inscription
+/dashboard          - Dashboard utilisateur (protected)
+/chapters           - Liste des chapitres (protected)
+/chapters/:slug     - Détails d'un chapitre (protected)
+/lessons/:slug      - Visualisation d'une leçon (protected)
+```
+
+### 🔧 Problèmes Résolus
+
+1. **Logging Error** (FileNotFoundError: django.log)
+   - Solution: Supprimé handler 'file', gardé uniquement console pour Docker
+
+2. **Docker Compose Warning** (version obsolete)
+   - Solution: Supprimé la ligne `version: '3.8'`
+
+3. **Migration Error** (relation 'accounts_user' does not exist)
+   - Solution: Exécuté makemigrations avant migrate
+
+4. **Rate Limiting en développement** (429 Too Many Requests)
+   - Solution: Désactivé throttling dans development.py
+
+5. **Infinite Loop Frontend** (ERR_INSUFFICIENT_RESOURCES)
+   - Cause: fetchCurrentUser() appelé à chaque render
+   - Solution: Ajouté state `hasFetched` pour appeler une seule fois
+
+### 📝 Comment Tester l'Application
+
+**1. Démarrer l'environnement:**
+```bash
+.\start.bat  # Windows
+# ou
+./start.sh   # Linux/Mac
+```
+
+**2. Créer un superuser (si pas déjà fait):**
+```bash
+docker-compose exec backend python manage.py createsuperuser
+```
+
+**3. Accéder à l'admin Django:**
+- URL: http://localhost:8000/admin/
+- Créer des chapitres et leçons
+- Marquer `is_published = True` pour les rendre visibles
+
+**4. Tester le frontend:**
+- URL: http://localhost:5173/
+- S'inscrire ou se connecter
+- Cliquer sur "Accéder aux chapitres"
+- Naviguer dans les chapitres et leçons
+
+### 🚧 Prochaines Étapes (Par Ordre de Priorité)
+
+#### Phase 1: Progression Tracking
+- [ ] Créer app `progression` avec modèles:
+  - `UserProgress`: État progression par leçon
+  - `ChapterAccess`: Contrôle d'accès aux chapitres
+  - `ActivityLog`: Historique des activités
+- [ ] API endpoints pour marquer leçons comme complétées
+- [ ] Frontend: Bouton "Marquer comme terminé" fonctionnel
+- [ ] Affichage de la progression dans ChaptersList
+
+#### Phase 2: Validation de Code
+- [ ] Créer app `validation` avec sandbox Docker
+- [ ] Service `code_runner.py` pour exécution sécurisée
+- [ ] API endpoint `/api/exercises/{id}/submit/`
+- [ ] Frontend: Éditeur Monaco pour écrire du code
+- [ ] Affichage des résultats de tests
+- [ ] Système de hints progressifs
+
+#### Phase 3: Interface Quiz
+- [ ] Frontend: Composant QuizInterface
+- [ ] Affichage questions avec options multiples
+- [ ] Soumission et calcul du score
+- [ ] Feedback immédiat sur les réponses
+- [ ] Randomisation questions/options si configuré
+
+#### Phase 4: Gamification
+- [ ] Créer app `gamification`:
+  - `Badge`: Définition des badges
+  - `UserBadge`: Badges gagnés
+  - `PointTransaction`: Historique points
+  - `Leaderboard`: Classement
+- [ ] Service d'attribution automatique de badges
+- [ ] API leaderboard
+- [ ] Frontend: Gallery badges + leaderboard
+
+#### Phase 5: Fonctionnalités Trainer
+- [ ] Dashboard trainer avec statistiques élèves
+- [ ] Système de déblocage de chapitres
+- [ ] Review de projets soumis
+- [ ] Tableau de bord activité en temps réel
+
+#### Phase 6: WebSocket & Real-time
+- [ ] Configuration Django Channels complète
+- [ ] Consumers pour auto-save code
+- [ ] Consumer pour activité en temps réel
+- [ ] Frontend: WebSocket service
+- [ ] Auto-save toutes les 3 secondes
+
+#### Phase 7: Forum Communautaire
+- [ ] Créer app `forum`:
+  - `Post`: Questions/discussions
+  - `Reply`: Réponses
+  - `Vote`: Système de votes
+- [ ] API CRUD complète
+- [ ] Frontend: Liste posts, création, réponses
+- [ ] Système de recherche et tags
+
+### 📁 Structure des Fichiers Importants
+
+**Backend:**
+```
+backend/
+├── config/
+│   ├── settings/
+│   │   ├── base.py          ✅ Settings partagés
+│   │   ├── development.py   ✅ Rate limiting désactivé
+│   │   └── production.py    ✅ Config production
+│   ├── urls.py              ✅ URLs principales
+│   ├── wsgi.py              ✅ WSGI pour Gunicorn
+│   └── asgi.py              🚧 ASGI pour Channels
+├── apps/
+│   ├── accounts/            ✅ 100% Complet
+│   │   ├── models.py        ✅ User, Profile
+│   │   ├── serializers.py   ✅ Register, User, Profile, ChangePassword
+│   │   ├── views.py         ✅ Register, CurrentUser, Logout
+│   │   ├── urls.py          ✅ Routes auth
+│   │   ├── admin.py         ✅ Admin interface
+│   │   └── signals.py       ✅ Auto-create Profile
+│   ├── courses/             ✅ 100% Complet
+│   │   ├── models.py        ✅ Chapter, Lesson, Exercise, Quiz, Project
+│   │   ├── serializers.py   ✅ Tous les serializers
+│   │   ├── views.py         ✅ ViewSets read-only
+│   │   ├── urls.py          ✅ Routes courses
+│   │   └── admin.py         ✅ Admin avec inlines
+│   ├── progression/         ⏳ À créer
+│   ├── gamification/        ⏳ À créer
+│   ├── validation/          ⏳ À créer
+│   └── forum/               ⏳ À créer
+├── requirements/
+│   ├── base.txt            ✅ Django, DRF, psycopg2, etc.
+│   ├── development.txt     ✅ Debug tools
+│   └── production.txt      ✅ Gunicorn, etc.
+└── Dockerfile              ✅ Python 3.11-slim
+
+Frontend:
+```
+frontend/
+├── src/
+│   ├── app/
+│   │   └── store.js         ✅ Redux store (auth, chapters)
+│   ├── features/
+│   │   ├── auth/            ✅ 100% Complet
+│   │   │   ├── authSlice.js       ✅ Redux slice
+│   │   │   ├── Login.jsx          ✅ Page login
+│   │   │   ├── Register.jsx       ✅ Page register
+│   │   │   └── PrivateRoute.jsx   ✅ Route protection
+│   │   └── chapters/        ✅ 100% Complet
+│   │       ├── chaptersSlice.js   ✅ Redux slice
+│   │       ├── ChaptersList.jsx   ✅ Liste chapitres
+│   │       ├── ChapterDetail.jsx  ✅ Détails chapitre
+│   │       └── LessonView.jsx     ✅ Vue leçon
+│   ├── components/
+│   │   ├── Dashboard.jsx    ✅ Dashboard utilisateur
+│   │   ├── layout/          ⏳ Navbar, Footer à créer
+│   │   └── ui/              ⏳ Composants réutilisables
+│   ├── services/
+│   │   └── api/
+│   │       ├── apiService.js      ✅ Axios + JWT interceptor
+│   │       └── coursesApi.js      ✅ API courses
+│   ├── App.jsx              ✅ Routes configurées
+│   └── main.jsx             ✅ Redux Provider
+├── package.json             ✅ Dependencies
+├── vite.config.js           ✅ Config Vite
+├── tailwind.config.js       ✅ Config Tailwind
+└── Dockerfile               ✅ Node 18 multi-stage
+```
+
+### 💾 État de la Base de Données
+
+**Tables existantes:**
+- ✅ `accounts_user` - Utilisateurs avec email-based auth
+- ✅ `accounts_profile` - Profils avec points et niveau
+- ✅ `courses_chapter` - Chapitres
+- ✅ `courses_lesson` - Leçons (THEORY/EXERCISE/QUIZ)
+- ✅ `courses_exercise` - Exercices de code
+- ✅ `courses_quiz` - Quiz
+- ✅ `courses_project` - Projets finaux
+- ✅ `token_blacklist_*` - Gestion tokens JWT
+
+**Migrations appliquées:**
+- ✅ accounts: 0001_initial
+- ✅ courses: 0001_initial
+
+### 🐛 Bugs Connus
+
+Aucun bug connu actuellement. Toutes les fonctionnalités implémentées sont testées et fonctionnelles.
+
+### 💡 Notes Importantes pour Reprise
+
+1. **Environnement Docker**: Tout passe par Docker, ne pas installer Python/Node localement
+2. **Admin Django**: Créer du contenu via http://localhost:8000/admin/ avant de tester le frontend
+3. **Rate Limiting**: Désactivé en dev, à réactiver en production
+4. **Tokens JWT**: Access token 1h, refresh 7j, rotation activée
+5. **State Management**: Redux pour auth et chapters, expandable pour autres features
+6. **JSONB Fields**: Utilisés pour tests (Exercise) et questions (Quiz), flexible pour évolution
+7. **UUID everywhere**: Tous les IDs sont des UUID, pas d'entiers séquentiels
+8. **Slugs**: Chapitres, leçons, projets utilisent des slugs pour URLs lisibles
+
 ## Development Commands
 
 ### Backend (Django)

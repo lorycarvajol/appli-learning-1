@@ -6,6 +6,7 @@ import PrivateRoute from './features/auth/PrivateRoute'
 import ChaptersList from './features/chapters/ChaptersList'
 import ChapterDetail from './features/chapters/ChapterDetail'
 import LessonView from './features/chapters/LessonView'
+import TrainerDashboard from './features/trainer/TrainerDashboard'
 
 function App() {
   return (
@@ -41,6 +42,14 @@ function App() {
         element={
           <PrivateRoute>
             <LessonView />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/trainer"
+        element={
+          <PrivateRoute>
+            <TrainerDashboard />
           </PrivateRoute>
         }
       />
