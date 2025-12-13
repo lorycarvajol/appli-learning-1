@@ -1,0 +1,460 @@
+// ==========================================
+// LESSON COMPONENT STYLES
+// ==========================================
+
+@use '../base/variables' as *;
+@use '../base/mixins' as *;
+
+// === CONTENEUR PRINCIPAL ===
+
+.lesson-page {
+  min-height: 100vh;
+  background-color: $bg-light;
+  padding: $spacing-2xl 0;
+}
+
+.lesson-container {
+  @include container;
+}
+
+// === BREADCRUMB ===
+
+.lesson-breadcrumb {
+  position: sticky;
+  top: 0;
+  z-index: $z-index-dropdown;
+  background-color: $bg-white;
+  padding: $spacing-lg 0;
+  margin-bottom: $spacing-2xl;
+  font-size: $font-size-sm;
+  color: $text-secondary;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid $border-color;
+
+  // Animation lors du scroll
+  transition: box-shadow $transition-base;
+
+  &__link {
+    color: $primary-color;
+    transition: color $transition-fast;
+    font-weight: $font-weight-medium;
+
+    &:hover {
+      color: $primary-dark;
+      text-decoration: underline;
+    }
+  }
+
+  &__separator {
+    margin: 0 $spacing-sm;
+    color: $text-muted;
+  }
+
+  &__current {
+    color: $text-secondary;
+    font-weight: $font-weight-medium;
+  }
+}
+
+// === EN-TÊTE DE LEÇON ===
+
+.lesson-header {
+  @include card;
+  margin-bottom: $spacing-2xl;
+  @include slide-up;
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    margin-bottom: $spacing-lg;
+    flex-wrap: wrap;
+  }
+
+  &__badge {
+    @include badge;
+
+    &--theory {
+      background-color: $theory-bg;
+      color: $theory-text;
+    }
+
+    &--exercise {
+      background-color: $exercise-bg;
+      color: $exercise-text;
+    }
+
+    &--quiz {
+      background-color: $quiz-bg;
+      color: $quiz-text;
+    }
+  }
+
+  &__info {
+    font-size: $font-size-sm;
+    color: $text-secondary;
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+
+    &::before {
+      content: "•";
+      color: $text-muted;
+    }
+
+    &:first-child::before {
+      content: none;
+    }
+  }
+
+  &__title {
+    @include heading-1;
+    margin-bottom: 0;
+  }
+}
+
+// === CONTENU DE LA LEÇON ===
+
+.lesson-content {
+  @include card;
+  margin-bottom: $spacing-2xl;
+  @include fade-in;
+  animation-delay: 100ms;
+}
+
+// === CONTENU MARKDOWN ===
+
+.lesson-markdown {
+  @include body-text;
+  max-width: none;
+
+  h1 {
+    @include heading-1;
+    margin-top: $spacing-3xl;
+
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  h2 {
+    @include heading-2;
+    margin-top: $spacing-2xl;
+    padding-bottom: $spacing-sm;
+    border-bottom: 2px solid $border-color;
+  }
+
+  h3 {
+    @include heading-3;
+    margin-top: $spacing-xl;
+  }
+
+  h4 {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-semibold;
+    margin-top: $spacing-lg;
+    margin-bottom: $spacing-md;
+  }
+
+  p {
+    margin-bottom: $spacing-lg;
+    color: $text-primary;
+  }
+
+  ul, ol {
+    margin-bottom: $spacing-lg;
+    padding-left: $spacing-xl;
+    list-style: initial;
+  }
+
+  ul {
+    list-style-type: disc;
+  }
+
+  ol {
+    list-style-type: decimal;
+  }
+
+  li {
+    margin-bottom: $spacing-sm;
+    line-height: $line-height-relaxed;
+  }
+
+  code {
+    font-family: $font-family-mono;
+    background-color: $bg-gray;
+    padding: 2px 6px;
+    border-radius: $border-radius-sm;
+    font-size: 0.9em;
+    color: #d63384;
+  }
+
+  pre {
+    @include code-block;
+    margin: $spacing-lg 0;
+
+    code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+  }
+
+  blockquote {
+    border-left: 4px solid $primary-color;
+    padding-left: $spacing-lg;
+    margin: $spacing-xl 0;
+    font-style: italic;
+    color: $text-secondary;
+    background-color: $bg-gray;
+    padding: $spacing-lg;
+    border-radius: $border-radius-md;
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  table {
+    width: 100%;
+    margin: $spacing-xl 0;
+    border-collapse: collapse;
+    border: $border-width solid $border-color;
+    border-radius: $border-radius-md;
+    overflow: hidden;
+
+    th {
+      background-color: $bg-gray;
+      font-weight: $font-weight-semibold;
+      text-align: left;
+      padding: $spacing-md;
+      border-bottom: 2px solid $border-color;
+    }
+
+    td {
+      padding: $spacing-md;
+      border-bottom: $border-width solid $border-color;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+  }
+
+  hr {
+    border: none;
+    border-top: 2px solid $border-color;
+    margin: $spacing-2xl 0;
+  }
+
+  a {
+    color: $primary-color;
+    text-decoration: underline;
+    font-weight: $font-weight-medium;
+
+    &:hover {
+      color: $primary-dark;
+    }
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+    border-radius: $border-radius-lg;
+    margin: $spacing-xl 0;
+    box-shadow: $shadow-md;
+  }
+
+  strong {
+    font-weight: $font-weight-bold;
+    color: $text-primary;
+  }
+
+  em {
+    font-style: italic;
+  }
+}
+
+// === VIDÉO ===
+
+.lesson-video {
+  margin-top: $spacing-2xl;
+
+  &__title {
+    @include heading-3;
+  }
+
+  &__wrapper {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-lg;
+
+    iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+  }
+}
+
+// === EXERCICE ===
+
+.lesson-exercise {
+  &__header {
+    @include heading-2;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__difficulty {
+    @include badge;
+    margin-bottom: $spacing-lg;
+
+    &--easy {
+      background-color: $easy-bg;
+      color: $easy-text;
+    }
+
+    &--medium {
+      background-color: $medium-bg;
+      color: $medium-text;
+    }
+
+    &--hard {
+      background-color: $hard-bg;
+      color: $hard-text;
+    }
+  }
+
+  &__instructions {
+    margin-bottom: $spacing-xl;
+
+    h3 {
+      @include heading-3;
+      font-size: $font-size-lg;
+      margin-bottom: $spacing-md;
+    }
+  }
+
+  &__code-block {
+    background-color: $bg-gray;
+    border-radius: $border-radius-lg;
+    padding: $spacing-lg;
+    margin-bottom: $spacing-xl;
+
+    h3 {
+      @include heading-3;
+      font-size: $font-size-lg;
+      margin-bottom: $spacing-md;
+    }
+
+    pre {
+      @include code-block;
+      margin: 0;
+    }
+  }
+
+  &__placeholder {
+    text-align: center;
+    padding: $spacing-2xl;
+    color: $text-muted;
+    font-style: italic;
+  }
+}
+
+// === QUIZ ===
+
+.lesson-quiz {
+  &__header {
+    @include heading-2;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__instructions {
+    margin-bottom: $spacing-xl;
+    color: $text-secondary;
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    margin-bottom: $spacing-xl;
+    font-size: $font-size-sm;
+    color: $text-secondary;
+    flex-wrap: wrap;
+
+    &-item {
+      &::before {
+        content: "•";
+        margin-right: $spacing-md;
+        color: $text-muted;
+      }
+
+      &:first-child::before {
+        content: none;
+      }
+    }
+  }
+
+  &__placeholder {
+    text-align: center;
+    padding: $spacing-3xl;
+
+    p {
+      color: $text-muted;
+      font-style: italic;
+      margin-bottom: $spacing-xl;
+    }
+
+    button {
+      @include button-primary;
+    }
+  }
+}
+
+// === NAVIGATION ===
+
+.lesson-navigation {
+  @include flex-between;
+  gap: $spacing-lg;
+  flex-wrap: wrap;
+
+  &__button {
+    @include button-base;
+
+    &--back {
+      background-color: $bg-gray;
+      color: $text-primary;
+
+      &:hover {
+        background-color: darken($bg-gray, 10%);
+      }
+    }
+
+    &--complete {
+      @include button-secondary;
+    }
+  }
+}
+
+// === ÉTATS CHARGEMENT/ERREUR ===
+
+.lesson-loading,
+.lesson-error {
+  @include flex-center;
+  min-height: 100vh;
+
+  &__message {
+    font-size: $font-size-xl;
+    color: $text-secondary;
+  }
+}
+
+.lesson-error__message {
+  color: $error-color;
+}

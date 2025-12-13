@@ -14,7 +14,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
 ]
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = False  # Keep False for security
+CORS_ALLOW_ALL_ORIGINS = True  # Temporarily True for debugging
 
 # Debug Toolbar
 if DEBUG:

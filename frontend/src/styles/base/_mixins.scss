@@ -1,0 +1,248 @@
+// ==========================================
+// MIXINS SCSS
+// ==========================================
+
+@use 'variables' as *;
+
+// === RESPONSIVE ===
+
+@mixin respond-to($breakpoint) {
+  @if $breakpoint == 'sm' {
+    @media (min-width: $breakpoint-sm) { @content; }
+  }
+  @else if $breakpoint == 'md' {
+    @media (min-width: $breakpoint-md) { @content; }
+  }
+  @else if $breakpoint == 'lg' {
+    @media (min-width: $breakpoint-lg) { @content; }
+  }
+  @else if $breakpoint == 'xl' {
+    @media (min-width: $breakpoint-xl) { @content; }
+  }
+  @else if $breakpoint == '2xl' {
+    @media (min-width: $breakpoint-2xl) { @content; }
+  }
+}
+
+// === FLEXBOX ===
+
+@mixin flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+@mixin flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+// === BOUTONS ===
+
+@mixin button-base {
+  display: inline-block;
+  padding: $spacing-sm $spacing-lg;
+  font-weight: $font-weight-medium;
+  text-align: center;
+  border-radius: $border-radius-md;
+  border: none;
+  cursor: pointer;
+  transition: all $transition-base;
+  font-family: $font-family-base;
+  font-size: $font-size-base;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@mixin button-primary {
+  @include button-base;
+  background-color: $primary-color;
+  color: $text-white;
+
+  &:hover:not(:disabled) {
+    background-color: $primary-dark;
+  }
+}
+
+@mixin button-secondary {
+  @include button-base;
+  background-color: $secondary-color;
+  color: $text-white;
+
+  &:hover:not(:disabled) {
+    background-color: $secondary-dark;
+  }
+}
+
+@mixin button-outline {
+  @include button-base;
+  background-color: transparent;
+  color: $primary-color;
+  border: $border-width solid $primary-color;
+
+  &:hover:not(:disabled) {
+    background-color: $primary-color;
+    color: $text-white;
+  }
+}
+
+// === CARTES ===
+
+@mixin card {
+  background-color: $bg-white;
+  border-radius: $border-radius-lg;
+  box-shadow: $shadow-md;
+  padding: $spacing-xl;
+}
+
+@mixin card-hover {
+  @include card;
+  transition: all $transition-base;
+
+  &:hover {
+    box-shadow: $shadow-lg;
+    transform: translateY(-2px);
+  }
+}
+
+// === BADGES ===
+
+@mixin badge {
+  display: inline-block;
+  padding: $spacing-xs $spacing-md;
+  border-radius: $border-radius-full;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+@mixin badge-theory {
+  @include badge;
+  background-color: $theory-bg;
+  color: $theory-text;
+}
+
+@mixin badge-exercise {
+  @include badge;
+  background-color: $exercise-bg;
+  color: $exercise-text;
+}
+
+@mixin badge-quiz {
+  @include badge;
+  background-color: $quiz-bg;
+  color: $quiz-text;
+}
+
+// === TYPOGRAPHIE ===
+
+@mixin heading-1 {
+  font-family: $font-family-heading;
+  font-size: $font-size-4xl;
+  font-weight: $font-weight-bold;
+  line-height: $line-height-tight;
+  color: $text-primary;
+  margin-bottom: $spacing-lg;
+}
+
+@mixin heading-2 {
+  font-family: $font-family-heading;
+  font-size: $font-size-3xl;
+  font-weight: $font-weight-bold;
+  line-height: $line-height-tight;
+  color: $text-primary;
+  margin-bottom: $spacing-md;
+}
+
+@mixin heading-3 {
+  font-family: $font-family-heading;
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-semibold;
+  line-height: $line-height-normal;
+  color: $text-primary;
+  margin-bottom: $spacing-md;
+}
+
+@mixin body-text {
+  font-family: $font-family-base;
+  font-size: $font-size-base;
+  line-height: $line-height-relaxed;
+  color: $text-primary;
+}
+
+@mixin code-block {
+  font-family: $font-family-mono;
+  background-color: $bg-dark;
+  color: #e5e7eb;
+  padding: $spacing-lg;
+  border-radius: $border-radius-md;
+  overflow-x: auto;
+  font-size: $font-size-sm;
+  line-height: $line-height-relaxed;
+}
+
+// === ANIMATIONS ===
+
+@mixin fade-in {
+  animation: fadeIn $transition-base;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@mixin slide-up {
+  animation: slideUp $transition-slow;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+// === UTILITAIRES ===
+
+@mixin container {
+  max-width: $breakpoint-xl;
+  margin: 0 auto;
+  padding: 0 $spacing-lg;
+
+  @include respond-to('lg') {
+    padding: 0 $spacing-2xl;
+  }
+}
+
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin clearfix {
+  &::after {
+    content: "";
+    display: table;
+    clear: both;
+  }
+}

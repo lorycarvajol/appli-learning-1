@@ -1,0 +1,360 @@
+// ==========================================
+// CHAPTERS COMPONENTS STYLES
+// ==========================================
+
+@use '../base/variables' as *;
+@use '../base/mixins' as *;
+
+// === PAGE LISTE DES CHAPITRES ===
+
+.chapters-page {
+  min-height: 100vh;
+  background-color: $bg-light;
+  padding: $spacing-2xl 0;
+}
+
+.chapters-container {
+  @include container;
+}
+
+.chapters-header {
+  margin-bottom: $spacing-3xl;
+  @include slide-up;
+
+  &__title {
+    @include heading-1;
+    text-align: center;
+    margin-bottom: $spacing-md;
+  }
+
+  &__subtitle {
+    text-align: center;
+    color: $text-secondary;
+    font-size: $font-size-lg;
+  }
+}
+
+// === GRILLE DE CHAPITRES ===
+
+.chapters-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: $spacing-xl;
+
+  @include respond-to('md') {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @include respond-to('lg') {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+// === CARTE DE CHAPITRE ===
+
+.chapter-card {
+  @include card-hover;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  @include fade-in;
+
+  &__header {
+    margin-bottom: $spacing-lg;
+  }
+
+  &__title {
+    @include heading-3;
+    margin-bottom: $spacing-sm;
+    color: $text-primary;
+    transition: color $transition-fast;
+  }
+
+  &:hover &__title {
+    color: $primary-color;
+  }
+
+  &__description {
+    color: $text-secondary;
+    font-size: $font-size-sm;
+    line-height: $line-height-relaxed;
+    margin-bottom: $spacing-lg;
+    flex-grow: 1;
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: $spacing-lg;
+    padding-top: $spacing-lg;
+    border-top: $border-width solid $border-color;
+    font-size: $font-size-sm;
+    color: $text-secondary;
+    flex-wrap: wrap;
+  }
+
+  &__meta-item {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  &__badge {
+    @include badge;
+    background-color: $success-color;
+    color: $text-white;
+  }
+}
+
+// === PAGE DÉTAILS DU CHAPITRE ===
+
+.chapter-detail-page {
+  min-height: 100vh;
+  background-color: $bg-light;
+  padding: $spacing-2xl 0;
+}
+
+.chapter-detail-container {
+  @include container;
+}
+
+// === BREADCRUMB ===
+
+.chapter-breadcrumb {
+  position: sticky;
+  top: 0;
+  z-index: $z-index-dropdown;
+  background-color: $bg-white;
+  padding: $spacing-lg 0;
+  margin-bottom: $spacing-2xl;
+  font-size: $font-size-sm;
+  color: $text-secondary;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid $border-color;
+  transition: box-shadow $transition-base;
+
+  &__link {
+    color: $primary-color;
+    transition: color $transition-fast;
+    font-weight: $font-weight-medium;
+
+    &:hover {
+      color: $primary-dark;
+      text-decoration: underline;
+    }
+  }
+
+  &__separator {
+    margin: 0 $spacing-sm;
+    color: $text-muted;
+  }
+
+  &__current {
+    color: $text-secondary;
+    font-weight: $font-weight-medium;
+  }
+}
+
+// === EN-TÊTE DU CHAPITRE ===
+
+.chapter-detail-header {
+  @include card;
+  margin-bottom: $spacing-2xl;
+  @include slide-up;
+
+  &__title {
+    @include heading-1;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__description {
+    @include body-text;
+    color: $text-secondary;
+    margin-bottom: $spacing-xl;
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xl;
+    padding-top: $spacing-lg;
+    border-top: $border-width solid $border-color;
+    flex-wrap: wrap;
+  }
+
+  &__meta-item {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    font-size: $font-size-sm;
+    color: $text-secondary;
+
+    svg {
+      width: 18px;
+      height: 18px;
+      color: $primary-color;
+    }
+
+    strong {
+      color: $text-primary;
+      font-weight: $font-weight-semibold;
+    }
+  }
+
+  &__badge {
+    @include badge;
+    background-color: $success-color;
+    color: $text-white;
+  }
+}
+
+// === LISTE DES LEÇONS ===
+
+.lessons-section {
+  &__title {
+    @include heading-2;
+    margin-bottom: $spacing-xl;
+  }
+}
+
+.lessons-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+}
+
+// === CARTE DE LEÇON ===
+
+.lesson-card {
+  @include card;
+  display: flex;
+  align-items: center;
+  gap: $spacing-lg;
+  transition: all $transition-base;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+
+  &:hover {
+    box-shadow: $shadow-lg;
+    transform: translateX(8px);
+  }
+
+  &__number {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: $border-radius-full;
+    background-color: $primary-color;
+    color: $text-white;
+    @include flex-center;
+    font-weight: $font-weight-bold;
+    font-size: $font-size-lg;
+  }
+
+  &__content {
+    flex-grow: 1;
+  }
+
+  &__header {
+    @include flex-between;
+    margin-bottom: $spacing-sm;
+    gap: $spacing-md;
+    flex-wrap: wrap;
+  }
+
+  &__title {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-semibold;
+    color: $text-primary;
+    margin: 0;
+  }
+
+  &__badges {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  &__badge {
+    @include badge;
+
+    &--theory {
+      background-color: $theory-bg;
+      color: $theory-text;
+    }
+
+    &--exercise {
+      background-color: $exercise-bg;
+      color: $exercise-text;
+    }
+
+    &--quiz {
+      background-color: $quiz-bg;
+      color: $quiz-text;
+    }
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: $spacing-lg;
+    font-size: $font-size-sm;
+    color: $text-secondary;
+  }
+
+  &__meta-item {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+  }
+
+  &__button {
+    @include button-primary;
+    padding: $spacing-sm $spacing-lg;
+    font-size: $font-size-sm;
+    white-space: nowrap;
+  }
+}
+
+// === ÉTATS DE CHARGEMENT ===
+
+.chapters-loading,
+.chapter-detail-loading {
+  @include flex-center;
+  min-height: 100vh;
+}
+
+.chapters-error,
+.chapter-detail-error {
+  @include flex-center;
+  min-height: 100vh;
+
+  &__message {
+    font-size: $font-size-xl;
+    color: $error-color;
+  }
+}
+
+.chapters-empty {
+  @include card;
+  text-align: center;
+  padding: $spacing-3xl;
+
+  &__title {
+    @include heading-2;
+    color: $text-secondary;
+    margin-bottom: $spacing-md;
+  }
+
+  &__message {
+    color: $text-muted;
+  }
+}

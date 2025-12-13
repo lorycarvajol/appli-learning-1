@@ -24,101 +24,69 @@ function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+      <div className="dashboard-page">
+        <div className="dashboard-container">
+          <div className="loading-spinner"></div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">
-            Learning Platform
-          </h1>
-          <button
-            onClick={handleLogout}
-            className="btn btn-secondary"
-          >
-            Déconnexion
-          </button>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="card">
-          <h2 className="text-2xl font-bold mb-4">
+    <div className="dashboard-page">
+      <div className="dashboard-container">
+        <div className="dashboard-header">
+          <h1 className="dashboard-header__greeting">
             Bienvenue {user?.first_name || 'Utilisateur'} !
-          </h2>
+          </h1>
+          <p className="dashboard-header__subtitle">
+            {user?.role === 'TRAINER' && 'Espace Formateur'}
+            {user?.role === 'ADMIN' && 'Espace Administrateur'}
+            {user?.role === 'LEARNER' && 'Espace Apprenant'}
+          </p>
+        </div>
 
-          <div className="space-y-4">
-            <div>
-              <p className="text-gray-600">
-                <strong>Email:</strong> {user?.email}
-              </p>
-              <p className="text-gray-600">
-                <strong>Nom complet:</strong> {user?.first_name} {user?.last_name}
-              </p>
-              <p className="text-gray-600">
-                <strong>Rôle:</strong> <span className="capitalize">{user?.role?.toLowerCase()}</span>
-              </p>
-            </div>
+        <div className="dashboard-stats">
+          <div className="stat-card">
+            <div className="stat-card__value">{user?.profile?.total_points || 0}</div>
+            <div className="stat-card__label">Points</div>
+          </div>
 
-            {user?.profile && (
-              <div className="border-t pt-4">
-                <h3 className="text-lg font-semibold mb-2">Profil</h3>
-                <p className="text-gray-600">
-                  <strong>Points:</strong> {user.profile.total_points}
-                </p>
-                <p className="text-gray-600">
-                  <strong>Niveau:</strong> {user.profile.level}
-                </p>
-              </div>
-            )}
+          <div className="stat-card">
+            <div className="stat-card__value">{user?.profile?.level || 1}</div>
+            <div className="stat-card__label">Niveau</div>
+          </div>
 
-            <div className="border-t pt-4">
-              <p className="text-green-600 font-medium">
-                ✅ L'authentification fonctionne correctement !
-              </p>
-              <p className="text-gray-600 mt-2">
-                Vous êtes connecté avec succès.
-              </p>
+          <div className="stat-card">
+            <div className="stat-card__value">0</div>
+            <div className="stat-card__label">Leçons complétées</div>
+          </div>
 
-              <div className="mt-4 flex flex-wrap gap-3">
-                <Link
-                  to="/chapters"
-                  className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Accéder aux chapitres
-                </Link>
-
-                {user?.role && (user.role === 'TRAINER' || user.role === 'ADMIN') && (
-                  <Link
-                    to="/trainer"
-                    className="inline-block bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition-colors"
-                  >
-                    Dashboard Trainer
-                  </Link>
-                )}
-              </div>
-
-              <p className="text-gray-600 mt-4">Les prochaines fonctionnalités incluent :</p>
-              <ul className="list-disc list-inside text-gray-600 mt-2 space-y-1">
-                <li>Système de progression</li>
-                <li>Éditeur de code intégré</li>
-                <li>Gamification (badges, points)</li>
-                <li>WebSocket pour le temps réel</li>
-              </ul>
-            </div>
+          <div className="stat-card">
+            <div className="stat-card__value">0</div>
+            <div className="stat-card__label">Badges</div>
           </div>
         </div>
-      </main>
+
+        <div className="dashboard-actions">
+          <h2 className="dashboard-actions__title">Actions rapides</h2>
+          <div className="dashboard-actions__buttons">
+            <Link to="/chapters" className="dashboard-actions__button">
+              📚 Accéder aux chapitres
+            </Link>
+
+            {user?.role && (user.role === 'TRAINER' || user.role === 'ADMIN') && (
+              <Link to="/trainer" className="dashboard-actions__button">
+                👨‍🏫 Dashboard Trainer
+              </Link>
+            )}
+
+            <button onClick={handleLogout} className="dashboard-actions__button">
+              🚪 Déconnexion
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

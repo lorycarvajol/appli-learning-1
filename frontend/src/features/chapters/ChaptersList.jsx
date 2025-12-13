@@ -13,66 +13,66 @@ export default function ChaptersList() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-xl">Chargement des chapitres...</div>
+      <div className="chapters-loading">
+        <div className="loading-spinner"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-xl text-red-600">Erreur: {error}</div>
+      <div className="chapters-error">
+        <div className="chapters-error__message">Erreur: {error}</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">Chapitres</h1>
-          <p className="mt-2 text-lg text-gray-600">
+    <div className="chapters-page">
+      <div className="chapters-container">
+        <div className="chapters-header">
+          <h1 className="chapters-header__title">Chapitres</h1>
+          <p className="chapters-header__subtitle">
             Explorez les différents chapitres de formation
           </p>
         </div>
 
         {chapters.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-xl text-gray-500">Aucun chapitre disponible pour le moment.</p>
+          <div className="chapters-empty">
+            <h2 className="chapters-empty__title">Aucun chapitre disponible</h2>
+            <p className="chapters-empty__message">
+              Les chapitres seront bientôt disponibles.
+            </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="chapters-grid">
             {chapters.map((chapter) => (
               <Link
                 key={chapter.id}
                 to={`/chapters/${chapter.slug}`}
-                className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
+                className="chapter-card"
               >
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-semibold text-blue-600">
-                      Chapitre {chapter.order_index}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {chapter.estimated_duration} min
-                    </span>
-                  </div>
+                <div className="chapter-card__header">
+                  <h3 className="chapter-card__title">{chapter.title}</h3>
+                  {chapter.is_published && (
+                    <span className="chapter-card__badge">Publié</span>
+                  )}
+                </div>
 
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
-                    {chapter.title}
-                  </h3>
+                <p className="chapter-card__description">
+                  {chapter.description}
+                </p>
 
-                  <p className="text-gray-600 text-sm line-clamp-3 mb-4">
-                    {chapter.description}
-                  </p>
-
-                  <div className="flex items-center justify-between text-sm text-gray-500">
-                    <span>{chapter.lesson_count} leçons</span>
-                    <span className="text-blue-600 font-medium">
-                      Commencer →
-                    </span>
-                  </div>
+                <div className="chapter-card__meta">
+                  <span className="chapter-card__meta-item">
+                    Chapitre {chapter.order_index}
+                  </span>
+                  <span className="chapter-card__meta-item">
+                    {chapter.estimated_duration} min
+                  </span>
+                  <span className="chapter-card__meta-item">
+                    {chapter.lesson_count || 0} leçons
+                  </span>
                 </div>
               </Link>
             ))}

@@ -74,11 +74,12 @@ class LessonDetailSerializer(serializers.ModelSerializer):
     """Detailed serializer for lessons with nested exercise/quiz."""
     exercise = ExerciseSerializer(read_only=True)
     quiz = QuizSerializer(read_only=True)
+    chapter_slug = serializers.CharField(source='chapter.slug', read_only=True)
 
     class Meta:
         model = Lesson
         fields = [
-            'id', 'chapter', 'title', 'slug', 'lesson_type', 'order_index',
+            'id', 'chapter', 'chapter_slug', 'title', 'slug', 'lesson_type', 'order_index',
             'content', 'video_url', 'estimated_duration', 'points',
             'is_published', 'exercise', 'quiz', 'created_at', 'updated_at'
         ]

@@ -22,7 +22,7 @@ class IsTrainerOrAdmin(IsAuthenticated):
     def has_permission(self, request, view):
         if not super().has_permission(request, view):
             return False
-        return request.user.role in [User.Role.TRAINER, User.Role.ADMIN]
+        return request.user.role in ['TRAINER', 'ADMIN']
 
 
 class ChapterAccessViewSet(viewsets.ModelViewSet):
@@ -36,7 +36,7 @@ class ChapterAccessViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
 
         # Les apprenants ne voient que leurs propres accès
-        if user.role == User.Role.LEARNER:
+        if user.role == 'LEARNER':
             return qs.filter(user=user)
 
         # Les trainers/admins voient tout
@@ -127,7 +127,7 @@ class UserProgressViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
 
         # Les apprenants ne voient que leur propre progression
-        if user.role == User.Role.LEARNER:
+        if user.role == 'LEARNER':
             return qs.filter(user=user)
 
         # Les trainers/admins peuvent filtrer par utilisateur
@@ -208,7 +208,7 @@ class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):
         qs = super().get_queryset()
 
         # Les apprenants ne voient que leurs propres activités
-        if user.role == User.Role.LEARNER:
+        if user.role == 'LEARNER':
             return qs.filter(user=user)
 
         # Les trainers/admins peuvent filtrer
@@ -230,7 +230,7 @@ class TrainerDashboardViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def learners_summary(self, request):
         """Obtenir le résumé de progression de tous les apprenants"""
-        learners = User.objects.filter(role=User.Role.LEARNER)
+        learners = User.objects.filter(role='LEARNER')
         total_chapters = Chapter.objects.filter(is_published=True).count()
         total_lessons = Lesson.objects.filter(chapter__is_published=True).count()
 
@@ -290,7 +290,7 @@ class TrainerDashboardViewSet(viewsets.ViewSet):
     def learner_detail(self, request, pk=None):
         """Obtenir les détails de progression d'un apprenant spécifique"""
         try:
-            learner = User.objects.get(id=pk, role=User.Role.LEARNER)
+            learner = User.objects.get(id=pk, role='LEARNER')
         except User.DoesNotExist:
             return Response(
                 {"error": "Learner not found"},
@@ -342,7 +342,7 @@ class TrainerDashboardViewSet(viewsets.ViewSet):
                 'first_name': learner.first_name,
                 'last_name': learner.last_name,
                 'profile': {
-                    'points': learner.profile.points,
+                    'points': learner.profile.total_points,
                     'level': learner.profile.level
                 }
             },

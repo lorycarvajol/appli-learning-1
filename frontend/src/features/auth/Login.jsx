@@ -22,62 +22,65 @@ function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-md">
-        <h2 className="text-3xl font-bold mb-6 text-center text-gray-800">
-          Connexion
-        </h2>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
-            {error.detail || error.message || 'Erreur de connexion'}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="input"
-              required
-              autoComplete="email"
-            />
+    <div className="auth-page">
+      <div className="auth-container">
+        <div className="auth-card">
+          <div className="auth-header">
+            <h2 className="auth-header__title">Connexion</h2>
+            <p className="auth-header__subtitle">
+              Connectez-vous pour accéder à la plateforme
+            </p>
           </div>
 
-          <div className="mb-6">
-            <label className="block text-gray-700 font-medium mb-2">
-              Mot de passe
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="input"
-              required
-              autoComplete="current-password"
-            />
+          {error && (
+            <div className="auth-alert auth-alert--error">
+              {error.detail || error.message || 'Erreur de connexion'}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div className="auth-form__group">
+              <label className="auth-form__label">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="auth-form__input"
+                placeholder="votre@email.com"
+                required
+                autoComplete="email"
+              />
+            </div>
+
+            <div className="auth-form__group">
+              <label className="auth-form__label">Mot de passe</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="auth-form__input"
+                placeholder="••••••••"
+                required
+                autoComplete="current-password"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="auth-form__submit"
+            >
+              {loading ? 'Connexion en cours...' : 'Se connecter'}
+            </button>
+          </form>
+
+          <div className="auth-footer">
+            <p className="auth-footer__text">Pas encore de compte ?</p>
+            <Link to="/register" className="auth-footer__link">
+              S'inscrire
+            </Link>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full btn btn-primary"
-          >
-            {loading ? 'Connexion...' : 'Se connecter'}
-          </button>
-        </form>
-
-        <p className="mt-6 text-center text-gray-600">
-          Pas encore de compte ?{' '}
-          <Link to="/register" className="text-primary-600 hover:underline font-medium">
-            S'inscrire
-          </Link>
-        </p>
+        </div>
       </div>
     </div>
   )

@@ -34,118 +34,116 @@ function Register() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 py-12">
-      <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-md">
-        <h2 className="text-3xl font-bold mb-6 text-center text-gray-800">
-          Inscription
-        </h2>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
-            {typeof error === 'object' ? (
-              <ul className="list-disc list-inside">
-                {Object.entries(error).map(([key, value]) => (
-                  <li key={key}>
-                    <strong>{key}:</strong> {Array.isArray(value) ? value[0] : value}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              error
-            )}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="input"
-              required
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">
-              Prénom
-            </label>
-            <input
-              type="text"
-              name="first_name"
-              value={formData.first_name}
-              onChange={handleChange}
-              className="input"
-              required
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">
-              Nom
-            </label>
-            <input
-              type="text"
-              name="last_name"
-              value={formData.last_name}
-              onChange={handleChange}
-              className="input"
-              required
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">
-              Mot de passe
-            </label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="input"
-              required
-              minLength={8}
-            />
-            <p className="text-sm text-gray-500 mt-1">
-              Minimum 8 caractères
+    <div className="auth-page">
+      <div className="auth-container">
+        <div className="auth-card">
+          <div className="auth-header">
+            <h2 className="auth-header__title">Inscription</h2>
+            <p className="auth-header__subtitle">
+              Créez votre compte pour accéder à la plateforme
             </p>
           </div>
 
-          <div className="mb-6">
-            <label className="block text-gray-700 font-medium mb-2">
-              Confirmer le mot de passe
-            </label>
-            <input
-              type="password"
-              name="password_confirm"
-              value={formData.password_confirm}
-              onChange={handleChange}
-              className="input"
-              required
-            />
+          {error && (
+            <div className="auth-alert auth-alert--error">
+              {typeof error === 'object' ? (
+                <ul>
+                  {Object.entries(error).map(([key, value]) => (
+                    <li key={key}>
+                      <strong>{key}:</strong> {Array.isArray(value) ? value[0] : value}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                error
+              )}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div className="auth-form__group">
+              <label className="auth-form__label">Email</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="auth-form__input"
+                placeholder="votre@email.com"
+                required
+              />
+            </div>
+
+            <div className="auth-form__group">
+              <label className="auth-form__label">Prénom</label>
+              <input
+                type="text"
+                name="first_name"
+                value={formData.first_name}
+                onChange={handleChange}
+                className="auth-form__input"
+                placeholder="Jean"
+                required
+              />
+            </div>
+
+            <div className="auth-form__group">
+              <label className="auth-form__label">Nom</label>
+              <input
+                type="text"
+                name="last_name"
+                value={formData.last_name}
+                onChange={handleChange}
+                className="auth-form__input"
+                placeholder="Dupont"
+                required
+              />
+            </div>
+
+            <div className="auth-form__group">
+              <label className="auth-form__label">Mot de passe</label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="auth-form__input"
+                placeholder="••••••••"
+                required
+                minLength={8}
+              />
+              <small className="auth-form__error">Minimum 8 caractères</small>
+            </div>
+
+            <div className="auth-form__group">
+              <label className="auth-form__label">Confirmer le mot de passe</label>
+              <input
+                type="password"
+                name="password_confirm"
+                value={formData.password_confirm}
+                onChange={handleChange}
+                className="auth-form__input"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="auth-form__submit"
+            >
+              {loading ? 'Inscription en cours...' : 'S\'inscrire'}
+            </button>
+          </form>
+
+          <div className="auth-footer">
+            <p className="auth-footer__text">Déjà un compte ?</p>
+            <Link to="/login" className="auth-footer__link">
+              Se connecter
+            </Link>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full btn btn-primary"
-          >
-            {loading ? 'Inscription...' : 'S\'inscrire'}
-          </button>
-        </form>
-
-        <p className="mt-6 text-center text-gray-600">
-          Déjà un compte ?{' '}
-          <Link to="/login" className="text-primary-600 hover:underline font-medium">
-            Se connecter
-          </Link>
-        </p>
+        </div>
       </div>
     </div>
   )

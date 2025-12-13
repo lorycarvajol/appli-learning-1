@@ -69,7 +69,7 @@ const chaptersSlice = createSlice({
       })
       .addCase(fetchChapters.fulfilled, (state, action) => {
         state.loading = false;
-        state.chapters = action.payload;
+        state.chapters = action.payload.results || action.payload;
       })
       .addCase(fetchChapters.rejected, (state, action) => {
         state.loading = false;

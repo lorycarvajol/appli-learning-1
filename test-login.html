@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔐 Test de Connexion</h1>
+
+    <form id="loginForm">
+        <input type="email" id="email" placeholder="Email" value="trainer@test.com" required>
+        <input type="password" id="password" placeholder="Mot de passe" value="trainer123" required>
+        <button type="submit">Se connecter</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const resultDiv = document.getElementById('result');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            resultDiv.innerHTML = '⏳ Connexion en cours...';
+            resultDiv.className = '';
+
+            try {
+                const response = await fetch('http://localhost:8000/api/auth/login/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <h3>✅ Connexion réussie !</h3>
+                        <p><strong>Access Token:</strong> ${data.access.substring(0, 50)}...</p>
+                        <p><strong>Refresh Token:</strong> ${data.refresh.substring(0, 50)}...</p>
+                        <p style="color: green; font-weight: bold;">Le backend fonctionne correctement !</p>
+                    `;
+                    resultDiv.className = 'success';
+
+                    // Test de récupération du profil
+                    const profileResponse = await fetch('http://localhost:8000/api/auth/me/', {
+                        headers: {
+                            'Authorization': `Bearer ${data.access}`
+                        }
+                    });
+                    const profileData = await profileResponse.json();
+
+                    if (profileResponse.ok) {
+                        resultDiv.innerHTML += `
+                            <h4>👤 Profil récupéré :</h4>
+                            <p>Email: ${profileData.email}</p>
+                            <p>Nom: ${profileData.first_name} ${profileData.last_name}</p>
+                            <p>Rôle: ${profileData.role}</p>
+                        `;
+                    }
+                } else {
+                    resultDiv.innerHTML = `
+                        <h3>❌ Erreur de connexion</h3>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Message:</strong> ${JSON.stringify(data, null, 2)}</p>
+                    `;
+                    resultDiv.className = 'error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3>❌ Erreur réseau</h3>
+                    <p><strong>Message:</strong> ${error.message}</p>
+                    <p>Le backend n'est peut-être pas accessible sur localhost:8000</p>
+                `;
+                resultDiv.className = 'error';
+                console.error('Erreur:', error);
+            }
+        });
+    </script>
+</body>
+</html>
