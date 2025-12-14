@@ -1,0 +1,112 @@
+.markdown-image-wrapper {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  margin: 1.5rem 0;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.markdown-image-wrapper:hover {
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.markdown-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  transition: transform 0.3s ease;
+}
+
+.markdown-image-wrapper:hover .markdown-image {
+  transform: scale(1.02);
+}
+
+.markdown-image__overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(79, 70, 229, 0.9),
+    rgba(99, 102, 241, 0.9)
+  );
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  color: white;
+}
+
+.markdown-image-wrapper:hover .markdown-image__overlay {
+  opacity: 1;
+}
+
+.markdown-image__icon {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.markdown-image__text {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.025em;
+}
+
+/* Alignement des images dans le markdown */
+.markdown-image-wrapper + em,
+.markdown-image-wrapper + p em {
+  display: block;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #64748b;
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .markdown-image-wrapper {
+    margin: 1rem 0;
+  }
+
+  .markdown-image__text {
+    font-size: 0.75rem;
+  }
+
+  .markdown-image__icon {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* Support du mode sombre */
+@media (prefers-color-scheme: dark) {
+  .markdown-image-wrapper {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  }
+
+  .markdown-image-wrapper:hover {
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+  }
+}

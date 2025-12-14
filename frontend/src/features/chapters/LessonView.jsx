@@ -4,6 +4,8 @@ import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { fetchLesson, clearCurrentLesson } from './chaptersSlice';
+import ExerciseInterface from '@/features/exercises/ExerciseInterface';
+import MarkdownImage from '@/components/ui/MarkdownImage';
 
 export default function LessonView() {
   const { slug } = useParams();
@@ -57,6 +59,11 @@ export default function LessonView() {
 
   const typeInfo = getLessonTypeInfo(currentLesson.lesson_type);
 
+  // Composants personnalisés pour ReactMarkdown
+  const markdownComponents = {
+    img: MarkdownImage,
+  };
+
   return (
     <div className="lesson-page">
       {/* Breadcrumb - sticky */}
@@ -103,7 +110,10 @@ export default function LessonView() {
             <>
               <div className="lesson-markdown">
                 {currentLesson.content ? (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={markdownComponents}
+                  >
                     {currentLesson.content}
                   </ReactMarkdown>
                 ) : (
@@ -128,31 +138,14 @@ export default function LessonView() {
 
           {/* Exercise */}
           {currentLesson.lesson_type === 'EXERCISE' && currentLesson.exercise && (
-            <div className="lesson-exercise">
-              <h2 className="lesson-exercise__header">Exercice</h2>
-
-              <div className={`lesson-exercise__difficulty ${getDifficultyClass(currentLesson.exercise.difficulty)}`}>
-                Difficulté: {currentLesson.exercise.difficulty}
-              </div>
-
-              <div className="lesson-exercise__instructions">
-                <h3>Instructions</h3>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {currentLesson.exercise.instructions || ''}
-                </ReactMarkdown>
-              </div>
-
-              <div className="lesson-exercise__code-block">
-                <h3>Code de départ</h3>
-                <pre>
-                  <code>{currentLesson.exercise.starter_code}</code>
-                </pre>
-              </div>
-
-              <div className="lesson-exercise__placeholder">
-                L'éditeur de code interactif sera disponible prochainement.
-              </div>
-            </div>
+            <ExerciseInterface
+              exercise={currentLesson.exercise}
+              onSubmit={(code, result) => {
+                console.log('Code soumis:', code);
+                console.log('Résultat:', result);
+                // TODO: Implémenter la sauvegarde de la progression
+              }}
+            />
           )}
 
           {/* Quiz */}
