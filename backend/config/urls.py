@@ -11,6 +11,7 @@ urlpatterns = [
     path('api/auth/', include('apps.accounts.urls')),
     path('api/courses/', include('apps.courses.urls')),
     path('api/progression/', include('apps.progression.urls')),
+    path('api/validation/', include('apps.validation.urls')),
 ]
 
 # Serve media files in development

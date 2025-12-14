@@ -5,47 +5,76 @@ import apiService from './apiService';
  */
 const progressionApi = {
   // Chapter Access endpoints
-  getMyAccess: () => apiService.get('/progression/chapter-access/my_access/'),
+  getMyAccess: async () => {
+    const response = await apiService.get('/progression/chapter-access/my_access/');
+    return response.data;
+  },
 
-  unlockChapter: (userId, chapterId) =>
-    apiService.post('/progression/chapter-access/unlock_chapter/', {
+  unlockChapter: async (userId, chapterId) => {
+    const response = await apiService.post('/progression/chapter-access/unlock_chapter/', {
       user_id: userId,
       chapter_id: chapterId
-    }),
+    });
+    return response.data;
+  },
 
-  lockChapter: (userId, chapterId) =>
-    apiService.post('/progression/chapter-access/lock_chapter/', {
+  lockChapter: async (userId, chapterId) => {
+    const response = await apiService.post('/progression/chapter-access/lock_chapter/', {
       user_id: userId,
       chapter_id: chapterId
-    }),
+    });
+    return response.data;
+  },
 
   // User Progress endpoints
-  getMyProgress: () => apiService.get('/progression/progress/my_progress/'),
+  getMyProgress: async () => {
+    const response = await apiService.get('/progression/progress/my_progress/');
+    return response.data;
+  },
 
-  getUserProgress: (userId) => apiService.get(`/progression/progress/?user_id=${userId}`),
+  getUserProgress: async (userId) => {
+    const response = await apiService.get(`/progression/progress/?user_id=${userId}`);
+    return response.data;
+  },
 
-  markLessonCompleted: (lessonId) =>
-    apiService.post('/progression/progress/mark_completed/', {
+  markLessonCompleted: async (lessonId) => {
+    const response = await apiService.post('/progression/progress/mark_completed/', {
       lesson_id: lessonId
-    }),
+    });
+    return response.data;
+  },
 
-  updateProgress: (progressId, data) =>
-    apiService.patch(`/progression/progress/${progressId}/`, data),
+  updateProgress: async (progressId, data) => {
+    const response = await apiService.patch(`/progression/progress/${progressId}/`, data);
+    return response.data;
+  },
 
   // Activity Log endpoints
-  getMyActivity: () => apiService.get('/progression/activity/'),
+  getMyActivity: async () => {
+    const response = await apiService.get('/progression/activity/');
+    return response.data;
+  },
 
-  getUserActivity: (userId) => apiService.get(`/progression/activity/?user_id=${userId}`),
+  getUserActivity: async (userId) => {
+    const response = await apiService.get(`/progression/activity/?user_id=${userId}`);
+    return response.data;
+  },
 
   // Trainer Dashboard endpoints
-  getLearnersSummary: () =>
-    apiService.get('/progression/trainer-dashboard/learners_summary/'),
+  getLearnersSummary: async () => {
+    const response = await apiService.get('/progression/trainer-dashboard/learners_summary/');
+    return response.data;
+  },
 
-  getRecentActivity: (limit = 50) =>
-    apiService.get(`/progression/trainer-dashboard/recent_activity/?limit=${limit}`),
+  getRecentActivity: async (limit = 50) => {
+    const response = await apiService.get(`/progression/trainer-dashboard/recent_activity/?limit=${limit}`);
+    return response.data;
+  },
 
-  getLearnerDetail: (learnerId) =>
-    apiService.get(`/progression/trainer-dashboard/${learnerId}/learner_detail/`)
+  getLearnerDetail: async (learnerId) => {
+    const response = await apiService.get(`/progression/trainer-dashboard/${learnerId}/learner_detail/`);
+    return response.data;
+  }
 };
 
 export default progressionApi;

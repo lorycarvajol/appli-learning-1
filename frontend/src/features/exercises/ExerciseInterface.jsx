@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import CodeEditor from '@/components/ui/CodeEditor';
+import validationApi from '@/services/api/validationApi';
 import './ExerciseInterface.css';
 
 /**
@@ -25,11 +26,11 @@ export default function ExerciseInterface({ exercise, onSubmit }) {
   // Gérer la soumission du code
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    setTestResults(null); // Reset des résultats précédents
 
     try {
-      // Pour l'instant, on simule une soumission
-      // Dans Phase 2, on appellera l'API de validation
-      const result = await simulateValidation(code, exercise);
+      // Appel à l'API de validation
+      const result = await validationApi.submitCode(exercise.id, code);
       setTestResults(result);
 
       if (onSubmit) {
@@ -39,7 +40,10 @@ export default function ExerciseInterface({ exercise, onSubmit }) {
       console.error('Erreur lors de la soumission:', error);
       setTestResults({
         success: false,
-        error: 'Une erreur est survenue lors de la validation',
+        error: error.message || 'Une erreur est survenue lors de la validation',
+        results: [],
+        total_points: 0,
+        max_points: 0,
       });
     } finally {
       setIsSubmitting(false);
@@ -52,40 +56,6 @@ export default function ExerciseInterface({ exercise, onSubmit }) {
       setCode(exercise.starter_code || '');
       setTestResults(null);
     }
-  };
-
-  // Simuler la validation (temporaire)
-  const simulateValidation = (userCode, exercise) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Pour la démo, on vérifie juste que le code n'est pas vide
-        const hasContent = userCode.trim().length > 0;
-        const hasChanges = userCode !== exercise.starter_code;
-
-        resolve({
-          success: hasContent && hasChanges,
-          tests: [
-            {
-              name: 'Le code contient du contenu',
-              passed: hasContent,
-              message: hasContent
-                ? 'Le code contient du contenu'
-                : 'Le code est vide',
-            },
-            {
-              name: 'Le code a été modifié',
-              passed: hasChanges,
-              message: hasChanges
-                ? 'Vous avez modifié le code de départ'
-                : 'Le code n\'a pas été modifié',
-            },
-          ],
-          message: hasContent && hasChanges
-            ? 'Excellent travail ! (Note: la validation complète sera disponible prochainement)'
-            : 'Continuez à travailler sur votre code',
-        });
-      }, 1500);
-    });
   };
 
   const getDifficultyClass = (difficulty) => {
@@ -203,11 +173,11 @@ export default function ExerciseInterface({ exercise, onSubmit }) {
             <p className="exercise-results__message">{testResults.message}</p>
           </div>
 
-          {testResults.tests && testResults.tests.length > 0 && (
+          {testResults.results && testResults.results.length > 0 && (
             <div className="exercise-results__tests">
               <h4 className="exercise-results__tests-title">Résultats des tests :</h4>
               <ul className="exercise-results__tests-list">
-                {testResults.tests.map((test, index) => (
+                {testResults.results.map((test, index) => (
                   <li
                     key={index}
                     className={`exercise-test ${test.passed ? 'exercise-test--passed' : 'exercise-test--failed'}`}
@@ -237,9 +207,9 @@ export default function ExerciseInterface({ exercise, onSubmit }) {
 
       {/* Note pour l'utilisateur */}
       <div className="exercise-note">
-        <strong>Note :</strong> Le système de validation automatique complet avec sandbox Docker
-        sera disponible dans la prochaine phase. Pour l'instant, vous pouvez écrire et tester
-        votre code dans l'éditeur.
+        <strong>💻 Validation automatique :</strong> Votre code est exécuté dans un environnement
+        Docker sécurisé et isolé. Les tests définis pour l'exercice vérifient automatiquement
+        la validité de votre solution.
       </div>
     </div>
   );

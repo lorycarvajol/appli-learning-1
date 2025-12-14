@@ -2,14 +2,17 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, Link } from 'react-router-dom';
 import { fetchChapterDetails, clearCurrentChapter } from './chaptersSlice';
+import { fetchMyProgress, selectAllProgress } from '../progression/progressionSlice';
 
 export default function ChapterDetail() {
   const { slug } = useParams();
   const dispatch = useDispatch();
   const { currentChapter, loading, error } = useSelector((state) => state.chapters);
+  const progressByLesson = useSelector(selectAllProgress);
 
   useEffect(() => {
     dispatch(fetchChapterDetails(slug));
+    dispatch(fetchMyProgress());
     return () => {
       dispatch(clearCurrentChapter());
     };
@@ -93,14 +96,26 @@ export default function ChapterDetail() {
             <div className="lessons-list">
               {currentChapter.lessons.map((lesson) => {
                 const typeInfo = getLessonTypeInfo(lesson.lesson_type);
+                const progress = progressByLesson[lesson.id];
+                const lessonStatus = progress?.status || 'NOT_STARTED';
+                const isCompleted = lessonStatus === 'COMPLETED';
+                const isInProgress = lessonStatus === 'IN_PROGRESS';
+
+                let buttonText = 'Commencer';
+                if (isCompleted) {
+                  buttonText = 'Revoir';
+                } else if (isInProgress) {
+                  buttonText = 'Continuer';
+                }
+
                 return (
                   <Link
                     key={lesson.id}
                     to={`/lessons/${lesson.slug}`}
-                    className="lesson-card"
+                    className={`lesson-card ${isCompleted ? 'lesson-card--completed' : ''}`}
                   >
                     <div className="lesson-card__number">
-                      {lesson.order_index}
+                      {isCompleted ? '✓' : lesson.order_index}
                     </div>
 
                     <div className="lesson-card__content">
@@ -110,6 +125,16 @@ export default function ChapterDetail() {
                           <span className={`lesson-card__badge ${typeInfo.class}`}>
                             {typeInfo.label}
                           </span>
+                          {isCompleted && (
+                            <span className="lesson-card__badge lesson-card__badge--completed">
+                              Complétée
+                            </span>
+                          )}
+                          {isInProgress && !isCompleted && (
+                            <span className="lesson-card__badge lesson-card__badge--in-progress">
+                              En cours
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -124,7 +149,7 @@ export default function ChapterDetail() {
                     </div>
 
                     <button className="lesson-card__button">
-                      Commencer
+                      {buttonText}
                     </button>
                   </Link>
                 );

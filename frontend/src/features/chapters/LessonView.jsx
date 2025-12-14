@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { fetchLesson, clearCurrentLesson } from './chaptersSlice';
+import { markLessonCompleted, selectLessonStatus, selectMarkingCompleted } from '../progression/progressionSlice';
 import ExerciseInterface from '@/features/exercises/ExerciseInterface';
 import MarkdownImage from '@/components/ui/MarkdownImage';
 
@@ -11,6 +12,11 @@ export default function LessonView() {
   const { slug } = useParams();
   const dispatch = useDispatch();
   const { currentLesson, loading, error } = useSelector((state) => state.chapters);
+  const markingCompleted = useSelector(selectMarkingCompleted);
+  const lessonStatus = useSelector(
+    currentLesson ? selectLessonStatus(currentLesson.id) : () => 'NOT_STARTED'
+  );
+  const isCompleted = lessonStatus === 'COMPLETED';
 
   useEffect(() => {
     dispatch(fetchLesson(slug));
@@ -58,6 +64,13 @@ export default function LessonView() {
   };
 
   const typeInfo = getLessonTypeInfo(currentLesson.lesson_type);
+
+  // Handler pour marquer la leçon comme terminée
+  const handleMarkCompleted = async () => {
+    if (currentLesson && !isCompleted) {
+      await dispatch(markLessonCompleted(currentLesson.id));
+    }
+  };
 
   // Composants personnalisés pour ReactMarkdown
   const markdownComponents = {
@@ -141,9 +154,10 @@ export default function LessonView() {
             <ExerciseInterface
               exercise={currentLesson.exercise}
               onSubmit={(code, result) => {
-                console.log('Code soumis:', code);
-                console.log('Résultat:', result);
-                // TODO: Implémenter la sauvegarde de la progression
+                // Auto-mark as completed if all tests pass
+                if (result.success && !isCompleted) {
+                  dispatch(markLessonCompleted(currentLesson.id));
+                }
               }}
             />
           )}
@@ -191,10 +205,13 @@ export default function LessonView() {
           </Link>
 
           <button
-            className="lesson-navigation__button lesson-navigation__button--complete"
-            onClick={() => alert('Fonctionnalité à venir: Marquer comme terminé')}
+            className={`lesson-navigation__button lesson-navigation__button--complete ${
+              isCompleted ? 'lesson-navigation__button--completed' : ''
+            }`}
+            onClick={handleMarkCompleted}
+            disabled={isCompleted || markingCompleted}
           >
-            Marquer comme terminé
+            {isCompleted ? '✓ Leçon terminée' : markingCompleted ? 'Enregistrement...' : 'Marquer comme terminé'}
           </button>
         </div>
       </div>
