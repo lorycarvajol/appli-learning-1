@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm';
 import { fetchLesson, clearCurrentLesson } from './chaptersSlice';
 import { markLessonCompleted, selectLessonStatus, selectMarkingCompleted } from '../progression/progressionSlice';
 import ExerciseInterface from '@/features/exercises/ExerciseInterface';
+import QuizInterface from '@/features/quizzes/QuizInterface';
 import MarkdownImage from '@/components/ui/MarkdownImage';
 
 export default function LessonView() {
@@ -164,34 +165,15 @@ export default function LessonView() {
 
           {/* Quiz */}
           {currentLesson.lesson_type === 'QUIZ' && currentLesson.quiz && (
-            <div className="lesson-quiz">
-              <h2 className="lesson-quiz__header">Quiz</h2>
-
-              {currentLesson.quiz.instructions && (
-                <div className="lesson-quiz__instructions">
-                  <p>{currentLesson.quiz.instructions}</p>
-                </div>
-              )}
-
-              <div className="lesson-quiz__meta">
-                <span className="lesson-quiz__meta-item">
-                  {currentLesson.quiz.question_count} questions
-                </span>
-                <span className="lesson-quiz__meta-item">
-                  Score minimum: {currentLesson.quiz.passing_score}%
-                </span>
-                {currentLesson.quiz.time_limit > 0 && (
-                  <span className="lesson-quiz__meta-item">
-                    Temps limite: {currentLesson.quiz.time_limit} min
-                  </span>
-                )}
-              </div>
-
-              <div className="lesson-quiz__placeholder">
-                <p>L'interface de quiz interactive sera disponible prochainement.</p>
-                <button disabled>Commencer le quiz</button>
-              </div>
-            </div>
+            <QuizInterface
+              quiz={currentLesson.quiz}
+              onSubmit={(result) => {
+                // Auto-mark as completed if passed
+                if (result.passed && !isCompleted) {
+                  dispatch(markLessonCompleted(currentLesson.id));
+                }
+              }}
+            />
           )}
         </div>
 
