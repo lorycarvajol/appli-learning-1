@@ -1,8 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './features/auth/Login'
 import Register from './features/auth/Register'
-import Dashboard from './components/Dashboard'
+import Dashboard from './features/dashboard/Dashboard'
 import PrivateRoute from './features/auth/PrivateRoute'
+import Layout from './components/layout/Layout'
 import ChaptersList from './features/chapters/ChaptersList'
 import ChapterDetail from './features/chapters/ChapterDetail'
 import LessonView from './features/chapters/LessonView'
@@ -11,13 +12,18 @@ import TrainerDashboard from './features/trainer/TrainerDashboard'
 function App() {
   return (
     <Routes>
+      {/* Public routes - without layout */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+
+      {/* Protected routes - with layout */}
       <Route
         path="/dashboard"
         element={
           <PrivateRoute>
-            <Dashboard />
+            <Layout>
+              <Dashboard />
+            </Layout>
           </PrivateRoute>
         }
       />
@@ -25,7 +31,9 @@ function App() {
         path="/chapters"
         element={
           <PrivateRoute>
-            <ChaptersList />
+            <Layout>
+              <ChaptersList />
+            </Layout>
           </PrivateRoute>
         }
       />
@@ -33,7 +41,9 @@ function App() {
         path="/chapters/:slug"
         element={
           <PrivateRoute>
-            <ChapterDetail />
+            <Layout>
+              <ChapterDetail />
+            </Layout>
           </PrivateRoute>
         }
       />
@@ -41,7 +51,9 @@ function App() {
         path="/lessons/:slug"
         element={
           <PrivateRoute>
-            <LessonView />
+            <Layout>
+              <LessonView />
+            </Layout>
           </PrivateRoute>
         }
       />
@@ -49,11 +61,13 @@ function App() {
         path="/trainer"
         element={
           <PrivateRoute>
-            <TrainerDashboard />
+            <Layout>
+              <TrainerDashboard />
+            </Layout>
           </PrivateRoute>
         }
       />
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )
 }
