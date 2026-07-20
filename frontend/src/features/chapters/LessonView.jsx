@@ -170,6 +170,7 @@ export default function LessonView() {
                   <div className="lesson-video__wrapper">
                     <iframe
                       src={currentLesson.video_url}
+                      title={`Vidéo — ${currentLesson.title}`}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                     />

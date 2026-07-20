@@ -1,0 +1,334 @@
+.progression-page {
+  min-height: 100vh;
+  background-color: var(--bg);
+  padding: 2.5rem 0 4rem;
+}
+
+.progression-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.progression-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Header */
+.progression-header {
+  margin-bottom: 2rem;
+}
+
+.progression-header__title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(1.75rem, 3.5vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin-bottom: 0.4rem;
+}
+
+.progression-header__subtitle {
+  color: var(--ink-soft);
+  font-size: 1.05rem;
+}
+
+/* Overview */
+.progression-overview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  padding: 1.75rem;
+  margin-bottom: 2rem;
+  align-items: center;
+}
+
+.progression-ring-card {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding-right: 1.75rem;
+  border-right: 1px solid var(--border);
+}
+
+.progression-ring {
+  --percent: 0;
+  position: relative;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: conic-gradient(
+    var(--brand) calc(var(--percent) * 1%),
+    var(--surface-2) calc(var(--percent) * 1%)
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.6s ease;
+}
+
+.progression-ring::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background-color: var(--surface);
+}
+
+.progression-ring__value {
+  position: relative;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+
+.progression-ring-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.progression-ring-card__title {
+  font-weight: 700;
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.progression-ring-card__detail {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.progression-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 1.5rem;
+  flex: 1;
+  min-width: 260px;
+}
+
+.progression-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.progression-stat__value {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.progression-stat__label {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+/* Content grid */
+.progression-content {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.75rem;
+}
+
+.progression-section {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  padding: 1.75rem;
+}
+
+.progression-section__title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 1.25rem;
+}
+
+.progression-empty {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+/* Chapters */
+.progression-chapters {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.progression-chapter__link {
+  display: block;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.progression-chapter__link:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.progression-chapter__head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.progression-chapter__index {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--brand);
+  background-color: var(--brand-soft);
+  padding: 0.2em 0.55em;
+  border-radius: 6px;
+}
+
+.progression-chapter__title {
+  font-weight: 700;
+  color: var(--ink);
+  flex: 1;
+  min-width: 140px;
+}
+
+.progression-chapter__count {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.progression-chapter__bar {
+  height: 8px;
+  background-color: var(--surface-2);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 0.65rem;
+}
+
+.progression-chapter__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--brand), var(--brand-strong));
+  border-radius: 10px;
+  transition: width 0.5s ease;
+}
+
+.progression-chapter__dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.progression-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: var(--border-strong);
+}
+
+.progression-dot--in_progress {
+  background-color: var(--accent);
+}
+
+.progression-dot--completed {
+  background-color: var(--ok);
+}
+
+/* Activity */
+.progression-activity-loading {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 0;
+}
+
+.progression-activity {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.progression-activity__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.progression-activity__icon {
+  flex-shrink: 0;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.progression-activity__text {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.progression-activity__time {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .progression-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .progression-container {
+    padding: 0 1rem;
+  }
+
+  .progression-overview {
+    padding: 1.25rem;
+  }
+
+  .progression-ring-card {
+    border-right: none;
+    padding-right: 0;
+    width: 100%;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.25rem;
+  }
+
+  .progression-section {
+    padding: 1.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progression-ring,
+  .progression-chapter__fill {
+    transition: none;
+  }
+}

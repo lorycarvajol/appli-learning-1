@@ -35,7 +35,15 @@
       "Bash(docker build *)",
       "Bash(docker-compose config *)",
       "Bash(MSYS_NO_PATHCONV=1 docker-compose exec -T celery ls /var/run/docker.sock)",
-      "Bash(MSYS_NO_PATHCONV=1 docker-compose exec -T backend ls /var/run/docker.sock)"
+      "Bash(MSYS_NO_PATHCONV=1 docker-compose exec -T backend ls /var/run/docker.sock)",
+      "Bash(grep -rohE '\\\\$[a-z][a-zA-Z0-9-]*' styles --include=\"*.scss\")",
+      "Bash(exit *)",
+      "Bash(grep -rn \"darken\\(\\\\|lighten\\(\\\\|rgba\\(\\\\$\\\\|rgba\\(.*\\\\$\" styles --include=\"*.scss\")",
+      "Bash(grep -n \"#[0-9a-fA-F]\\\\{3,6\\\\}\\\\|rgba\\(\" components/ui/ImageLightbox.css components/ui/CodeEditor.css)",
+      "Bash(sed -i 's/box-shadow: 0 2px 8px rgba\\(0, 0, 0, 0.05\\);/box-shadow: $shadow-sm;/' styles/components/_chapters.scss styles/components/_lesson.scss)",
+      "Bash(grep -n 'box-shadow: $shadow-sm;' styles/components/_chapters.scss styles/components/_lesson.scss)",
+      "Bash(grep -n \"#[0-9a-fA-F]\\\\{3,6\\\\}\" styles/components/_lesson.scss styles/components/_chapters.scss styles/components/_auth.scss)",
+      "Bash(grep -oE \"#[0-9a-fA-F]{3,6}\" features/quizzes/QuizInterface.css)"
     ]
   }
 }

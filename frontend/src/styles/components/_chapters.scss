@@ -59,10 +59,39 @@
   cursor: pointer;
   text-decoration: none;
   color: inherit;
+  position: relative;
+  overflow: hidden;
+  padding-top: calc(#{$spacing-xl} + 4px);
   @include fade-in;
 
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--brand), var(--brand-strong));
+  }
+
   &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: $spacing-md;
     margin-bottom: $spacing-lg;
+  }
+
+  &__index {
+    font-family: $font-family-mono;
+    font-size: $font-size-sm;
+    font-weight: 700;
+    color: var(--brand);
+    background-color: var(--brand-soft);
+    padding: 0.2em 0.55em;
+    border-radius: $border-radius-sm;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
   }
 
   &__title {
@@ -108,8 +137,8 @@
 
   &__badge {
     @include badge;
-    background-color: $success-color;
-    color: $text-white;
+    background-color: var(--ok-soft);
+    color: var(--ok-text);
   }
 }
 
@@ -136,7 +165,7 @@
   margin-bottom: $spacing-2xl;
   font-size: $font-size-sm;
   color: $text-secondary;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: $shadow-sm;
   border-bottom: 1px solid $border-color;
   transition: box-shadow $transition-base;
 
@@ -228,6 +257,25 @@
   display: flex;
   flex-direction: column;
   gap: $spacing-lg;
+  position: relative;
+
+  // Ligne de parcours reliant les leçons entre elles
+  &::before {
+    content: '';
+    position: absolute;
+    top: 24px;
+    bottom: 24px;
+    left: 24px;
+    width: 2px;
+    background: repeating-linear-gradient(
+      to bottom,
+      var(--border-strong) 0,
+      var(--border-strong) 4px,
+      transparent 4px,
+      transparent 9px
+    );
+    z-index: 0;
+  }
 }
 
 // === CARTE DE LEÇON ===
@@ -237,14 +285,21 @@
   display: flex;
   align-items: center;
   gap: $spacing-lg;
-  transition: all $transition-base;
+  transition: transform $transition-base, box-shadow $transition-base, border-color $transition-base;
   cursor: pointer;
   text-decoration: none;
   color: inherit;
+  position: relative;
+  z-index: 1;
 
   &:hover {
     box-shadow: $shadow-lg;
-    transform: translateX(8px);
+    border-color: $border-color-strong;
+    transform: translateX(6px);
+  }
+
+  &--completed .lesson-card__number {
+    background-color: var(--ok);
   }
 
   &__number {
@@ -257,6 +312,9 @@
     @include flex-center;
     font-weight: $font-weight-bold;
     font-size: $font-size-lg;
+    font-family: $font-family-mono;
+    border: 3px solid $bg-light;
+    box-shadow: 0 0 0 2px var(--border-strong);
   }
 
   &__content {

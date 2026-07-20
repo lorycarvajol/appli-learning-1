@@ -136,13 +136,23 @@ export default function ExerciseInterface({ exercise, onSubmit }) {
           </button>
         </div>
 
-        <CodeEditor
-          value={code}
-          onChange={setCode}
-          language={exercise.language || 'html'}
-          height={450}
-          theme="vs-dark"
-        />
+        <div className="terminal-chrome">
+          <div className="terminal-chrome__bar">
+            <span className="terminal-chrome__dots" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </span>
+            <span className="terminal-chrome__filename">
+              exercice.{exercise.language || 'html'}
+            </span>
+          </div>
+          <CodeEditor
+            value={code}
+            onChange={setCode}
+            language={exercise.language || 'html'}
+            height={450}
+            theme="vs-dark"
+          />
+        </div>
       </div>
 
       {/* Bouton de soumission */}
@@ -151,10 +161,11 @@ export default function ExerciseInterface({ exercise, onSubmit }) {
           className="exercise-submit-button"
           onClick={handleSubmit}
           disabled={isSubmitting}
+          aria-busy={isSubmitting}
         >
           {isSubmitting ? (
             <>
-              <div className="button-spinner"></div>
+              <div className="button-spinner" aria-hidden="true"></div>
               Validation en cours...
             </>
           ) : (
@@ -165,7 +176,11 @@ export default function ExerciseInterface({ exercise, onSubmit }) {
 
       {/* Résultats des tests */}
       {testResults && (
-        <div className={`exercise-results ${testResults.success ? 'exercise-results--success' : 'exercise-results--error'}`}>
+        <div
+          className={`exercise-results ${testResults.success ? 'exercise-results--success' : 'exercise-results--error'}`}
+          role="status"
+          aria-live="polite"
+        >
           <div className="exercise-results__header">
             <h3 className="exercise-results__title">
               {testResults.success ? '✓ Succès !' : '✗ Échec'}

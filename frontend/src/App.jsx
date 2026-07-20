@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './features/auth/Login'
 import Register from './features/auth/Register'
@@ -8,8 +10,20 @@ import ChaptersList from './features/chapters/ChaptersList'
 import ChapterDetail from './features/chapters/ChapterDetail'
 import LessonView from './features/chapters/LessonView'
 import TrainerDashboard from './features/trainer/TrainerDashboard'
+import ProgressionPage from './features/progression/ProgressionPage'
+import { fetchCurrentUser } from './features/auth/authSlice'
 
 function App() {
+  const dispatch = useDispatch()
+  const { user } = useSelector((state) => state.auth)
+
+  useEffect(() => {
+    const hasToken = localStorage.getItem('accessToken')
+    if (hasToken && !user) {
+      dispatch(fetchCurrentUser())
+    }
+  }, [dispatch, user])
+
   return (
     <Routes>
       {/* Public routes - without layout */}
@@ -63,6 +77,16 @@ function App() {
           <PrivateRoute>
             <Layout>
               <TrainerDashboard />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/progression"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <ProgressionPage />
             </Layout>
           </PrivateRoute>
         }

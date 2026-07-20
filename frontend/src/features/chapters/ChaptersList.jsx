@@ -53,20 +53,21 @@ export default function ChaptersList() {
                 className="chapter-card"
               >
                 <div className="chapter-card__header">
-                  <h3 className="chapter-card__title">{chapter.title}</h3>
+                  <span className="chapter-card__index">
+                    Ch. {String(chapter.order_index).padStart(2, '0')}
+                  </span>
                   {chapter.is_published && (
                     <span className="chapter-card__badge">Publié</span>
                   )}
                 </div>
+
+                <h3 className="chapter-card__title">{chapter.title}</h3>
 
                 <p className="chapter-card__description">
                   {chapter.description}
                 </p>
 
                 <div className="chapter-card__meta">
-                  <span className="chapter-card__meta-item">
-                    Chapitre {chapter.order_index}
-                  </span>
                   <span className="chapter-card__meta-item">
                     {chapter.estimated_duration} min
                   </span>

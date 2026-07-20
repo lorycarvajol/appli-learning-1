@@ -24,24 +24,30 @@ function Login() {
   return (
     <div className="auth-page">
       <div className="auth-container">
+        <Link to="/dashboard" className="auth-logo">
+          <span className="auth-logo__mark" aria-hidden="true">&lt;/&gt;</span>
+          <span>CodeAcademy</span>
+        </Link>
+
         <div className="auth-card">
           <div className="auth-header">
-            <h2 className="auth-header__title">Connexion</h2>
+            <h1 className="auth-header__title">Connexion</h1>
             <p className="auth-header__subtitle">
               Connectez-vous pour accéder à la plateforme
             </p>
           </div>
 
           {error && (
-            <div className="auth-alert auth-alert--error">
+            <div className="auth-alert auth-alert--error" role="alert">
               {error.detail || error.message || 'Erreur de connexion'}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="auth-form">
+          <form onSubmit={handleSubmit} className="auth-form" noValidate>
             <div className="auth-form__group">
-              <label className="auth-form__label">Email</label>
+              <label htmlFor="login-email" className="auth-form__label">Email</label>
               <input
+                id="login-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -53,8 +59,9 @@ function Login() {
             </div>
 
             <div className="auth-form__group">
-              <label className="auth-form__label">Mot de passe</label>
+              <label htmlFor="login-password" className="auth-form__label">Mot de passe</label>
               <input
+                id="login-password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

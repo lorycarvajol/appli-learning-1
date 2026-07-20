@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import './ImageLightbox.css';
 
 /**
@@ -9,6 +9,9 @@ import './ImageLightbox.css';
  * @param {function} onClose - Callback appelé lors de la fermeture
  */
 export default function ImageLightbox({ src, alt, onClose }) {
+  const closeButtonRef = useRef(null);
+  const previouslyFocusedRef = useRef(null);
+
   // Fermer avec la touche Escape
   const handleKeyDown = useCallback(
     (e) => {
@@ -19,8 +22,11 @@ export default function ImageLightbox({ src, alt, onClose }) {
     [onClose]
   );
 
-  // Ajouter/retirer l'event listener
+  // Ajouter/retirer l'event listener + gestion du focus
   useEffect(() => {
+    previouslyFocusedRef.current = document.activeElement;
+    closeButtonRef.current?.focus();
+
     document.addEventListener('keydown', handleKeyDown);
     // Empêcher le scroll du body quand le lightbox est ouvert
     document.body.style.overflow = 'hidden';
@@ -28,6 +34,7 @@ export default function ImageLightbox({ src, alt, onClose }) {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'unset';
+      previouslyFocusedRef.current?.focus?.();
     };
   }, [handleKeyDown]);
 
@@ -39,10 +46,17 @@ export default function ImageLightbox({ src, alt, onClose }) {
   };
 
   return (
-    <div className="image-lightbox" onClick={handleBackdropClick}>
+    <div
+      className="image-lightbox"
+      onClick={handleBackdropClick}
+      role="dialog"
+      aria-modal="true"
+      aria-label={alt || 'Illustration agrandie'}
+    >
       <div className="image-lightbox__container">
         {/* Bouton de fermeture */}
         <button
+          ref={closeButtonRef}
           className="image-lightbox__close"
           onClick={onClose}
           aria-label="Fermer"

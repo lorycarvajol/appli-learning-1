@@ -41,7 +41,7 @@ export default function Dashboard() {
             Prêt à continuer votre apprentissage aujourd'hui ?
           </p>
         </div>
-        <div className="dashboard__hero-illustration">
+        <div className="dashboard__hero-illustration" aria-hidden="true">
           <div className="dashboard__hero-circle dashboard__hero-circle--1"></div>
           <div className="dashboard__hero-circle dashboard__hero-circle--2"></div>
           <div className="dashboard__hero-circle dashboard__hero-circle--3"></div>
@@ -52,7 +52,7 @@ export default function Dashboard() {
         {/* Stats Cards */}
         <section className="dashboard__stats">
           <div className="stat-card stat-card--purple">
-            <div className="stat-card__icon">🎯</div>
+            <div className="stat-card__icon" aria-hidden="true">🎯</div>
             <div className="stat-card__content">
               <div className="stat-card__value">{user?.profile?.total_points || 0}</div>
               <div className="stat-card__label">Points totaux</div>
@@ -61,7 +61,7 @@ export default function Dashboard() {
           </div>
 
           <div className="stat-card stat-card--green">
-            <div className="stat-card__icon">✅</div>
+            <div className="stat-card__icon" aria-hidden="true">✅</div>
             <div className="stat-card__content">
               <div className="stat-card__value">{completedLessons}</div>
               <div className="stat-card__label">Leçons complétées</div>
@@ -70,7 +70,7 @@ export default function Dashboard() {
           </div>
 
           <div className="stat-card stat-card--blue">
-            <div className="stat-card__icon">⏱️</div>
+            <div className="stat-card__icon" aria-hidden="true">⏱️</div>
             <div className="stat-card__content">
               <div className="stat-card__value">{formatTime(totalTimeSpent)}</div>
               <div className="stat-card__label">Temps d'apprentissage</div>
@@ -78,7 +78,7 @@ export default function Dashboard() {
           </div>
 
           <div className="stat-card stat-card--orange">
-            <div className="stat-card__icon">📊</div>
+            <div className="stat-card__icon" aria-hidden="true">📊</div>
             <div className="stat-card__content">
               <div className="stat-card__value">{Math.round(avgScore)}%</div>
               <div className="stat-card__label">Score moyen</div>
@@ -146,11 +146,18 @@ export default function Dashboard() {
           <aside className="dashboard__sidebar">
             {/* Progress Overview */}
             <div className="sidebar-card">
-              <h3 className="sidebar-card__title">🎯 Vue d'ensemble</h3>
+              <h3 className="sidebar-card__title"><span aria-hidden="true">🎯</span> Vue d'ensemble</h3>
               <div className="progress-overview">
                 <div className="progress-overview__item">
-                  <div className="progress-overview__label">Progression globale</div>
-                  <div className="progress-overview__bar">
+                  <div className="progress-overview__label" id="global-progress-label">Progression globale</div>
+                  <div
+                    className="progress-overview__bar"
+                    role="progressbar"
+                    aria-labelledby="global-progress-label"
+                    aria-valuenow={completedLessons > 0 ? Math.round((completedLessons / (completedLessons + inProgressLessons)) * 100) : 0}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
                     <div
                       className="progress-overview__fill"
                       style={{ width: `${completedLessons > 0 ? (completedLessons / (completedLessons + inProgressLessons)) * 100 : 0}%` }}
