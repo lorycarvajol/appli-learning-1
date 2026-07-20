@@ -4,7 +4,13 @@ import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { fetchLesson, fetchChapterDetails, clearCurrentLesson } from './chaptersSlice';
-import { markLessonCompleted, selectLessonStatus, selectMarkingCompleted } from '../progression/progressionSlice';
+import {
+  fetchMyProgress,
+  markLessonCompleted,
+  selectLessonStatus,
+  selectMarkingCompleted,
+  selectProgressByLesson,
+} from '../progression/progressionSlice';
 import ExerciseInterface from '@/features/exercises/ExerciseInterface';
 import QuizInterface from '@/features/quizzes/QuizInterface';
 import MarkdownImage from '@/components/ui/MarkdownImage';
@@ -17,6 +23,9 @@ export default function LessonView() {
   const lessonStatus = useSelector(
     currentLesson ? selectLessonStatus(currentLesson.id) : () => 'NOT_STARTED'
   );
+  const lessonProgress = useSelector(
+    currentLesson ? selectProgressByLesson(currentLesson.id) : () => null
+  );
   const isCompleted = lessonStatus === 'COMPLETED';
 
   useEffect(() => {
@@ -25,6 +34,12 @@ export default function LessonView() {
       dispatch(clearCurrentLesson());
     };
   }, [dispatch, slug]);
+
+  // Nécessaire pour connaître le statut/les réponses sauvegardées même en
+  // arrivant directement sur une leçon (lien direct, rafraîchissement...)
+  useEffect(() => {
+    dispatch(fetchMyProgress());
+  }, [dispatch]);
 
   // Charge les leçons du chapitre (une seule fois par chapitre) pour permettre
   // la navigation directe précédent/suivant sans repasser par /chapters/:slug
@@ -183,6 +198,7 @@ export default function LessonView() {
           {/* Exercise */}
           {currentLesson.lesson_type === 'EXERCISE' && currentLesson.exercise && (
             <ExerciseInterface
+              key={currentLesson.id}
               exercise={currentLesson.exercise}
               onSubmit={(code, result) => {
                 // Auto-mark as completed if all tests pass
@@ -196,12 +212,14 @@ export default function LessonView() {
           {/* Quiz */}
           {currentLesson.lesson_type === 'QUIZ' && currentLesson.quiz && (
             <QuizInterface
+              key={currentLesson.id}
               quiz={currentLesson.quiz}
-              onSubmit={(result) => {
-                // Auto-mark as completed if passed
-                if (result.passed && !isCompleted) {
-                  dispatch(markLessonCompleted(currentLesson.id));
-                }
+              lessonId={currentLesson.id}
+              initialProgress={lessonProgress}
+              onSubmit={() => {
+                // La notation, la complétion et les points sont gérés
+                // côté serveur (submit_quiz) : on resynchronise juste l'état local.
+                dispatch(fetchMyProgress());
               }}
             />
           )}

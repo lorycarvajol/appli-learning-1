@@ -57,6 +57,22 @@ class QuizSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+    def to_representation(self, instance):
+        """Hide correct_answer/explanation from learners so answers can't be
+        read from the API before (or during) an attempt. Trainers/admins get
+        the full payload."""
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+
+        if not (user and getattr(user, 'role', None) in ('TRAINER', 'ADMIN')):
+            data['questions'] = [
+                {k: v for k, v in question.items() if k not in ('correct_answer', 'explanation')}
+                for question in data.get('questions', [])
+            ]
+
+        return data
+
 
 class LessonListSerializer(serializers.ModelSerializer):
     """Serializer for listing lessons (without full content)."""

@@ -32,6 +32,7 @@ class UserProgressSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user', 'user_email', 'lesson', 'lesson_title', 'lesson_slug', 'lesson_type',
             'status', 'last_code', 'attempts', 'is_passed', 'score', 'time_spent',
+            'quiz_answers', 'points_awarded',
             'completed_at', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'user']

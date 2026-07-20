@@ -43,7 +43,8 @@
       "Bash(sed -i 's/box-shadow: 0 2px 8px rgba\\(0, 0, 0, 0.05\\);/box-shadow: $shadow-sm;/' styles/components/_chapters.scss styles/components/_lesson.scss)",
       "Bash(grep -n 'box-shadow: $shadow-sm;' styles/components/_chapters.scss styles/components/_lesson.scss)",
       "Bash(grep -n \"#[0-9a-fA-F]\\\\{3,6\\\\}\" styles/components/_lesson.scss styles/components/_chapters.scss styles/components/_auth.scss)",
-      "Bash(grep -oE \"#[0-9a-fA-F]{3,6}\" features/quizzes/QuizInterface.css)"
+      "Bash(grep -oE \"#[0-9a-fA-F]{3,6}\" features/quizzes/QuizInterface.css)",
+      "Bash(docker cp *)"
     ]
   }
 }

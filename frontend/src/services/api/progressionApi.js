@@ -44,6 +44,23 @@ const progressionApi = {
     return response.data;
   },
 
+  // Quiz : sauvegarde progressive (aucune notation) + soumission notée côté serveur
+  saveQuizProgress: async (lessonId, answers) => {
+    const response = await apiService.post('/progression/progress/save_quiz_progress/', {
+      lesson_id: lessonId,
+      answers,
+    });
+    return response.data;
+  },
+
+  submitQuiz: async (lessonId, answers) => {
+    const response = await apiService.post('/progression/progress/submit_quiz/', {
+      lesson_id: lessonId,
+      answers,
+    });
+    return response.data;
+  },
+
   updateProgress: async (progressId, data) => {
     const response = await apiService.patch(`/progression/progress/${progressId}/`, data);
     return response.data;

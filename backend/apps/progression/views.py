@@ -14,7 +14,51 @@ from .serializers import (
     UnlockChapterSerializer
 )
 from apps.accounts.models import User
-from apps.courses.models import Chapter, Lesson
+from apps.courses.models import Chapter, Lesson, Quiz
+
+
+def _grade_quiz(quiz, answers):
+    """Note un quiz côté serveur à partir des réponses de l'utilisateur.
+
+    Returns (score: int 0-100, passed: bool, details: list[dict]).
+    Les bonnes réponses ne viennent jamais du client : uniquement de
+    quiz.questions, jamais exposé tel quel via l'API pour les apprenants.
+    """
+    questions = quiz.questions if isinstance(quiz.questions, list) else quiz.questions.get('questions', [])
+    if not questions:
+        return 0, False, []
+
+    correct_count = 0
+    details = []
+
+    for question in questions:
+        qid = question.get('id')
+        correct_answer = question.get('correct_answer')
+        user_answer = answers.get(str(qid), answers.get(qid, []))
+        if not isinstance(user_answer, list):
+            user_answer = [user_answer] if user_answer is not None else []
+
+        if isinstance(correct_answer, list):
+            is_correct = (
+                sorted(map(str, user_answer)) == sorted(map(str, correct_answer))
+            )
+        else:
+            is_correct = len(user_answer) == 1 and str(user_answer[0]) == str(correct_answer)
+
+        if is_correct:
+            correct_count += 1
+
+        details.append({
+            'question_id': qid,
+            'is_correct': is_correct,
+            'user_answer': user_answer,
+            'correct_answer': correct_answer,
+            'explanation': question.get('explanation', ''),
+        })
+
+    score = round((correct_count / len(questions)) * 100)
+    passed = score >= quiz.passing_score
+    return score, passed, details
 
 
 class IsTrainerOrAdmin(IsAuthenticated):
@@ -195,6 +239,118 @@ class UserProgressViewSet(viewsets.ModelViewSet):
         progress = UserProgress.objects.filter(user=request.user).select_related('lesson', 'lesson__chapter')
         serializer = self.get_serializer(progress, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def save_quiz_progress(self, request):
+        """Sauvegarde les réponses d'un quiz en cours, sans le noter.
+
+        Appelé au fur et à mesure que l'apprenant répond aux questions, pour
+        que rien ne soit perdu en cas de rechargement/navigation.
+        """
+        lesson_id = request.data.get('lesson_id')
+        answers = request.data.get('answers')
+
+        if not lesson_id or not isinstance(answers, dict):
+            return Response(
+                {"error": "lesson_id et answers (objet) sont requis"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            lesson = Lesson.objects.get(id=lesson_id, lesson_type='QUIZ')
+        except Lesson.DoesNotExist:
+            return Response({"error": "Quiz introuvable"}, status=status.HTTP_404_NOT_FOUND)
+
+        progress, created = UserProgress.objects.get_or_create(
+            user=request.user,
+            lesson=lesson,
+            defaults={'status': UserProgress.ProgressStatus.IN_PROGRESS}
+        )
+
+        # Ne jamais écraser un quiz déjà réussi avec un brouillon en cours
+        if progress.status != UserProgress.ProgressStatus.COMPLETED:
+            progress.status = UserProgress.ProgressStatus.IN_PROGRESS
+        progress.quiz_answers = answers
+        progress.save(update_fields=['status', 'quiz_answers', 'updated_at'])
+
+        return Response(UserProgressSerializer(progress).data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'])
+    def submit_quiz(self, request):
+        """Note un quiz côté serveur et attribue les points une seule fois.
+
+        La notation se fait exclusivement à partir de quiz.questions côté
+        serveur (jamais des données envoyées par le client), et les points
+        de la leçon ne sont crédités qu'à la toute première réussite grâce
+        au flag UserProgress.points_awarded.
+        """
+        lesson_id = request.data.get('lesson_id')
+        answers = request.data.get('answers')
+
+        if not lesson_id or not isinstance(answers, dict):
+            return Response(
+                {"error": "lesson_id et answers (objet) sont requis"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            lesson = Lesson.objects.select_related('quiz', 'chapter').get(
+                id=lesson_id, lesson_type='QUIZ'
+            )
+            quiz = lesson.quiz
+        except (Lesson.DoesNotExist, Quiz.DoesNotExist):
+            return Response({"error": "Quiz introuvable"}, status=status.HTTP_404_NOT_FOUND)
+
+        progress, _ = UserProgress.objects.get_or_create(user=request.user, lesson=lesson)
+
+        if quiz.max_attempts and progress.attempts >= quiz.max_attempts and not progress.is_passed:
+            return Response(
+                {"error": f"Nombre maximum de tentatives atteint ({quiz.max_attempts})"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        score, passed, details = _grade_quiz(quiz, answers)
+
+        progress.attempts += 1
+        progress.quiz_answers = answers
+        progress.score = score
+        progress.is_passed = progress.is_passed or passed
+
+        points_earned = 0
+        if passed:
+            progress.status = UserProgress.ProgressStatus.COMPLETED
+            if not progress.completed_at:
+                progress.completed_at = timezone.now()
+
+            # N'attribuer les points qu'une seule fois, quel que soit le
+            # nombre de fois où l'apprenant repasse (et réussit) le quiz.
+            if not progress.points_awarded:
+                request.user.profile.add_points(lesson.points)
+                progress.points_awarded = True
+                points_earned = lesson.points
+
+                ActivityLog.objects.create(
+                    user=request.user,
+                    activity_type=ActivityLog.ActivityType.QUIZ_COMPLETED,
+                    lesson=lesson,
+                    chapter=lesson.chapter,
+                    metadata={'score': score}
+                )
+        else:
+            progress.status = UserProgress.ProgressStatus.IN_PROGRESS
+
+        progress.save()
+
+        return Response({
+            'score': score,
+            'passing_score': quiz.passing_score,
+            'passed': passed,
+            'attempts': progress.attempts,
+            'max_attempts': quiz.max_attempts,
+            'points_earned': points_earned,
+            'total_points': request.user.profile.total_points,
+            'details': details,
+        }, status=status.HTTP_200_OK)
 
 
 class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):
