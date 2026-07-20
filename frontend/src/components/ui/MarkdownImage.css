@@ -1,8 +1,9 @@
 .markdown-image-wrapper {
   position: relative;
-  display: inline-block;
+  display: block;
+  width: fit-content;
   max-width: 100%;
-  margin: 1.5rem 0;
+  margin: 1.5rem auto;
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
@@ -71,17 +72,6 @@
   font-weight: 600;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   letter-spacing: 0.025em;
-}
-
-/* Alignement des images dans le markdown */
-.markdown-image-wrapper + em,
-.markdown-image-wrapper + p em {
-  display: block;
-  text-align: center;
-  font-size: 0.875rem;
-  color: #64748b;
-  margin-top: 0.5rem;
-  font-style: italic;
 }
 
 /* Responsive */

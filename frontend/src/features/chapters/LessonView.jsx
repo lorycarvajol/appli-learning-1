@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { fetchLesson, clearCurrentLesson } from './chaptersSlice';
+import { fetchLesson, fetchChapterDetails, clearCurrentLesson } from './chaptersSlice';
 import { markLessonCompleted, selectLessonStatus, selectMarkingCompleted } from '../progression/progressionSlice';
 import ExerciseInterface from '@/features/exercises/ExerciseInterface';
 import QuizInterface from '@/features/quizzes/QuizInterface';
@@ -12,7 +12,7 @@ import MarkdownImage from '@/components/ui/MarkdownImage';
 export default function LessonView() {
   const { slug } = useParams();
   const dispatch = useDispatch();
-  const { currentLesson, loading, error } = useSelector((state) => state.chapters);
+  const { currentLesson, currentChapter, loading, error } = useSelector((state) => state.chapters);
   const markingCompleted = useSelector(selectMarkingCompleted);
   const lessonStatus = useSelector(
     currentLesson ? selectLessonStatus(currentLesson.id) : () => 'NOT_STARTED'
@@ -26,7 +26,20 @@ export default function LessonView() {
     };
   }, [dispatch, slug]);
 
-  if (loading) {
+  // Charge les leçons du chapitre (une seule fois par chapitre) pour permettre
+  // la navigation directe précédent/suivant sans repasser par /chapters/:slug
+  useEffect(() => {
+    if (currentLesson?.chapter_slug && currentChapter?.slug !== currentLesson.chapter_slug) {
+      dispatch(fetchChapterDetails(currentLesson.chapter_slug));
+    }
+  }, [dispatch, currentLesson?.chapter_slug, currentChapter?.slug]);
+
+  // Remonte en haut de page à chaque changement de leçon
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [slug]);
+
+  if (loading && !currentLesson) {
     return (
       <div className="lesson-loading">
         <div className="loading-spinner"></div>
@@ -65,6 +78,22 @@ export default function LessonView() {
   };
 
   const typeInfo = getLessonTypeInfo(currentLesson.lesson_type);
+
+  // Leçon précédente / suivante au sein du chapitre (navigation directe)
+  let prevLesson = null;
+  let nextLesson = null;
+  if (currentChapter?.slug === currentLesson.chapter_slug && currentChapter?.lessons) {
+    const orderedLessons = [...currentChapter.lessons].sort(
+      (a, b) => a.order_index - b.order_index
+    );
+    const currentIndex = orderedLessons.findIndex((l) => l.slug === currentLesson.slug);
+    if (currentIndex > 0) {
+      prevLesson = orderedLessons[currentIndex - 1];
+    }
+    if (currentIndex !== -1 && currentIndex < orderedLessons.length - 1) {
+      nextLesson = orderedLessons[currentIndex + 1];
+    }
+  }
 
   // Handler pour marquer la leçon comme terminée
   const handleMarkCompleted = async () => {
@@ -179,12 +208,27 @@ export default function LessonView() {
 
         {/* Navigation */}
         <div className="lesson-navigation">
-          <Link
-            to={`/chapters/${currentLesson.chapter_slug}`}
-            className="lesson-navigation__button lesson-navigation__button--back"
-          >
-            ← Retour au chapitre
-          </Link>
+          <div className="lesson-navigation__side">
+            {prevLesson ? (
+              <Link
+                to={`/lessons/${prevLesson.slug}`}
+                className="lesson-navigation__button lesson-navigation__button--prev"
+              >
+                <span className="lesson-navigation__arrow">←</span>
+                <span className="lesson-navigation__text">
+                  <span className="lesson-navigation__label">Précédent</span>
+                  <span className="lesson-navigation__title">{prevLesson.title}</span>
+                </span>
+              </Link>
+            ) : (
+              <Link
+                to={`/chapters/${currentLesson.chapter_slug}`}
+                className="lesson-navigation__button lesson-navigation__button--back"
+              >
+                ← Retour au chapitre
+              </Link>
+            )}
+          </div>
 
           <button
             className={`lesson-navigation__button lesson-navigation__button--complete ${
@@ -195,6 +239,28 @@ export default function LessonView() {
           >
             {isCompleted ? '✓ Leçon terminée' : markingCompleted ? 'Enregistrement...' : 'Marquer comme terminé'}
           </button>
+
+          <div className="lesson-navigation__side lesson-navigation__side--right">
+            {nextLesson ? (
+              <Link
+                to={`/lessons/${nextLesson.slug}`}
+                className="lesson-navigation__button lesson-navigation__button--next"
+              >
+                <span className="lesson-navigation__text">
+                  <span className="lesson-navigation__label">Suivant</span>
+                  <span className="lesson-navigation__title">{nextLesson.title}</span>
+                </span>
+                <span className="lesson-navigation__arrow">→</span>
+              </Link>
+            ) : (
+              <Link
+                to={`/chapters/${currentLesson.chapter_slug}`}
+                className="lesson-navigation__button lesson-navigation__button--finish"
+              >
+                Terminer le chapitre ✓
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     </div>

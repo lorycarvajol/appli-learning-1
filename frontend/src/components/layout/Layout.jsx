@@ -1,5 +1,6 @@
 import Header from './Header';
 import Footer from './Footer';
+import ScrollToTopButton from '../ui/ScrollToTopButton';
 import './Layout.css';
 
 export default function Layout({ children }) {
@@ -10,6 +11,7 @@ export default function Layout({ children }) {
         {children}
       </main>
       <Footer />
+      <ScrollToTopButton />
     </div>
   );
 }

@@ -16,7 +16,26 @@
       "Bash(npm uninstall:*)",
       "Bash(docker volume rm:*)",
       "Bash(echo:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(docker --version)",
+      "Bash(docker-compose --version)",
+      "Bash(docker info *)",
+      "Bash(start \"\" \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\")",
+      "Bash(docker-compose start *)",
+      "Read(//c/Users/loryc/OneDrive/Desktop/appli learning/**)",
+      "Skill(run)",
+      "Bash(tasklist //FI \"IMAGENAME eq Docker Desktop.exe\")",
+      "Bash(powershell.exe -Command \"Start-Process 'C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe'\")",
+      "Bash(python *)",
+      "Bash(identify backend/media/courses/html/section1/html-document-anatomy.png)",
+      "Bash(git check-ignore *)",
+      "Bash(xargs -I{} sh -c 'echo \"=== {} ===\"; wc -l {}')",
+      "Bash(MSYS_NO_PATHCONV=1 docker-compose exec -T celery ls -la /var/run/docker.sock)",
+      "Bash(MSYS_NO_PATHCONV=1 docker-compose exec -T backend ls -la /var/run/docker.sock)",
+      "Bash(docker build *)",
+      "Bash(docker-compose config *)",
+      "Bash(MSYS_NO_PATHCONV=1 docker-compose exec -T celery ls /var/run/docker.sock)",
+      "Bash(MSYS_NO_PATHCONV=1 docker-compose exec -T backend ls /var/run/docker.sock)"
     ]
   }
 }

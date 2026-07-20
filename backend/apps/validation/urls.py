@@ -13,4 +13,9 @@ urlpatterns = [
         views.submit_exercise_code,
         name='submit-exercise-code'
     ),
+    path(
+        'tasks/<str:task_id>/',
+        views.get_validation_result,
+        name='validation-task-result'
+    ),
 ]

@@ -29,8 +29,8 @@ export default function ExerciseInterface({ exercise, onSubmit }) {
     setTestResults(null); // Reset des résultats précédents
 
     try {
-      // Appel à l'API de validation
-      const result = await validationApi.submitCode(exercise.id, code);
+      // Soumet le code puis attend le résultat (exécution asynchrone côté serveur)
+      const result = await validationApi.submitCodeAndWait(exercise.id, code);
       setTestResults(result);
 
       if (onSubmit) {
