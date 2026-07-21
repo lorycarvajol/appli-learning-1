@@ -409,6 +409,29 @@ GET  /api/gamification/points/            Grand livre personnel
 `mark_completed` et `submit_quiz` renvoient désormais aussi `points_earned`,
 `total_points` et `new_badges`.
 
+### Temps d'apprentissage
+
+`UserProgress.time_spent` était un champ mort : lu par le dashboard, la page
+progression et le dashboard trainer, mais **jamais écrit** — donc toujours à 0.
+
+L'écriture se fait via `POST /api/progression/progress/track_time/`
+`{lesson_id, seconds}`, avec trois garde-fous :
+
+- **Incrément, jamais valeur absolue** (`F('time_spent') + n`) : deux onglets
+  ouverts sur la même leçon s'additionnent au lieu de s'écraser.
+- **Plafond serveur** (`MAX_TIME_INCREMENT_SECONDS = 120`) : le compteur
+  alimente les badges `TIME_SPENT` et `FAST_LESSONS`, il doit rester crédible.
+  `time_spent` a été retiré de `UserProgressUpdateSerializer` pour la même
+  raison — sinon un PATCH permettait de poser un total arbitraire.
+- **Temps réellement actif** côté client (`features/progression/useTimeTracker.js`) :
+  le compteur n'avance que si l'onglet est visible *et* qu'il y a eu une
+  interaction dans les 90 s. L'accumulation se fait par tics d'une seconde,
+  pas par différence de timestamps, pour qu'une mise en veille ne crédite rien.
+
+Effet de bord voulu : ouvrir une leçon crée sa progression en `IN_PROGRESS`,
+journalise `LESSON_STARTED` et entretient la série de jours — la simple
+lecture d'une leçon de théorie compte désormais comme activité.
+
 ### Frontend
 
 - `features/gamification/` : slice, `BadgesPage`, `BadgeCard`,

@@ -11,6 +11,7 @@ import {
   selectMarkingCompleted,
   selectProgressByLesson,
 } from '../progression/progressionSlice';
+import useTimeTracker from '../progression/useTimeTracker';
 import { badgesEarned } from '@/features/gamification/gamificationSlice';
 import ExerciseInterface from '@/features/exercises/ExerciseInterface';
 import QuizInterface from '@/features/quizzes/QuizInterface';
@@ -28,6 +29,10 @@ export default function LessonView() {
     currentLesson ? selectProgressByLesson(currentLesson.id) : () => null
   );
   const isCompleted = lessonStatus === 'COMPLETED';
+
+  // Mesure le temps réellement passé sur la leçon (onglet visible + apprenant
+  // actif). Doit être appelé avant les retours anticipés de rendu.
+  useTimeTracker(currentLesson?.id);
 
   useEffect(() => {
     dispatch(fetchLesson(slug));

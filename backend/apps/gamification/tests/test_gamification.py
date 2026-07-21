@@ -261,6 +261,106 @@ def test_mark_seen_ne_rejoue_pas_la_revelation(api, learner, lesson, first_step_
     assert api.get('/api/gamification/summary/').json()['unseen_badges'] == []
 
 
+# ---------------------------------------------------------------------------
+# Temps d'apprentissage
+# ---------------------------------------------------------------------------
+
+def test_le_temps_saccumule_au_lieu_de_secraser(api, learner, lesson):
+    """Le suivi envoie des incréments : deux onglets s'additionnent."""
+    for _ in range(3):
+        response = api.post(
+            '/api/progression/progress/track_time/',
+            {'lesson_id': str(lesson.id), 'seconds': 30}, format='json'
+        )
+        assert response.status_code == 200
+
+    progress = UserProgress.objects.get(user=learner, lesson=lesson)
+    assert progress.time_spent == 90
+    assert progress.status == UserProgress.ProgressStatus.IN_PROGRESS
+
+
+def test_increment_de_temps_plafonne(api, learner, lesson):
+    """Une valeur aberrante ne peut pas débloquer un badge de temps."""
+    api.post(
+        '/api/progression/progress/track_time/',
+        {'lesson_id': str(lesson.id), 'seconds': 999_999}, format='json'
+    )
+
+    progress = UserProgress.objects.get(user=learner, lesson=lesson)
+    assert progress.time_spent == 120  # MAX_TIME_INCREMENT_SECONDS
+
+
+def test_increment_de_temps_invalide_refuse(api, lesson):
+    for payload in (
+        {'lesson_id': str(lesson.id), 'seconds': 0},
+        {'lesson_id': str(lesson.id), 'seconds': -60},
+        {'lesson_id': str(lesson.id), 'seconds': 'beaucoup'},
+        {'seconds': 30},
+    ):
+        response = api.post(
+            '/api/progression/progress/track_time/', payload, format='json'
+        )
+        assert response.status_code == 400, payload
+
+
+def test_le_temps_ne_retrograde_pas_une_lecon_terminee(api, learner, lesson):
+    UserProgress.objects.create(
+        user=learner, lesson=lesson,
+        status=UserProgress.ProgressStatus.COMPLETED,
+        completed_at=timezone.now(),
+    )
+
+    api.post(
+        '/api/progression/progress/track_time/',
+        {'lesson_id': str(lesson.id), 'seconds': 45}, format='json'
+    )
+
+    progress = UserProgress.objects.get(user=learner, lesson=lesson)
+    assert progress.status == UserProgress.ProgressStatus.COMPLETED
+    assert progress.time_spent == 45
+
+
+def test_le_temps_alimente_le_badge_de_duree(api, learner, lesson):
+    Badge.objects.create(
+        code='deux-minutes', name='Deux minutes', description='…',
+        rule_type=Badge.RuleType.TIME_SPENT, criteria={'minutes': 2},
+    )
+
+    api.post(
+        '/api/progression/progress/track_time/',
+        {'lesson_id': str(lesson.id), 'seconds': 120}, format='json'
+    )
+
+    earned = {b.badge.code for b in sync_user_gamification(learner)}
+    assert 'deux-minutes' in earned
+
+
+def test_le_temps_passe_entretient_la_serie(api, learner, lesson):
+    """Lire une leçon compte comme activité, pas seulement la terminer."""
+    assert UserStreak.objects.filter(user=learner).count() == 0
+
+    api.post(
+        '/api/progression/progress/track_time/',
+        {'lesson_id': str(lesson.id), 'seconds': 30}, format='json'
+    )
+
+    assert UserStreak.objects.get(user=learner).current_streak == 1
+
+
+def test_time_spent_nest_pas_modifiable_en_valeur_absolue(api, learner, lesson):
+    """Le PATCH ne doit pas offrir un contournement du plafond."""
+    progress = UserProgress.objects.create(user=learner, lesson=lesson, time_spent=10)
+
+    response = api.patch(
+        f'/api/progression/progress/{progress.id}/',
+        {'time_spent': 999_999}, format='json'
+    )
+
+    assert response.status_code == 200
+    progress.refresh_from_db()
+    assert progress.time_spent == 10
+
+
 def test_marquer_la_lecon_terminee_deux_fois_ne_double_pas_les_points(api, learner, lesson):
     """Le parcours HTTP complet respecte lui aussi l'invariant."""
     first = api.post(

@@ -1,5 +1,5 @@
 from django.utils import timezone
-from django.db.models import Count, Avg, Sum, Max, Q
+from django.db.models import Count, Avg, F, Sum, Max, Q
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -20,7 +20,12 @@ from apps.gamification.services import (
     award_lesson_points,
     get_points,
     sync_user_gamification,
+    touch_streak,
 )
+
+# Plafond d'un incrément de temps unique. Le client émet toutes les 30 s ;
+# cette marge absorbe un flush tardif sans laisser passer d'écart aberrant.
+MAX_TIME_INCREMENT_SECONDS = 120
 
 
 def _grade_quiz(quiz, answers):
@@ -255,6 +260,79 @@ class UserProgressViewSet(viewsets.ModelViewSet):
                 'total_points': get_points(request.user),
                 'new_badges': UserBadgeSerializer(new_badges, many=True).data,
             },
+            status=status.HTTP_200_OK
+        )
+
+    @action(detail=False, methods=['post'])
+    def track_time(self, request):
+        """Ajoute du temps passé sur une leçon.
+
+        C'est un **incrément** (`F('time_spent') + n`) et non une valeur
+        absolue : deux onglets ouverts sur la même leçon, ou un rechargement
+        en cours de route, ne peuvent pas écraser le compteur.
+
+        L'incrément est plafonné côté serveur. Le client envoie toutes les
+        30 s, donc une valeur bien supérieure ne peut être qu'une dérive
+        d'horloge ou une falsification — et ce compteur alimente des badges
+        (`TIME_SPENT`, `FAST_LESSONS`), donc il doit rester crédible.
+        """
+        lesson_id = request.data.get('lesson_id')
+        seconds = request.data.get('seconds')
+
+        try:
+            seconds = int(seconds)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "seconds doit être un entier"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not lesson_id or seconds <= 0:
+            return Response(
+                {"error": "lesson_id et seconds (> 0) sont requis"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        seconds = min(seconds, MAX_TIME_INCREMENT_SECONDS)
+
+        try:
+            lesson = Lesson.objects.get(id=lesson_id)
+        except Lesson.DoesNotExist:
+            return Response({"error": "Lesson not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        progress, created = UserProgress.objects.get_or_create(
+            user=request.user,
+            lesson=lesson,
+            defaults={'status': UserProgress.ProgressStatus.IN_PROGRESS},
+        )
+
+        # Ouvrir une leçon vaut « commencée » — mais on ne rétrograde jamais
+        # une leçon déjà terminée en la relisant.
+        update_fields = ['time_spent', 'updated_at']
+        if progress.status == UserProgress.ProgressStatus.NOT_STARTED:
+            progress.status = UserProgress.ProgressStatus.IN_PROGRESS
+            update_fields.append('status')
+
+        progress.time_spent = F('time_spent') + seconds
+        progress.save(update_fields=update_fields)
+        progress.refresh_from_db(fields=['time_spent'])
+
+        if created:
+            ActivityLog.objects.create(
+                user=request.user,
+                activity_type=ActivityLog.ActivityType.LESSON_STARTED,
+                lesson=lesson,
+                chapter=lesson.chapter,
+            )
+
+        # Lire une leçon est une activité : ça entretient la série de jours,
+        # ce que les seules complétions ne faisaient pas.
+        # On ne réévalue pas les badges ici (appel toutes les 30 s) : le sync
+        # du dashboard et les complétions s'en chargent.
+        touch_streak(request.user)
+
+        return Response(
+            {'lesson': str(lesson.id), 'time_spent': progress.time_spent},
             status=status.HTTP_200_OK
         )
 

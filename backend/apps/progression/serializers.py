@@ -39,10 +39,16 @@ class UserProgressSerializer(serializers.ModelSerializer):
 
 
 class UserProgressUpdateSerializer(serializers.ModelSerializer):
-    """Serializer pour mettre à jour la progression"""
+    """Serializer pour mettre à jour la progression.
+
+    `time_spent` est volontairement absent : il ne s'écrit qu'en incrément
+    via l'action `track_time`, qui plafonne chaque ajout. L'exposer ici
+    permettrait de poser une valeur absolue arbitraire et de débloquer les
+    badges basés sur le temps d'un seul PATCH.
+    """
     class Meta:
         model = UserProgress
-        fields = ['status', 'last_code', 'time_spent', 'score', 'is_passed']
+        fields = ['status', 'last_code', 'score', 'is_passed']
 
 
 class ActivityLogSerializer(serializers.ModelSerializer):

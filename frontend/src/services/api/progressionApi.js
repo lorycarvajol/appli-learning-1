@@ -61,6 +61,37 @@ const progressionApi = {
     return response.data;
   },
 
+  // Temps passé : on envoie un incrément, jamais un total (le serveur fait
+  // un F('time_spent') + n et plafonne la valeur).
+  trackTime: async (lessonId, seconds) => {
+    const response = await apiService.post('/progression/progress/track_time/', {
+      lesson_id: lessonId,
+      seconds,
+    });
+    return response.data;
+  },
+
+  /**
+   * Variante pour le déchargement de la page : `fetch(keepalive)` survit à la
+   * fermeture de l'onglet, contrairement à l'XHR d'axios qui serait annulée.
+   * On ne peut pas utiliser sendBeacon, qui ne permet pas d'en-tête Authorization.
+   */
+  trackTimeBeacon: (lessonId, seconds) => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) return;
+
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+    fetch(`${baseUrl}/progression/progress/track_time/`, {
+      method: 'POST',
+      keepalive: true,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ lesson_id: lessonId, seconds }),
+    }).catch(() => {});
+  },
+
   updateProgress: async (progressId, data) => {
     const response = await apiService.patch(`/progression/progress/${progressId}/`, data);
     return response.data;
