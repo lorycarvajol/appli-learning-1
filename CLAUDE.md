@@ -970,10 +970,10 @@ pas par visibilité.
 
 ### Risque réel
 
-1. **`courses` et `progression` : zéro fichier de test.** C'est là que vivent le
-   verrou de chapitre, la notation des quiz et le suivi du temps. Le bug
-   `Exercise.total_points` (liste des exercices de l'admin inaccessible) y vivait
-   depuis l'origine, invisible.
+1. **`courses` n'a toujours aucun test propre.** Le verrou de chapitre est
+   désormais couvert depuis `apps/progression/tests/`, mais rien ne teste les
+   modèles et sérialiseurs de contenu eux-mêmes — c'est là que vivait le bug
+   `Exercise.total_points`, invisible depuis l'origine.
 *(Le throttle de connexion, longtemps second de cette liste, est fait — voir
 « Connexion : limitation des échecs ».)*
 
@@ -1012,6 +1012,8 @@ pas par visibilité.
 - [x] Couverture du bac à sable — 20 tests simulés (en CI) + 7 tests réels
 - [x] Retrait de la liste noire de motifs (voir « Security Considerations »)
 - [x] Limitation des échecs de connexion
+- [x] Couverture de `progression` — 33 tests : verrou de chapitre, deux
+      régimes de progression, notation des quiz, suivi du temps
 
 ## Intégration continue
 
@@ -1415,9 +1417,15 @@ mais c'est un changement transverse à faire d'un bloc, pas à moitié.
 
 ### Testing Strategy
 
-**Backend — en place.** pytest-django, 182 tests. Couverts : `accounts`,
-`administration`, `cohorts`, `gamification`, `validation`.
-**Non couverts : `courses` et `progression`.**
+**Backend — en place.** pytest-django, 216 tests. Couverts : `accounts`,
+`administration`, `cohorts`, `gamification`, `progression`, `validation`.
+**Non couvert : `courses`.**
+
+Les tests de `progression` (`apps/progression/tests/`) ont été validés **par
+sabotage** : le verrou de chapitre, l'ouverture au rythme libre, le plafond de
+temps et le recalcul du score de quiz ont chacun été cassés volontairement pour
+vérifier que la suite passait au rouge. Un test vert sur du code cassé ne
+protège rien — le vérifier une fois coûte cinq minutes.
 
 ⚠️ **Deux modes d'exécution.** `pytest.ini` exclut par défaut les tests marqués
 `docker` (`-m "not docker"`) : ils lancent de vrais conteneurs et exigent
