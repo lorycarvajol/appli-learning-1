@@ -17,7 +17,42 @@ class CodeValidationError(Exception):
 
 class DockerSandbox:
     """
-    Sandbox Docker pour exécuter du code de manière sécurisée
+    Exécute du code d'apprenant dans un conteneur jetable.
+
+    ### Le conteneur est la seule frontière de sécurité
+
+    Ce qui protège l'hôte, et rien d'autre :
+
+    - `network_disabled=True` — aucune sortie réseau, donc pas d'exfiltration,
+      pas de minage, et **aucun moyen d'atteindre le démon Docker** dont le
+      worker Celery détient pourtant le socket.
+    - **Aucun montage** : le conteneur ne voit jamais le système de fichiers de
+      l'hôte. Ne jamais ajouter de `volumes=` ici.
+    - `mem_limit` / `cpu_quota` — une boucle qui alloue ne peut pas emporter
+      la machine.
+    - `TIMEOUT`, puis `kill()` et `remove()` dans tous les cas.
+    - Instance recréée à chaque soumission : rien ne persiste d'une exécution
+      à l'autre.
+
+    ### Pourquoi il n'y a plus de liste de motifs interdits
+
+    Une liste noire (`eval`, `exec`, `open(`…) a existé ici. Elle a été retirée
+    après mesure : elle **rejetait du code d'apprenant parfaitement légitime**
+    — `executeTask` déclenchait sur `exec`, `evaluation` sur `eval`, et même le
+    mot français « evaluer » dans un commentaire — tout en laissant passer les
+    contournements évidents (`new Function("…")()`, `this["ev"+"al"]`).
+
+    Une recherche de sous-chaîne ne peut pas arrêter quelqu'un qui cherche à la
+    contourner ; elle ne gênait donc que les élèves de bonne foi, en leur
+    reprochant une faute qu'ils n'avaient pas commise.
+
+    Ce que du code arbitraire peut faire aujourd'hui : lire et écrire dans le
+    système de fichiers **du conteneur** (une image de base publique, jetée
+    aussitôt), et consommer ses propres ressources plafonnées. Rien de cela
+    n'atteint l'hôte ni les autres apprenants.
+
+    ⚠️ Corollaire : **toute atténuation de l'isolement du conteneur est
+    désormais une régression de sécurité directe**, sans filet en amont.
     """
 
     # Limites de ressources
@@ -28,20 +63,10 @@ class DockerSandbox:
     # Images Docker par langage
     DOCKER_IMAGES = {
         'html': 'python:3.11-slim',  # On utilise Python pour valider le HTML
+        'css': 'python:3.11-slim',   # Même principe : tests par regex sur le texte brut
         'python': 'python:3.11-slim',
         'javascript': 'node:18-alpine',
     }
-
-    # Patterns dangereux à bloquer
-    DANGEROUS_PATTERNS = [
-        'eval',
-        'exec',
-        '__import__',
-        'os.system',
-        'subprocess',
-        'open(',
-        'file(',
-    ]
 
     def __init__(self, language='html'):
         """
@@ -52,23 +77,6 @@ class DockerSandbox:
         """
         self.language = language.lower()
         self.client = docker.from_env()
-
-    def _check_dangerous_code(self, code: str) -> None:
-        """
-        Vérifie si le code contient des patterns dangereux
-
-        Args:
-            code: Code à vérifier
-
-        Raises:
-            CodeValidationError: Si du code dangereux est détecté
-        """
-        code_lower = code.lower()
-        for pattern in self.DANGEROUS_PATTERNS:
-            if pattern in code_lower:
-                raise CodeValidationError(
-                    f"Code dangereux détecté: '{pattern}' n'est pas autorisé"
-                )
 
     def _create_validation_script(self, user_code: str, tests: List[Dict]) -> str:
         """
@@ -81,8 +89,11 @@ class DockerSandbox:
         Returns:
             Script Python qui valide le code
         """
-        if self.language == 'html':
-            # Pour HTML, on crée un script Python qui parse et valide
+        if self.language in ('html', 'css'):
+            # Pour HTML et CSS, on crée un script Python qui expose le texte
+            # brut (solution) pour des tests par regex/chaîne. Pour HTML,
+            # tags/attrs donnent en plus un accès structuré via HTMLParser
+            # (sans effet pour du CSS, qui n'a simplement pas de balises).
             script = '''
 import json
 import sys
@@ -161,6 +172,71 @@ output = {
 
 print(json.dumps(output))
 '''
+        elif self.language == 'javascript':
+            # Pour JavaScript : le code utilisateur est exécuté tel quel (ses
+            # variables/fonctions restent donc accessibles aux tests), et le
+            # texte source brut est aussi exposé (variable __source) pour les
+            # tests qui ont besoin de vérifier la présence de code plutôt que
+            # son comportement (ex: manipulation du DOM, non exécutable ici
+            # faute de vrai navigateur dans le sandbox).
+            script = '''
+const assert = require('assert');
+const __source = ''' + json.dumps(user_code) + ''';
+const __tests = ''' + json.dumps(tests) + ''';
+const __results = [];
+
+// Le sandbox n'a pas de vrai navigateur : on fournit des mocks minimalistes
+// pour que du code de manipulation du DOM s'exécute sans planter (les tests
+// portant sur ce type de code vérifient __source plutôt que le comportement).
+function __mockElement() {
+    const el = {
+        textContent: '', innerHTML: '', value: '', style: {},
+        classList: {
+            _classes: new Set(),
+            add(...names) { names.forEach(n => this._classes.add(n)); },
+            remove(...names) { names.forEach(n => this._classes.delete(n)); },
+            toggle(name) { this._classes.has(name) ? this._classes.delete(name) : this._classes.add(name); },
+            contains(name) { return this._classes.has(name); },
+        },
+        addEventListener() {}, removeEventListener() {},
+        setAttribute(name, value) { el[name] = value; },
+        getAttribute(name) { return el[name]; },
+        appendChild() {}, remove() {},
+    };
+    return el;
+}
+const document = {
+    querySelector: () => __mockElement(),
+    querySelectorAll: () => [__mockElement()],
+    getElementById: () => __mockElement(),
+    createElement: () => __mockElement(),
+    addEventListener: () => {},
+    body: __mockElement(),
+};
+const window = { document, addEventListener: () => {}, alert: () => {} };
+const alert = () => {};
+
+''' + user_code + '''
+
+for (const __test of __tests) {
+    const __name = __test.name || 'Test';
+    const __points = __test.points || 1;
+    const __errorMessage = __test.error_message || '';
+    try {
+        eval(__test.code);
+        __results.push({ name: __name, passed: true, points: __points, message: '✓ Parfait !' });
+    } catch (__e) {
+        const __message = __errorMessage || __e.message || 'Le test a échoué';
+        __results.push({ name: __name, passed: false, points: 0, message: __message });
+    }
+}
+
+console.log(JSON.stringify({
+    results: __results,
+    total_points: __results.reduce((s, r) => s + r.points, 0),
+    max_points: __tests.reduce((s, t) => s + (t.points || 1), 0),
+}));
+'''
         else:
             # Pour Python pur
             script = user_code + '\n\n' + '\n'.join(test['code'] for test in tests)
@@ -179,19 +255,21 @@ print(json.dumps(output))
             Résultats de l'exécution avec tests passés/échoués
         """
         try:
-            # Vérifier le code dangereux
-            self._check_dangerous_code(user_code)
-
-            # Créer le script de validation
+            # Aucun filtrage du code en amont : c'est l'isolement du conteneur
+            # qui protège (cf. la docstring de la classe).
             validation_script = self._create_validation_script(user_code, tests)
 
-            # Image Docker à utiliser
+            # Image Docker et interpréteur à utiliser selon le langage
             image = self.DOCKER_IMAGES.get(self.language, self.DOCKER_IMAGES['python'])
+            if self.language == 'javascript':
+                command = ['node', '-e', validation_script]
+            else:
+                command = ['python', '-c', validation_script]
 
             # Créer et exécuter le conteneur
             container = self.client.containers.run(
                 image,
-                command=['python', '-c', validation_script],
+                command=command,
                 detach=True,
                 mem_limit=self.MEMORY_LIMIT,
                 cpu_quota=self.CPU_QUOTA,
@@ -273,19 +351,15 @@ def validate_exercise_code(exercise, user_code: str) -> Dict[str, Any]:
     Returns:
         Résultats de la validation
     """
-    # Déterminer le langage (pour l'instant, on suppose HTML)
-    language = 'html'
+    # Déterminer le langage à partir de l'exercice (html par défaut, pour
+    # rester compatible avec les exercices existants créés avant ce champ)
+    language = getattr(exercise, 'language', None) or 'html'
 
     # Créer le sandbox
     sandbox = DockerSandbox(language=language)
 
-    # Extraire la liste des tests depuis le champ JSONB
-    # Le champ exercise.tests peut être {'tests': [...]} ou directement [...]
-    tests = exercise.tests
-    if isinstance(tests, dict) and 'tests' in tests:
-        tests = tests['tests']
-
-    # Exécuter la validation
-    result = sandbox.run_code(user_code, tests)
+    # La normalisation des deux formes du champ JSONB vit sur le modèle
+    # (`Exercise.test_cases`), pour que tous les lecteurs voient la même chose.
+    result = sandbox.run_code(user_code, exercise.test_cases)
 
     return result

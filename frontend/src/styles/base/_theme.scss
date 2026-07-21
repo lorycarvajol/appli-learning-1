@@ -1,0 +1,117 @@
+// ==========================================
+// THEME TOKENS — CSS custom properties
+// Pilotées par [data-theme] sur <html> (voir index.html + useTheme hook)
+// ==========================================
+
+:root,
+[data-theme='light'] {
+  // Marque
+  --brand: #5b3df0;
+  --brand-strong: #4527d6;
+  --brand-soft: #efeafe;
+
+  // Récompense / gamification
+  --accent: #f5a623;
+  --accent-text: #9a5b00;
+  --accent-soft: #fef3dc;
+
+  // Sémantique (résultats de tests, statuts)
+  --ok: #16a34a;
+  --ok-text: #157f3c;
+  --ok-soft: #e8f8ee;
+  --danger: #dc2626;
+  --danger-soft: #fdecec;
+  --warn: var(--accent);
+  --warn-text: var(--accent-text);
+  --warn-soft: var(--accent-soft);
+
+  // Surfaces & texte
+  --bg: #f6f5fb;
+  --surface: #ffffff;
+  --surface-2: #f0eefa;
+  --ink: #17132a;
+  --ink-soft: #5b5570;
+  --ink-faint: #8d87a3;
+  --border: #e3e0f0;
+  --border-strong: #8d87a3;
+
+  // Types de leçon
+  --theory: #2563eb;
+  --theory-soft: #e7edfe;
+  --quiz: #9333ea;
+  --quiz-soft: #f3e8fe;
+
+  // Difficulté
+  --easy: var(--ok-text);
+  --easy-soft: var(--ok-soft);
+  --medium: var(--accent-text);
+  --medium-soft: var(--accent-soft);
+  --hard: var(--danger);
+  --hard-soft: var(--danger-soft);
+
+  // Ombres (teinte de l'encre pour des ombres cohérentes avec le thème)
+  --shadow-tint: 250deg 45% 20%;
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-tint) / 0.06);
+  --shadow-md: 0 4px 10px hsl(var(--shadow-tint) / 0.10), 0 2px 4px hsl(var(--shadow-tint) / 0.06);
+  --shadow-lg: 0 12px 24px hsl(var(--shadow-tint) / 0.14), 0 4px 8px hsl(var(--shadow-tint) / 0.08);
+  --shadow-xl: 0 24px 48px hsl(var(--shadow-tint) / 0.18), 0 8px 16px hsl(var(--shadow-tint) / 0.10);
+
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --brand: #8471f5;
+  --brand-strong: #a395f8;
+  --brand-soft: #251c4a;
+
+  --accent: #f7b940;
+  --accent-text: #f7b940;
+  --accent-soft: #3a2c10;
+
+  --ok: #4ade80;
+  --ok-text: #4ade80;
+  --ok-soft: #113322;
+  --danger: #f87171;
+  --danger-soft: #3a1414;
+  --warn: var(--accent);
+  --warn-text: var(--accent-text);
+  --warn-soft: var(--accent-soft);
+
+  --bg: #110d22;
+  --surface: #1b1633;
+  --surface-2: #241d42;
+  --ink: #edebf8;
+  --ink-soft: #a79fc4;
+  --ink-faint: #756e92;
+  --border: #322a55;
+  --border-strong: #6a5da0;
+
+  --theory: #7fa2ff;
+  --theory-soft: #1c2748;
+  --quiz: #c98bf5;
+  --quiz-soft: #2c1f42;
+
+  --easy: var(--ok-text);
+  --easy-soft: var(--ok-soft);
+  --medium: var(--accent-text);
+  --medium-soft: var(--accent-soft);
+  --hard: var(--danger);
+  --hard-soft: var(--danger-soft);
+
+  --shadow-tint: 250deg 60% 2%;
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-tint) / 0.4);
+  --shadow-md: 0 4px 10px hsl(var(--shadow-tint) / 0.5), 0 2px 4px hsl(var(--shadow-tint) / 0.3);
+  --shadow-lg: 0 12px 24px hsl(var(--shadow-tint) / 0.55), 0 4px 8px hsl(var(--shadow-tint) / 0.35);
+  --shadow-xl: 0 24px 48px hsl(var(--shadow-tint) / 0.6), 0 8px 16px hsl(var(--shadow-tint) / 0.4);
+
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -77,6 +77,12 @@ class UserProgress(models.Model):
     is_passed = models.BooleanField(default=False)
     score = models.IntegerField(null=True, blank=True, help_text="Score sur 100")
 
+    # Pour les quiz : réponses sauvegardées au fur et à mesure ({question_id: [indices]})
+    quiz_answers = models.JSONField(default=dict, blank=True)
+
+    # Empêche l'attribution des points de la leçon plus d'une fois
+    points_awarded = models.BooleanField(default=False)
+
     # Temps passé en secondes
     time_spent = models.IntegerField(default=0, help_text="Time spent in seconds")
 

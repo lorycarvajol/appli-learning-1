@@ -1,9 +1,13 @@
 """
 API views for courses.
 """
-from rest_framework import generics, viewsets, filters
+from rest_framework import generics, viewsets, filters, status
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
+
+from apps.progression.services import accessible_chapter_ids, can_access_lesson
+
 from .models import Chapter, Lesson, Exercise, Quiz, Project
 from .serializers import (
     ChapterListSerializer, ChapterDetailSerializer,
@@ -30,6 +34,15 @@ class ChapterViewSet(viewsets.ReadOnlyModelViewSet):
         if self.action == 'retrieve':
             return ChapterDetailSerializer
         return ChapterListSerializer
+
+    def get_serializer_context(self):
+        """Calcule les accès une seule fois par requête plutôt qu'une requête
+        SQL par chapitre sérialisé."""
+        context = super().get_serializer_context()
+        user = self.request.user
+        if user and user.is_authenticated:
+            context['accessible_chapter_ids'] = accessible_chapter_ids(user)
+        return context
 
 
 class LessonViewSet(viewsets.ReadOnlyModelViewSet):
@@ -58,6 +71,21 @@ class LessonViewSet(viewsets.ReadOnlyModelViewSet):
         if chapter_slug:
             queryset = queryset.filter(chapter__slug=chapter_slug)
         return queryset
+
+    def retrieve(self, request, *args, **kwargs):
+        """Le verrou réel : le contenu d'une leçon d'un chapitre non débloqué
+        n'est pas servi. Lister les chapitres reste permis (le sommaire donne
+        la vue d'ensemble), mais les ouvrir demande l'accès."""
+        lesson = self.get_object()
+        if not can_access_lesson(request.user, lesson):
+            return Response(
+                {
+                    'detail': "Ce chapitre n'est pas encore débloqué.",
+                    'chapter_slug': lesson.chapter.slug,
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return Response(self.get_serializer(lesson).data)
 
 
 class ExerciseViewSet(viewsets.ReadOnlyModelViewSet):

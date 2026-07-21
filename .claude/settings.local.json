@@ -35,7 +35,25 @@
       "Bash(docker build *)",
       "Bash(docker-compose config *)",
       "Bash(MSYS_NO_PATHCONV=1 docker-compose exec -T celery ls /var/run/docker.sock)",
-      "Bash(MSYS_NO_PATHCONV=1 docker-compose exec -T backend ls /var/run/docker.sock)"
+      "Bash(MSYS_NO_PATHCONV=1 docker-compose exec -T backend ls /var/run/docker.sock)",
+      "Bash(grep -rohE '\\\\$[a-z][a-zA-Z0-9-]*' styles --include=\"*.scss\")",
+      "Bash(exit *)",
+      "Bash(grep -rn \"darken\\(\\\\|lighten\\(\\\\|rgba\\(\\\\$\\\\|rgba\\(.*\\\\$\" styles --include=\"*.scss\")",
+      "Bash(grep -n \"#[0-9a-fA-F]\\\\{3,6\\\\}\\\\|rgba\\(\" components/ui/ImageLightbox.css components/ui/CodeEditor.css)",
+      "Bash(sed -i 's/box-shadow: 0 2px 8px rgba\\(0, 0, 0, 0.05\\);/box-shadow: $shadow-sm;/' styles/components/_chapters.scss styles/components/_lesson.scss)",
+      "Bash(grep -n 'box-shadow: $shadow-sm;' styles/components/_chapters.scss styles/components/_lesson.scss)",
+      "Bash(grep -n \"#[0-9a-fA-F]\\\\{3,6\\\\}\" styles/components/_lesson.scss styles/components/_chapters.scss styles/components/_auth.scss)",
+      "Bash(grep -oE \"#[0-9a-fA-F]{3,6}\" features/quizzes/QuizInterface.css)",
+      "Bash(docker cp *)",
+      "PowerShell(docker-compose *)",
+      "Skill(claude-in-chrome)",
+      "Bash(npm -v)",
+      "Bash(npm test *)",
+      "Bash(npx vitest *)",
+      "Bash(node --input-type=module -e \"import\\('vitest/node'\\).then\\(\\(\\)=>console.log\\('OK'\\)\\).catch\\(e=>console.log\\('FAIL',e.message\\)\\)\")",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\loryc\\\\OneDrive\\\\Desktop\\\\appli learning\\\\frontend\\\\node_modules\\\\vitest\" -Recurse -File -Force | Where-Object { $_.Attributes -match 'Offline' -or $_.Attributes -match 'ReparsePoint' } | Select-Object -First 10 FullName, Attributes)",
+      "Bash(node --import \"file:///C:/Users/loryc/AppData/Local/Temp/claude/C--Users-loryc-OneDrive-Desktop-appli-learning/85bdbaa6-02a5-4c12-84af-9a7348850f21/scratchpad/trace-read.mjs\" ./node_modules/vitest/vitest.mjs run)",
+      "Bash(npm run *)"
     ]
   }
 }

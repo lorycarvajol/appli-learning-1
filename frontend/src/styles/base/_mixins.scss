@@ -46,14 +46,18 @@
 // === BOUTONS ===
 
 @mixin button-base {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-sm;
   padding: $spacing-sm $spacing-lg;
-  font-weight: $font-weight-medium;
+  font-weight: $font-weight-semibold;
   text-align: center;
   border-radius: $border-radius-md;
-  border: none;
+  border: $border-width solid transparent;
   cursor: pointer;
-  transition: all $transition-base;
+  transition: transform $transition-fast, box-shadow $transition-base,
+    background-color $transition-base, border-color $transition-base, color $transition-base;
   font-family: $font-family-base;
   font-size: $font-size-base;
 
@@ -61,12 +65,17 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
 }
 
 @mixin button-primary {
   @include button-base;
   background-color: $primary-color;
   color: $text-white;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 30%, transparent);
 
   &:hover:not(:disabled) {
     background-color: $primary-dark;
@@ -76,10 +85,11 @@
 @mixin button-secondary {
   @include button-base;
   background-color: $secondary-color;
-  color: $text-white;
+  color: $text-primary;
 
   &:hover:not(:disabled) {
     background-color: $secondary-dark;
+    color: $text-white;
   }
 }
 
@@ -90,8 +100,7 @@
   border: $border-width solid $primary-color;
 
   &:hover:not(:disabled) {
-    background-color: $primary-color;
-    color: $text-white;
+    background-color: $primary-light;
   }
 }
 
@@ -99,29 +108,54 @@
 
 @mixin card {
   background-color: $bg-white;
+  border: $border-width solid $border-color;
   border-radius: $border-radius-lg;
-  box-shadow: $shadow-md;
+  box-shadow: $shadow-sm;
   padding: $spacing-xl;
 }
 
 @mixin card-hover {
   @include card;
-  transition: all $transition-base;
+  transition: transform $transition-base, box-shadow $transition-base, border-color $transition-base;
 
   &:hover {
     box-shadow: $shadow-lg;
-    transform: translateY(-2px);
+    border-color: $border-color-strong;
+    transform: translateY(-3px);
   }
+}
+
+// Fenêtre façon éditeur/terminal — pour les surfaces liées au code.
+// La barre de titre (pastilles + nom de fichier) est composée en markup réel
+// avec la classe .terminal-chrome__bar, pas en CSS généré (voir ExerciseInterface).
+@mixin terminal-chrome {
+  border: $border-width solid $border-color;
+  border-radius: $border-radius-lg;
+  overflow: hidden;
+  background-color: $bg-dark;
+  box-shadow: $shadow-md;
+}
+
+@mixin terminal-chrome-bar {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  height: 2.5rem;
+  padding: 0 $spacing-md;
+  background-color: #1a1530;
+  border-bottom: $border-width solid rgba(255, 255, 255, 0.08);
 }
 
 // === BADGES ===
 
 @mixin badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
   padding: $spacing-xs $spacing-md;
   border-radius: $border-radius-full;
   font-size: $font-size-xs;
-  font-weight: $font-weight-medium;
+  font-weight: $font-weight-semibold;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -148,8 +182,9 @@
 
 @mixin heading-1 {
   font-family: $font-family-heading;
-  font-size: $font-size-4xl;
+  font-size: clamp(#{$font-size-3xl}, 4vw, #{$font-size-5xl});
   font-weight: $font-weight-bold;
+  letter-spacing: -0.02em;
   line-height: $line-height-tight;
   color: $text-primary;
   margin-bottom: $spacing-lg;
@@ -157,8 +192,9 @@
 
 @mixin heading-2 {
   font-family: $font-family-heading;
-  font-size: $font-size-3xl;
+  font-size: clamp(#{$font-size-2xl}, 3vw, #{$font-size-3xl});
   font-weight: $font-weight-bold;
+  letter-spacing: -0.015em;
   line-height: $line-height-tight;
   color: $text-primary;
   margin-bottom: $spacing-md;
@@ -168,6 +204,7 @@
   font-family: $font-family-heading;
   font-size: $font-size-2xl;
   font-weight: $font-weight-semibold;
+  letter-spacing: -0.01em;
   line-height: $line-height-normal;
   color: $text-primary;
   margin-bottom: $spacing-md;

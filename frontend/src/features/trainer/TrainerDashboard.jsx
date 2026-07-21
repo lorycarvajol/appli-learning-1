@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchLearnersSummary, fetchRecentActivity } from './trainerSlice';
 import LearnersList from './LearnersList';
 import LearnerDetail from './LearnerDetail';
+import CohortsPanel from '@/features/cohorts/CohortsPanel';
 import RecentActivity from './RecentActivity';
 
 const TrainerDashboard = () => {
@@ -25,9 +26,13 @@ const TrainerDashboard = () => {
   }
 
   if (error) {
+    // DRF renvoie souvent un objet ({detail: "..."}). Rendre un objet
+    // directement fait planter React — d'où l'aplatissement en texte.
+    const message =
+      typeof error === 'string' ? error : error?.detail || JSON.stringify(error);
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-800">Erreur : {error}</p>
+        <p className="text-red-800">Erreur : {message}</p>
       </div>
     );
   }
@@ -90,6 +95,16 @@ const TrainerDashboard = () => {
             >
               Activité Récente
             </button>
+            <button
+              onClick={() => setActiveTab('cohorts')}
+              className={`${
+                activeTab === 'cohorts'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+            >
+              Mes classes
+            </button>
           </nav>
         </div>
       </div>
@@ -119,6 +134,8 @@ const TrainerDashboard = () => {
       )}
 
       {activeTab === 'activity' && <RecentActivity activities={recentActivity} />}
+
+      {activeTab === 'cohorts' && <CohortsPanel />}
     </div>
   );
 };

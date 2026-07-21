@@ -17,10 +17,14 @@ export default function ExerciseInterface({ exercise, onSubmit }) {
   const [testResults, setTestResults] = useState(null);
   const [showHints, setShowHints] = useState(false);
 
-  // Réinitialiser le code quand l'exercice change
+  // Réinitialiser le code quand on change d'exercice — et **seulement** dans
+  // ce cas. Ajouter `exercise.starter_code` aux dépendances, comme le suggère
+  // react-hooks/exhaustive-deps, effacerait le travail en cours de l'apprenant
+  // dès qu'un formateur retouche le code de départ depuis l'admin.
   useEffect(() => {
     setCode(exercise.starter_code || '');
     setTestResults(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exercise.id]);
 
   // Gérer la soumission du code
@@ -136,13 +140,23 @@ export default function ExerciseInterface({ exercise, onSubmit }) {
           </button>
         </div>
 
-        <CodeEditor
-          value={code}
-          onChange={setCode}
-          language={exercise.language || 'html'}
-          height={450}
-          theme="vs-dark"
-        />
+        <div className="terminal-chrome">
+          <div className="terminal-chrome__bar">
+            <span className="terminal-chrome__dots" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </span>
+            <span className="terminal-chrome__filename">
+              exercice.{exercise.language || 'html'}
+            </span>
+          </div>
+          <CodeEditor
+            value={code}
+            onChange={setCode}
+            language={exercise.language || 'html'}
+            height={450}
+            theme="vs-dark"
+          />
+        </div>
       </div>
 
       {/* Bouton de soumission */}
@@ -151,10 +165,11 @@ export default function ExerciseInterface({ exercise, onSubmit }) {
           className="exercise-submit-button"
           onClick={handleSubmit}
           disabled={isSubmitting}
+          aria-busy={isSubmitting}
         >
           {isSubmitting ? (
             <>
-              <div className="button-spinner"></div>
+              <div className="button-spinner" aria-hidden="true"></div>
               Validation en cours...
             </>
           ) : (
@@ -165,7 +180,11 @@ export default function ExerciseInterface({ exercise, onSubmit }) {
 
       {/* Résultats des tests */}
       {testResults && (
-        <div className={`exercise-results ${testResults.success ? 'exercise-results--success' : 'exercise-results--error'}`}>
+        <div
+          className={`exercise-results ${testResults.success ? 'exercise-results--success' : 'exercise-results--error'}`}
+          role="status"
+          aria-live="polite"
+        >
           <div className="exercise-results__header">
             <h3 className="exercise-results__title">
               {testResults.success ? '✓ Succès !' : '✗ Échec'}
@@ -208,7 +227,7 @@ export default function ExerciseInterface({ exercise, onSubmit }) {
       {/* Note pour l'utilisateur */}
       <div className="exercise-note">
         <strong>💻 Validation automatique :</strong> Votre code est exécuté dans un environnement
-        Docker sécurisé et isolé. Les tests définis pour l'exercice vérifient automatiquement
+        Docker sécurisé et isolé. Les tests définis pour l’exercice vérifient automatiquement
         la validité de votre solution.
       </div>
     </div>

@@ -9,12 +9,20 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 
+from .avatars import MOTIFS, PALETTES, avatar_choices
 from .models import User, Profile
 from .serializers import (
     RegisterSerializer,
     UserSerializer,
     ProfileSerializer,
-    ChangePasswordSerializer
+    ChangePasswordSerializer,
+    PasswordResetRequestSerializer,
+    PasswordResetConfirmSerializer,
+)
+from .services import (
+    resolve_reset_token,
+    revoke_refresh_tokens,
+    send_password_reset_email,
 )
 
 User = get_user_model()
@@ -71,6 +79,24 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         return self.request.user.profile
 
 
+class AvatarCatalogView(APIView):
+    """
+    GET /api/auth/avatars/
+
+    Motifs et palettes disponibles. Le client fait le rendu en SVG à partir de
+    ces deux listes ; le serveur reste l'autorité sur ce qui est acceptable
+    (cf. `ProfileSerializer.validate_avatar_key`).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({
+            'motifs': list(MOTIFS),
+            'palettes': list(PALETTES),
+            'keys': avatar_choices(),
+        })
+
+
 class ChangePasswordView(APIView):
     """
     Change user password.
@@ -89,6 +115,89 @@ class ChangePasswordView(APIView):
         return Response({
             'message': 'Password changed successfully'
         }, status=status.HTTP_200_OK)
+
+
+# Réponse volontairement identique que le compte existe ou non.
+RESET_REQUEST_MESSAGE = (
+    "Si un compte est associé à cette adresse, un lien de réinitialisation "
+    "vient d'être envoyé. Pensez à vérifier vos spams."
+)
+
+
+class PasswordResetRequestView(APIView):
+    """
+    Demande un lien de réinitialisation.
+    POST /api/auth/password-reset/
+
+    Répond **toujours** 200 avec le même message, que l'email corresponde à un
+    compte ou non : une réponse différenciée transformerait cet endpoint en
+    annuaire des inscrits. Le throttle limite par ailleurs l'usage massif.
+    """
+    permission_classes = [AllowAny]
+    throttle_scope = 'password_reset'
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data['email']
+        user = User.objects.filter(email__iexact=email, is_active=True).first()
+
+        if user is not None:
+            send_password_reset_email(user)
+
+        return Response({'message': RESET_REQUEST_MESSAGE}, status=status.HTTP_200_OK)
+
+
+class PasswordResetValidateView(APIView):
+    """
+    Vérifie un lien avant d'afficher le formulaire.
+    GET /api/auth/password-reset/validate/?uid=...&token=...
+
+    Évite de faire saisir deux fois un mot de passe pour apprendre ensuite que
+    le lien avait expiré.
+    """
+    permission_classes = [AllowAny]
+    throttle_scope = 'password_reset'
+
+    def get(self, request):
+        user = resolve_reset_token(
+            request.query_params.get('uid', ''),
+            request.query_params.get('token', ''),
+        )
+        if user is None:
+            return Response({'valid': False}, status=status.HTTP_200_OK)
+
+        # On confirme l'email pour rassurer l'utilisateur sur le compte visé,
+        # mais le lien ne s'obtient que depuis sa boîte mail.
+        return Response({'valid': True, 'email': user.email}, status=status.HTTP_200_OK)
+
+
+class PasswordResetConfirmView(APIView):
+    """
+    Définit le nouveau mot de passe.
+    POST /api/auth/password-reset/confirm/
+    """
+    permission_classes = [AllowAny]
+    throttle_scope = 'password_reset'
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.validated_data['user']
+        user.set_password(serializer.validated_data['new_password'])
+        user.save()
+
+        # Le changement de mot de passe invalide déjà le jeton (il est signé
+        # à partir de l'ancien hash), mais pas les sessions JWT ouvertes :
+        # sans ça, un attaquant déjà connecté le resterait 7 jours.
+        revoke_refresh_tokens(user)
+
+        return Response(
+            {'message': 'Mot de passe réinitialisé. Vous pouvez vous connecter.'},
+            status=status.HTTP_200_OK
+        )
 
 
 class LogoutView(APIView):

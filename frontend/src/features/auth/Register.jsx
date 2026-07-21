@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, Link } from 'react-router-dom'
 import { register, clearError } from './authSlice'
+import PasswordInput from '@/components/ui/PasswordInput'
 
 function Register() {
   const [formData, setFormData] = useState({
@@ -36,16 +37,21 @@ function Register() {
   return (
     <div className="auth-page">
       <div className="auth-container">
+        <Link to="/dashboard" className="auth-logo">
+          <span className="auth-logo__mark" aria-hidden="true">&lt;/&gt;</span>
+          <span>CodeAcademy</span>
+        </Link>
+
         <div className="auth-card">
           <div className="auth-header">
-            <h2 className="auth-header__title">Inscription</h2>
+            <h1 className="auth-header__title">Inscription</h1>
             <p className="auth-header__subtitle">
               Créez votre compte pour accéder à la plateforme
             </p>
           </div>
 
           {error && (
-            <div className="auth-alert auth-alert--error">
+            <div className="auth-alert auth-alert--error" role="alert">
               {typeof error === 'object' ? (
                 <ul>
                   {Object.entries(error).map(([key, value]) => (
@@ -60,10 +66,11 @@ function Register() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="auth-form">
+          <form onSubmit={handleSubmit} className="auth-form" noValidate>
             <div className="auth-form__group">
-              <label className="auth-form__label">Email</label>
+              <label htmlFor="register-email" className="auth-form__label">Email</label>
               <input
+                id="register-email"
                 type="email"
                 name="email"
                 value={formData.email}
@@ -71,60 +78,68 @@ function Register() {
                 className="auth-form__input"
                 placeholder="votre@email.com"
                 required
+                autoComplete="email"
               />
             </div>
 
-            <div className="auth-form__group">
-              <label className="auth-form__label">Prénom</label>
-              <input
-                type="text"
-                name="first_name"
-                value={formData.first_name}
-                onChange={handleChange}
-                className="auth-form__input"
-                placeholder="Jean"
-                required
-              />
+            <div className="auth-form__row">
+              <div className="auth-form__group">
+                <label htmlFor="register-first-name" className="auth-form__label">Prénom</label>
+                <input
+                  id="register-first-name"
+                  type="text"
+                  name="first_name"
+                  value={formData.first_name}
+                  onChange={handleChange}
+                  className="auth-form__input"
+                  placeholder="Jean"
+                  required
+                  autoComplete="given-name"
+                />
+              </div>
+
+              <div className="auth-form__group">
+                <label htmlFor="register-last-name" className="auth-form__label">Nom</label>
+                <input
+                  id="register-last-name"
+                  type="text"
+                  name="last_name"
+                  value={formData.last_name}
+                  onChange={handleChange}
+                  className="auth-form__input"
+                  placeholder="Dupont"
+                  required
+                  autoComplete="family-name"
+                />
+              </div>
             </div>
 
             <div className="auth-form__group">
-              <label className="auth-form__label">Nom</label>
-              <input
-                type="text"
-                name="last_name"
-                value={formData.last_name}
-                onChange={handleChange}
-                className="auth-form__input"
-                placeholder="Dupont"
-                required
-              />
-            </div>
-
-            <div className="auth-form__group">
-              <label className="auth-form__label">Mot de passe</label>
-              <input
-                type="password"
+              <label htmlFor="register-password" className="auth-form__label">Mot de passe</label>
+              <PasswordInput
+                id="register-password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className="auth-form__input"
                 placeholder="••••••••"
                 required
                 minLength={8}
+                autoComplete="new-password"
+                aria-describedby="register-password-hint"
               />
-              <small className="auth-form__error">Minimum 8 caractères</small>
+              <small id="register-password-hint" className="auth-form__hint">Minimum 8 caractères</small>
             </div>
 
             <div className="auth-form__group">
-              <label className="auth-form__label">Confirmer le mot de passe</label>
-              <input
-                type="password"
+              <label htmlFor="register-password-confirm" className="auth-form__label">Confirmer le mot de passe</label>
+              <PasswordInput
+                id="register-password-confirm"
                 name="password_confirm"
                 value={formData.password_confirm}
                 onChange={handleChange}
-                className="auth-form__input"
                 placeholder="••••••••"
                 required
+                autoComplete="new-password"
               />
             </div>
 

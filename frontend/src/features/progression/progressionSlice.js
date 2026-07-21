@@ -26,6 +26,17 @@ export const markLessonCompleted = createAsyncThunk(
   }
 );
 
+export const fetchNextLesson = createAsyncThunk(
+  'progression/fetchNextLesson',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await progressionApi.getNextLesson();
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 export const updateProgress = createAsyncThunk(
   'progression/updateProgress',
   async ({ progressId, data }, { rejectWithValue }) => {
@@ -43,6 +54,8 @@ const progressionSlice = createSlice({
   initialState: {
     // Map de lessonId -> progression object
     progressByLesson: {},
+    // Leçon à reprendre (bloc « Continuer l'apprentissage »)
+    nextLesson: null,
     loading: false,
     error: null,
     markingCompleted: false,
@@ -88,6 +101,11 @@ const progressionSlice = createSlice({
         state.error = action.payload;
       })
 
+      // Next Lesson
+      .addCase(fetchNextLesson.fulfilled, (state, action) => {
+        state.nextLesson = action.payload;
+      })
+
       // Update Progress
       .addCase(updateProgress.fulfilled, (state, action) => {
         // Mettre à jour la progression dans le map
@@ -103,6 +121,8 @@ export const selectProgressByLesson = (lessonId) => (state) =>
   state.progression.progressByLesson[lessonId] || null;
 
 export const selectAllProgress = (state) => state.progression.progressByLesson;
+
+export const selectNextLesson = (state) => state.progression.nextLesson;
 
 export const selectProgressLoading = (state) => state.progression.loading;
 

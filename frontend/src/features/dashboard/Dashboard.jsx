@@ -1,16 +1,40 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { fetchMyProgress, selectAllProgress } from '../progression/progressionSlice';
+import {
+  fetchMyProgress,
+  fetchNextLesson,
+  selectAllProgress,
+  selectNextLesson,
+} from '../progression/progressionSlice';
+import NextObjectives from '../gamification/NextObjectives';
+import {
+  selectLevel,
+  selectSummary,
+  syncGamification,
+} from '../gamification/gamificationSlice';
 import './Dashboard.css';
+
+const LESSON_TYPE_LABELS = {
+  THEORY: '📖 Théorie',
+  EXERCISE: '💻 Exercice',
+  QUIZ: '❓ Quiz',
+};
 
 export default function Dashboard() {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const progressByLesson = useSelector(selectAllProgress);
+  const summary = useSelector(selectSummary);
+  const level = useSelector(selectLevel);
+  const nextLesson = useSelector(selectNextLesson);
 
   useEffect(() => {
     dispatch(fetchMyProgress());
+    dispatch(fetchNextLesson());
+    // `sync` est idempotent côté serveur : il rattrape un éventuel badge
+    // manqué (session interrompue, onglet fermé) sans rien redistribuer.
+    dispatch(syncGamification());
   }, [dispatch]);
 
   // Calculer les statistiques
@@ -38,10 +62,10 @@ export default function Dashboard() {
             Bonjour {user?.first_name || 'Apprenant'} ! 👋
           </h1>
           <p className="dashboard__hero-subtitle">
-            Prêt à continuer votre apprentissage aujourd'hui ?
+            Prêt à continuer votre apprentissage aujourd’hui ?
           </p>
         </div>
-        <div className="dashboard__hero-illustration">
+        <div className="dashboard__hero-illustration" aria-hidden="true">
           <div className="dashboard__hero-circle dashboard__hero-circle--1"></div>
           <div className="dashboard__hero-circle dashboard__hero-circle--2"></div>
           <div className="dashboard__hero-circle dashboard__hero-circle--3"></div>
@@ -52,16 +76,25 @@ export default function Dashboard() {
         {/* Stats Cards */}
         <section className="dashboard__stats">
           <div className="stat-card stat-card--purple">
-            <div className="stat-card__icon">🎯</div>
+            <div className="stat-card__icon" aria-hidden="true">🎯</div>
             <div className="stat-card__content">
-              <div className="stat-card__value">{user?.profile?.total_points || 0}</div>
+              <div className="stat-card__value">
+                {summary?.points ?? user?.profile?.total_points ?? 0}
+              </div>
               <div className="stat-card__label">Points totaux</div>
+              {level && (
+                <div className="stat-card__sublabel">
+                  Encore {level.points_for_next} pts avant le niveau {level.level + 1}
+                </div>
+              )}
             </div>
-            <div className="stat-card__badge">Niveau {user?.profile?.level || 1}</div>
+            <div className="stat-card__badge">
+              Niveau {level?.level ?? user?.profile?.level ?? 1}
+            </div>
           </div>
 
           <div className="stat-card stat-card--green">
-            <div className="stat-card__icon">✅</div>
+            <div className="stat-card__icon" aria-hidden="true">✅</div>
             <div className="stat-card__content">
               <div className="stat-card__value">{completedLessons}</div>
               <div className="stat-card__label">Leçons complétées</div>
@@ -70,18 +103,35 @@ export default function Dashboard() {
           </div>
 
           <div className="stat-card stat-card--blue">
-            <div className="stat-card__icon">⏱️</div>
+            <div className="stat-card__icon" aria-hidden="true">⏱️</div>
             <div className="stat-card__content">
               <div className="stat-card__value">{formatTime(totalTimeSpent)}</div>
-              <div className="stat-card__label">Temps d'apprentissage</div>
+              <div className="stat-card__label">Temps d’apprentissage</div>
             </div>
           </div>
 
           <div className="stat-card stat-card--orange">
-            <div className="stat-card__icon">📊</div>
+            <div className="stat-card__icon" aria-hidden="true">📊</div>
             <div className="stat-card__content">
               <div className="stat-card__value">{Math.round(avgScore)}%</div>
               <div className="stat-card__label">Score moyen</div>
+            </div>
+          </div>
+
+          <div className="stat-card stat-card--trophy">
+            <div className="stat-card__icon" aria-hidden="true">🏅</div>
+            <div className="stat-card__content">
+              <div className="stat-card__value">
+                {summary?.badges?.earned ?? 0}
+                <span className="stat-card__value-total">
+                  /{summary?.badges?.total ?? 0}
+                </span>
+              </div>
+              <div className="stat-card__label">Trophées</div>
+              <div className="stat-card__sublabel">
+                {summary?.badges?.secret_found ?? 0} secret(s) sur{' '}
+                {summary?.badges?.secret_total ?? 0} révélé(s)
+              </div>
             </div>
           </div>
         </section>
@@ -93,27 +143,69 @@ export default function Dashboard() {
             {/* Continue Learning */}
             <section className="dashboard__section">
               <div className="dashboard__section-header">
-                <h2 className="dashboard__section-title">📚 Continuer l'apprentissage</h2>
+                <h2 className="dashboard__section-title">📚 Continuer l’apprentissage</h2>
                 <Link to="/chapters" className="dashboard__section-link">
                   Voir tout →
                 </Link>
               </div>
 
-              <div className="learning-card">
-                <div className="learning-card__content">
-                  <h3 className="learning-card__title">Introduction au HTML</h3>
-                  <p className="learning-card__description">
-                    Apprenez les bases du langage HTML et créez votre première page web
-                  </p>
-                  <div className="learning-card__meta">
-                    <span className="learning-card__badge">🏷️ Débutant</span>
-                    <span className="learning-card__duration">⏱️ 2h estimées</span>
+              {nextLesson?.lesson ? (
+                <div className="learning-card">
+                  <div className="learning-card__content">
+                    <span className="learning-card__kicker">
+                      {nextLesson.chapter.title}
+                    </span>
+                    <h3 className="learning-card__title">{nextLesson.lesson.title}</h3>
+                    <p className="learning-card__description">
+                      {nextLesson.is_resuming
+                        ? 'Vous aviez commencé cette leçon — reprenez où vous en étiez.'
+                        : 'La prochaine étape de votre parcours vous attend.'}
+                    </p>
+                    <div className="learning-card__meta">
+                      <span className="learning-card__badge">
+                        {LESSON_TYPE_LABELS[nextLesson.lesson.lesson_type] || '📄 Leçon'}
+                      </span>
+                      <span className="learning-card__duration">
+                        ⏱️ {nextLesson.lesson.estimated_duration} min
+                      </span>
+                      <span className="learning-card__duration">
+                        📍 Leçon {nextLesson.chapter_progress.position} sur{' '}
+                        {nextLesson.chapter_progress.total}
+                      </span>
+                    </div>
+                  </div>
+                  <Link
+                    to={`/lessons/${nextLesson.lesson.slug}`}
+                    className="learning-card__button"
+                  >
+                    {nextLesson.is_resuming ? 'Reprendre' : 'Commencer'}
+                  </Link>
+                </div>
+              ) : nextLesson?.all_completed ? (
+                <div className="learning-card learning-card--done">
+                  <div className="learning-card__content">
+                    <h3 className="learning-card__title">
+                      Parcours terminé, félicitations ! 🎉
+                    </h3>
+                    <p className="learning-card__description">
+                      Vous avez complété toutes les leçons disponibles. Il reste
+                      peut-être des trophées à décrocher.
+                    </p>
+                  </div>
+                  <Link to="/badges" className="learning-card__button">
+                    Voir mes trophées
+                  </Link>
+                </div>
+              ) : (
+                <div className="learning-card learning-card--empty">
+                  <div className="learning-card__content">
+                    <h3 className="learning-card__title">Aucune leçon disponible</h3>
+                    <p className="learning-card__description">
+                      Le contenu n’est pas encore publié. Revenez bientôt !
+                    </p>
                   </div>
                 </div>
-                <Link to="/chapters/introduction-html" className="learning-card__button">
-                  Commencer
-                </Link>
-              </div>
+              )}
             </section>
 
             {/* Quick Actions */}
@@ -138,6 +230,21 @@ export default function Dashboard() {
                   </div>
                   <span className="quick-action__arrow">→</span>
                 </Link>
+
+                <Link to="/badges" className="quick-action">
+                  <div className="quick-action__icon">🏆</div>
+                  <div className="quick-action__content">
+                    <h3 className="quick-action__title">Mes trophées</h3>
+                    <p className="quick-action__description">
+                      {summary?.badges
+                        ? `${summary.badges.earned}/${summary.badges.total} obtenus, ${
+                            summary.badges.secret_total - summary.badges.secret_found
+                          } encore cachés`
+                        : 'Badges obtenus et objectifs cachés'}
+                    </p>
+                  </div>
+                  <span className="quick-action__arrow">→</span>
+                </Link>
               </div>
             </section>
           </div>
@@ -146,11 +253,18 @@ export default function Dashboard() {
           <aside className="dashboard__sidebar">
             {/* Progress Overview */}
             <div className="sidebar-card">
-              <h3 className="sidebar-card__title">🎯 Vue d'ensemble</h3>
+              <h3 className="sidebar-card__title"><span aria-hidden="true">🎯</span> Vue d’ensemble</h3>
               <div className="progress-overview">
                 <div className="progress-overview__item">
-                  <div className="progress-overview__label">Progression globale</div>
-                  <div className="progress-overview__bar">
+                  <div className="progress-overview__label" id="global-progress-label">Progression globale</div>
+                  <div
+                    className="progress-overview__bar"
+                    role="progressbar"
+                    aria-labelledby="global-progress-label"
+                    aria-valuenow={completedLessons > 0 ? Math.round((completedLessons / (completedLessons + inProgressLessons)) * 100) : 0}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
                     <div
                       className="progress-overview__fill"
                       style={{ width: `${completedLessons > 0 ? (completedLessons / (completedLessons + inProgressLessons)) * 100 : 0}%` }}
@@ -163,32 +277,10 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Achievements */}
+            {/* Prochains objectifs — alimentés par le moteur de badges */}
             <div className="sidebar-card">
               <h3 className="sidebar-card__title">🏆 Prochains objectifs</h3>
-              <div className="achievements">
-                <div className="achievement">
-                  <div className="achievement__icon">🎓</div>
-                  <div className="achievement__content">
-                    <div className="achievement__name">Premier pas</div>
-                    <div className="achievement__progress">Terminer 5 leçons</div>
-                  </div>
-                </div>
-                <div className="achievement">
-                  <div className="achievement__icon">⭐</div>
-                  <div className="achievement__content">
-                    <div className="achievement__name">Expert HTML</div>
-                    <div className="achievement__progress">Compléter le chapitre HTML</div>
-                  </div>
-                </div>
-                <div className="achievement">
-                  <div className="achievement__icon">🔥</div>
-                  <div className="achievement__content">
-                    <div className="achievement__name">Série active</div>
-                    <div className="achievement__progress">7 jours consécutifs</div>
-                  </div>
-                </div>
-              </div>
+              <NextObjectives />
             </div>
 
             {/* Tips */}

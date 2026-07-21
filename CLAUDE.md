@@ -194,15 +194,13 @@ docker-compose exec backend python manage.py createsuperuser
 - [ ] Feedback immédiat sur les réponses
 - [ ] Randomisation questions/options si configuré
 
-#### Phase 4: Gamification
-- [ ] Créer app `gamification`:
-  - `Badge`: Définition des badges
-  - `UserBadge`: Badges gagnés
-  - `PointTransaction`: Historique points
-  - `Leaderboard`: Classement
-- [ ] Service d'attribution automatique de badges
-- [ ] API leaderboard
-- [ ] Frontend: Gallery badges + leaderboard
+#### Phase 4: Gamification — ✅ Fait (voir section dédiée plus bas)
+- [x] App `gamification` (Badge, UserBadge, PointTransaction, UserStreak)
+- [x] Attribution automatique idempotente des badges
+- [x] Objectifs secrets masqués côté serveur + révélation animée
+- [x] Frontend: page Trophées, prochains objectifs, série de jours
+- [ ] Leaderboard — volontairement reporté (choix produit : progression
+      personnelle d'abord, le grand livre de points le rend trivial à ajouter)
 
 #### Phase 5: Fonctionnalités Trainer
 - [ ] Dashboard trainer avec statistiques élèves
@@ -327,6 +325,694 @@ Aucun bug connu actuellement. Toutes les fonctionnalités implémentées sont te
 7. **UUID everywhere**: Tous les IDs sont des UUID, pas d'entiers séquentiels
 8. **Slugs**: Chapitres, leçons, projets utilisent des slugs pour URLs lisibles
 
+## Système de Gamification
+
+App `apps/gamification`. Objectif : encourager sans jamais récompenser deux fois.
+
+### L'invariant central
+
+**Aucun achievement ni crédit de points ne peut être validé deux fois.** Cette
+garantie ne repose pas sur du code prudent mais sur trois mécanismes cumulés :
+
+1. **Contraintes d'unicité en base** (la seule défense fiable en concurrence) :
+   - `UserBadge (user, badge)` → un badge est gagné au plus une fois
+   - `PointTransaction (user, source_key)` → une source ne crédite qu'une fois
+2. **Règles monotones** : chaque règle compare un *compteur cumulatif* à un
+   seuil. Réévaluer tous les badges est donc idempotent et ne peut jamais faire
+   régresser un apprenant, même si sa progression est modifiée ou supprimée.
+3. **Grand livre de points** : `Profile.total_points` est toujours égal à la
+   somme de `PointTransaction`. Le solde est vérifiable et reconstructible
+   (`services.recompute_profile_points`).
+
+Conséquence pratique : `sync_user_gamification(user)` peut être appelé
+n'importe quand, autant de fois qu'on veut, depuis n'importe quelle route.
+C'est ce qui permet l'endpoint d'auto-réparation `POST /summary/sync/`.
+
+**Toute nouvelle attribution de points doit passer par
+`services.award_points(user, amount, reason, source_key)`** — jamais par
+`Profile.add_points()` directement, sinon le grand livre décroche.
+
+### Modèles
+
+| Modèle | Rôle |
+|---|---|
+| `Badge` | Définition : règle, critère JSONB, palier, récompense, `is_secret`, `hint` |
+| `UserBadge` | Badge obtenu (unique par user+badge), `is_seen` pour la révélation |
+| `PointTransaction` | Grand livre idempotent, clé `source_key` (`lesson:<uuid>`, `badge:<code>`) |
+| `UserStreak` | Série de jours consécutifs, idempotente à la journée |
+
+### Objectifs cachés
+
+Le catalogue mêle **objectifs visibles** (avec barre de progression, pour
+baliser le parcours) et **objectifs secrets** (révélés à l'obtention).
+
+Le masquage se fait **côté serveur**, dans `serializers.BadgeSerializer` : un
+badge secret non obtenu sort de l'API sans son `code`, son nom, sa description,
+sa récompense ni ses critères — seule l'énigme `hint` est exposée. Impossible
+de les découvrir en inspectant les requêtes réseau. Un test verrouille ça
+(`test_api_masque_les_badges_secrets_non_obtenus`).
+
+### Ajouter un badge
+
+1. Ajouter une entrée dans `management/commands/seed_badges.py` (liste
+   `VISIBLE` ou `SECRET` — la présence d'un `hint` marque le badge comme secret)
+2. Si la règle n'existe pas : ajouter une valeur à `Badge.RuleType`, un
+   compteur dans `rules.UserStats` / `build_user_stats`, et une entrée dans le
+   registre `rules.RULES` (une lambda `(stats, criteria) -> (courant, cible)`)
+3. `python manage.py seed_badges` puis `python manage.py sync_gamification`
+
+### Commandes
+
+```bash
+# Crée/met à jour le catalogue de badges (idempotent)
+docker-compose exec backend python manage.py seed_badges
+
+# Réconcilie tous les apprenants : report des soldes historiques dans le
+# grand livre + réévaluation des badges. Idempotent, relançable à volonté.
+docker-compose exec backend python manage.py sync_gamification
+
+# Tests de l'invariant anti-double-validation
+docker-compose exec backend pytest apps/gamification/tests/
+```
+
+### Endpoints
+
+```
+GET  /api/gamification/badges/            Catalogue (secrets masqués)
+GET  /api/gamification/badges/mine/       Badges obtenus
+POST /api/gamification/badges/mark_seen/  Acquitte une révélation
+GET  /api/gamification/summary/           Points, niveau, série, prochains objectifs
+POST /api/gamification/summary/sync/      Resynchronise (auto-réparation)
+GET  /api/gamification/points/            Grand livre personnel
+```
+
+`mark_completed` et `submit_quiz` renvoient désormais aussi `points_earned`,
+`total_points` et `new_badges`.
+
+### Temps d'apprentissage
+
+`UserProgress.time_spent` était un champ mort : lu par le dashboard, la page
+progression et le dashboard trainer, mais **jamais écrit** — donc toujours à 0.
+
+L'écriture se fait via `POST /api/progression/progress/track_time/`
+`{lesson_id, seconds}`, avec trois garde-fous :
+
+- **Incrément, jamais valeur absolue** (`F('time_spent') + n`) : deux onglets
+  ouverts sur la même leçon s'additionnent au lieu de s'écraser.
+- **Plafond serveur** (`MAX_TIME_INCREMENT_SECONDS = 120`) : le compteur
+  alimente les badges `TIME_SPENT` et `FAST_LESSONS`, il doit rester crédible.
+  `time_spent` a été retiré de `UserProgressUpdateSerializer` pour la même
+  raison — sinon un PATCH permettait de poser un total arbitraire.
+- **Temps réellement actif** côté client (`features/progression/useTimeTracker.js`) :
+  le compteur n'avance que si l'onglet est visible *et* qu'il y a eu une
+  interaction dans les 90 s. L'accumulation se fait par tics d'une seconde,
+  pas par différence de timestamps, pour qu'une mise en veille ne crédite rien.
+
+Effet de bord voulu : ouvrir une leçon crée sa progression en `IN_PROGRESS`,
+journalise `LESSON_STARTED` et entretient la série de jours — la simple
+lecture d'une leçon de théorie compte désormais comme activité.
+
+### Frontend
+
+- `features/gamification/` : slice, `BadgesPage`, `BadgeCard`,
+  `BadgeRevealModal`, `NextObjectives`
+- La modale de révélation est montée **une seule fois** dans `Layout.jsx` et
+  consomme la file `revealQueue` du store. La file est dédupliquée par id et
+  chaque fermeture appelle `mark_seen` : une célébration ne rejoue jamais.
+- Route `/badges`, lien « Trophées » dans le header.
+
+## Comptes, Rôles et Classes
+
+### Invariants en place
+
+- **Le rôle ne vient jamais du client.** `role` est en `read_only` dans
+  `UserSerializer` : pas d'auto-promotion via `PATCH /api/auth/me/`.
+  `RegisterSerializer` n'expose pas le champ. Verrouillé par un test.
+- **Un email = un compte, quelle que soit la casse.** `User.save()` normalise
+  en minuscules, une contrainte `UniqueConstraint(Lower('email'))` tient même
+  face à un `update()` qui court-circuite le modèle, et
+  `UserManager.get_by_natural_key` fait un `__iexact` pour que la connexion
+  reste possible quelle que soit la saisie.
+- **Le profil et le User s'écrivent séparément.** Ne jamais rétablir un signal
+  qui sauve `instance.profile` depuis `post_save` sur User (cf. le commentaire
+  dans `signals.py`) : il écrase les points en mémoire.
+
+## Profil personnalisable — ✅ Fait
+
+Route front `/profil` (`features/profile/ProfilePage.jsx`), accessible depuis le
+menu utilisateur de l'en-tête. Avant ce chantier, **aucun écran ne permettait
+d'éditer son profil** : `bio`, `timezone` et `github_username` existaient dans
+le modèle depuis l'origine mais `UserSerializer` déclarait
+`profile = ProfileSerializer(read_only=True)`, donc l'API elle-même les
+refusait en écriture.
+
+La page couvre l'identité, l'avatar, le thème, le mot de passe (l'endpoint
+`change-password/` existait et n'était appelé nulle part — changer son mot de
+passe imposait de passer par « mot de passe oublié ») et un récapitulatif de
+progression en lecture seule.
+
+### Avatars : catalogue, pas téléversement
+
+`Profile.avatar` (un `ImageField`) reste dans le modèle mais **n'est pas
+alimenté**. Le choix se fait par `Profile.avatar_key`, une clé
+`<motif>-<palette>` prise dans une liste close (`apps/accounts/avatars.py`,
+6 × 6 = 36 combinaisons), et le rendu se fait en SVG côté client.
+
+Le raisonnement, à ne pas défaire à la légère : sur une plateforme scolaire
+sans outil de modération, un téléversement libre signifie que n'importe quelle
+image peut apparaître à côté d'un nom dans le tableau de bord du formateur, et
+que personne ne dispose du moyen de la retirer. S'y ajoutent la liste blanche
+de formats (un SVG téléversé est un vecteur de XSS), les bombes de
+décompression et un stockage à sauvegarder. Le catalogue supprime tout cela.
+
+Le repli — initiales sur une couleur **dérivée du nom**, donc stable d'une
+session à l'autre — est l'état par défaut de tout compte, pas un pis-aller.
+
+⚠️ Les listes `MOTIFS` / `PALETTES` sont **dupliquées** entre
+`backend/apps/accounts/avatars.py` (autorité) et
+`frontend/src/features/profile/avatars.js` (rendu). En modifier une seule donne
+soit un avatar vide, soit un choix refusé à l'enregistrement. Un test front
+vérifie que chaque clé sait se dessiner.
+
+### L'écriture imbriquée du profil et le piège des points
+
+`PATCH /api/auth/me/` accepte désormais un objet `profile`. C'est exactement le
+terrain du bug documenté dans `signals.py` — un enregistrement du profil entier
+écrase un solde mis à jour entre-temps par `award_points`.
+
+`UserSerializer.update` n'écrit donc **que les champs effectivement reçus**,
+via `update_fields`, et uniquement ceux de `EDITABLE_PROFILE_FIELDS` :
+`bio`, `avatar_key`, `theme`, `timezone`, `github_username`. `total_points`,
+`level`, `cohort` et `anonymized_at` restent hors d'atteinte d'un formulaire de
+profil. Un test reproduit le scénario concurrent.
+
+### Thème rattaché au compte
+
+`Profile.theme` vaut `AUTO`, `LIGHT` ou `DARK`. `AUTO` n'est pas un troisième
+thème : c'est l'absence de choix, qui suit le système **et continue de le
+suivre** s'il change en cours de session. L'ancien `ThemeContext` confondait
+les deux et ne permettait plus d'y revenir une fois un choix fait.
+
+⚠️ `ThemeProvider` est monté **au-dessus du store Redux** (`main.jsx`) : il ne
+peut pas lire le profil. La synchronisation passe par
+`features/profile/useThemePreferenceSync.js`, monté dans `App`. Les deux flux
+sont asymétriques (le compte gagne à la connexion, l'utilisateur gagne quand il
+bascule) et `appliedRef` empêche la boucle serveur → contexte → serveur. Ne pas
+« simplifier » en un effet bidirectionnel.
+
+```
+GET  /api/auth/avatars/   catalogue (motifs, palettes, clés)
+PATCH /api/auth/me/       { first_name, last_name, profile: { … } }
+```
+
+## Classes (cohortes) — ✅ Fait
+
+App `apps/cohorts`. Modèles : `Cohort`, `CohortInvite`, plus `Profile.cohort`
+(clé étrangère : **une seule classe active par apprenant**).
+
+### Le verrou de chapitre existe désormais vraiment
+
+⚠️ Avant ce chantier, `ChapterAccess` n'était consulté par **aucune vue
+apprenant** : l'API cours ne filtrait rien, le front ne l'affichait pas. La
+« progression contrôlée par le formateur » était décorative.
+
+Désormais :
+
+- `LessonViewSet.retrieve` renvoie **403** si le chapitre n'est pas débloqué.
+  C'est le verrou réel.
+- Les chapitres verrouillés restent **listés** avec `is_accessible: false` —
+  masquer la suite du parcours priverait l'apprenant de la vue d'ensemble qui
+  lui donne envie d'avancer. C'est l'ouverture qui est bloquée, pas le sommaire.
+- `apps/progression/services.py` centralise la décision
+  (`accessible_chapter_ids`, `can_access_lesson`).
+
+**Après toute mise en service du verrou sur une base existante, lancer
+`python manage.py backfill_chapter_access`** (option `--dry-run` disponible) :
+sans ce rattrapage, les apprenants se retrouvent enfermés hors des chapitres
+qu'ils suivaient déjà.
+
+### Deux régimes de progression
+
+| Situation | Qui ouvre les chapitres |
+|---|---|
+| Apprenant **en classe** | Le formateur, explicitement |
+| Apprenant **autonome** (sans classe) | Rythme libre : le chapitre 1 est ouvert, le N+1 s'ouvre quand le N est entièrement terminé |
+
+**On ne reverrouille jamais.** Un accès obtenu le reste, qu'on rejoigne une
+classe ensuite ou qu'on la quitte. Même logique de monotonie que les badges :
+elle rend les recalculs sûrs et évite de punir celui qui avait avancé seul.
+
+### Cloisonnement formateur
+
+Un formateur ne voit et ne pilote que **ses** classes. `visible_learners()`
+dans `apps/progression/views.py` est le point unique : il borne
+`learners_summary`, `learner_detail`, `recent_activity`, `unlock_chapter`,
+`lock_chapter`, ainsi que les querysets de progression et d'activité. Avant,
+n'importe quel formateur voyait tous les apprenants de la plateforme et
+pouvait débloquer pour n'importe qui.
+
+Les apprenants autonomes ne sont visibles que d'un admin : ils n'ont, par
+définition, pas de formateur référent.
+
+### Invitations
+
+```
+GET  /api/cohorts/join/<token>/           résolution publique
+POST /api/cohorts/join/<token>/register/  crée le compte et rattache
+POST /api/cohorts/join/<token>/attach/    rattache une session existante
+```
+Front : `/rejoindre/:token`, avec les trois cas (visiteur inconnu, déjà
+connecté, compte existant → `?next=` sur la connexion).
+
+Règles non négociables, chacune couverte par un test :
+
+- **Ni `role` ni `cohort` ne viennent du formulaire** : le rôle est forcé à
+  `LEARNER`, la classe est déduite du jeton côté serveur.
+- **Seul un admin peut émettre une invitation `TRAINER`** — sinon le rôle
+  formateur s'auto-réplique.
+- **Révoqué, expiré, épuisé et inexistant sont indistinguables** côté public
+  (`{valid: false}`), pour ne pas confirmer qu'un jeton a existé. Le détail
+  (`invalid_reason`) n'est visible que du formateur.
+- **Jeton stocké en clair**, à l'inverse de celui du mot de passe oublié : le
+  formateur doit pouvoir réafficher son lien pour le recopier. Acceptable car
+  le pouvoir du jeton est minuscule, et expiration + révocation sont
+  obligatoires. Ne pas « uniformiser » avec le hachage sans retirer
+  l'affichage du lien.
+- Throttle `invite` (30/h) sur les routes publiques (énumération).
+
+Supprimer une invitation la **révoque** sans l'effacer : on garde trace de ce
+qui a été diffusé.
+
+## SECRET_KEY — garde-fou de production
+
+`base.py` définit une valeur de repli publique (`INSECURE_DEV_SECRET_KEY`) pour
+ne pas imposer de configuration en développement. Cette clé signe **les JWT,
+les sessions, les jetons CSRF et les liens de réinitialisation de mot de
+passe** : la connaître permet de forger un jeton pour n'importe quel compte,
+administrateur compris.
+
+`production.py` **refuse donc de démarrer** si `SECRET_KEY` est absente, égale
+à la valeur de développement, ou plus courte que 50 caractères. Échouer au
+démarrage vaut mieux qu'une compromission silencieuse — sans ce garde-fou,
+l'application tournerait normalement tout en étant ouverte à quiconque lit le
+dépôt.
+
+⚠️ **Piège associé.** `SIMPLE_JWT` est un dictionnaire construit dans `base.py`
+qui **copie** la valeur de `SECRET_KEY` au moment de l'import. Redéfinir
+`SECRET_KEY` dans `production.py` ne le met pas à jour : sans la ligne
+`SIMPLE_JWT['SIGNING_KEY'] = SECRET_KEY`, les jetons resteraient signés avec la
+clé de développement, alors même que `settings.SECRET_KEY` affiche la bonne
+valeur. Le test `test_les_jwt_sont_signes_avec_la_cle_courante`
+(`apps/accounts/tests/test_settings_security.py`) verrouille cette égalité.
+
+La même précaution vaut pour tout réglage dérivé de `SECRET_KEY` ajouté plus
+tard : le redéfinir dans un settings d'environnement ne suffit jamais.
+
+Générer une clé :
+```bash
+python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+
+## Administration — ✅ Fait
+
+App `apps/administration` (**vues seulement, aucun modèle**), route front
+`/administration`, réservée au rôle `ADMIN`.
+
+### Parti pris : hybride, pas de remplacement de l'admin Django
+
+Le CRUD de contenu (chapitres, leçons, exercices, quiz, badges) reste dans
+`/admin/`, qui le fait mieux et gratuitement — recherche, filtres, inlines,
+historique. L'espace React ne couvre que ce que l'admin Django ne sait pas
+faire, et un lien y renvoie explicitement depuis l'en-tête de la page.
+
+**Ne pas reconstruire de CRUD de contenu en React.** Ce serait des semaines de
+travail pour une capacité inférieure.
+
+### L'admin Django a été bridé — et pourquoi ce n'était pas cosmétique
+
+Tant que les deux espaces pouvaient écrire les mêmes tables, l'admin Django
+était une **porte dérobée à côté de la porte blindée** : changer un rôle depuis
+`/admin/` n'écrivait aucune entrée d'`AuditLog`, échappait à la règle du
+« dernier administrateur actif » et ne révoquait aucune session. Supprimer un
+compte y détruisait la progression en cascade au lieu de l'anonymiser. Et
+`Profile.total_points` y était éditable, alors que le solde doit toujours
+égaler la somme des `PointTransaction`.
+
+Le mixin `apps/administration/admin_readonly.ReadOnlyAdmin` applique la règle.
+Son `get_readonly_fields` énumère les champs **du modèle**, pas une liste
+figée : un champ ajouté plus tard ne redevient pas éditable en silence.
+
+| Modèle | Régime | Raison |
+|---|---|---|
+| Chapter, Lesson, Exercise, Quiz, Project, Badge | **CRUD complet** | C'est du contenu — la raison d'être de cet espace |
+| User | Création + mot de passe uniquement | `role`, `is_active`, `is_staff`, `is_superuser` en lecture seule ; suppression interdite |
+| Cohort | Nom, description, archivage | `trainer` en lecture seule (voie auditée : `set_trainer`) ; suppression interdite |
+| Profile, CohortInvite | Lecture seule | Pilotés par React / l'espace formateur |
+| UserProgress, ChapterAccess, ActivityLog | Lecture seule | Données dérivées du parcours |
+| PointTransaction, UserBadge, UserStreak | Lecture seule | Le grand livre se lit, il ne se corrige pas |
+| AuditLog | **Non enregistré** | Rien ne doit pouvoir le réécrire |
+
+On a préféré la **lecture seule au retrait** : répondre à « pourquoi cet
+apprenant a-t-il 340 points ? » demande de pouvoir fouiller la table. C'est le
+pouvoir d'écrire qu'on retire, pas celui d'inspecter.
+
+Ce qui reste sur `User` est exactement ce que React ne sait pas faire : créer
+un compte à la main et définir un mot de passe. `role` reste saisissable **à la
+création** (il faut bien amorcer un compte ; aucun état antérieur n'est écrasé).
+
+Neuf tests verrouillent ce partage dans `apps/administration/tests/test_audit.py`.
+⚠️ Ils interrogent `django.contrib.admin.site._registry` : **enregistrer un
+nouveau modèle sensible sans le brider les fera passer quand même**. Ajouter
+une entrée au tableau ci-dessus et un cas au test paramétré.
+
+### Bug corrigé au passage : `Exercise.total_points`
+
+La propriété itérait `self.tests` directement. Or le champ JSONB est stocké
+sous la forme `{'tests': [...]}` — celle que produit l'admin et que documente
+ce fichier — donc elle parcourait les **clés** du dictionnaire et levait
+`AttributeError`. La liste des exercices de l'admin Django était inaccessible.
+
+La normalisation des deux formes vit désormais sur le modèle
+(`Exercise.test_cases`) ; `apps/validation/services.py` la réutilise au lieu de
+refaire le test dans son coin. **Tout nouveau lecteur du champ doit passer par
+`test_cases`.**
+
+### `role` et `is_staff` sont désormais synchronisés
+
+⚠️ L'application avait **deux notions d'administrateur** que rien ne reliait :
+`role == ADMIN` (privilèges API) et `is_staff` (accès à `/admin/`). Promouvoir
+quelqu'un en ADMIN produisait un administrateur incapable d'ouvrir l'admin
+Django ; rétrograder un admin lui laissait cet accès.
+
+`User.save()` impose maintenant `is_staff = is_superuser or role == ADMIN`.
+Conséquences à connaître :
+
+- Cocher `is_staff` à la main sur un non-ADMIN **ne tient pas** — changer le rôle.
+- Les superutilisateurs gardent l'accès quoi qu'il arrive (filet anti-enfermement).
+- `apps/progression/services.py` : `is_staff_user` a été renommée
+  `has_staff_role` — elle teste le **rôle**, pas le champ Django, et son
+  ancien nom induisait en erreur.
+
+### Cycle de vie des comptes
+
+```
+POST /api/administration/users/<id>/set_role/
+POST /api/administration/users/<id>/set_active/
+POST /api/administration/users/<id>/anonymize/
+POST /api/administration/users/<id>/assign_cohort/
+```
+
+Garde-fous dans `services.py`, chacun couvert par un test :
+
+- **Impossible de supprimer le dernier administrateur actif** (rétrogradation,
+  désactivation, anonymisation) — sinon la plateforme devient impilotable.
+- **Impossible d'agir sur son propre compte** (rôle, désactivation,
+  anonymisation).
+- Désactiver **révoque les refresh tokens** : l'effet doit être immédiat.
+
+Les quatre actions passent par `services.py` — `assign_cohort` y a été remontée
+depuis la vue pour que **toutes** les actions de compte soient auditées au même
+endroit.
+
+### Journal d'audit — ce qui rend le pouvoir redevable
+
+`AuditLog` (`apps/administration/models.py`), consultable sur
+`GET /api/administration/audit/` et sous l'onglet « Journal ».
+
+Avant ce chantier, `set_role`, `set_active`, `anonymize` et `assign_cohort` — dont
+une strictement irréversible — ne laissaient **aucune trace**. L'admin Django
+tient bien un `LogEntry`, mais tout ce qui passe par `/api/administration/` le
+court-circuitait. Impossible de répondre à « qui a anonymisé ce compte ? », ni
+de prouver qu'une demande d'effacement RGPD avait été honorée.
+
+Trois propriétés à ne pas casser, chacune couverte par un test
+(`apps/administration/tests/test_audit.py`) :
+
+- **Les libellés sont dénormalisés** (`actor_label`, `target_label`) en plus des
+  clés étrangères. Ce n'est pas une redondance : la cible d'une anonymisation
+  perd son email par définition, et sans identité figée *au moment de l'acte* le
+  journal dirait « un compte anonyme a été anonymisé ». Pour la même raison
+  `actor` est en `SET_NULL` — un journal qui s'efface avec son auteur ne prouve
+  rien.
+- **Lecture seule, sans exception.** `AuditLogViewSet` est un
+  `ReadOnlyModelViewSet` et le modèle n'est **pas** enregistré dans l'admin
+  Django. Un journal réécrivable par ceux qu'il surveille n'est pas un journal.
+- **Seul ce qui a eu lieu est consigné.** L'écriture est dans la transaction de
+  l'action ; un refus métier (dernier admin, auto-action) ne laisse rien.
+
+Pour auditer une nouvelle action : `from apps.administration.audit import record`.
+Ce module est volontairement séparé de `services.py` pour que `progression` et
+`cohorts` puissent journaliser sans importer le cycle de vie des comptes.
+
+⚠️ Dans `anonymize()`, l'identité est capturée **avant** l'écrasement de
+l'email (`identity_before`). Journalisée après coup, elle enregistrerait
+l'adresse anonymisée.
+
+### Affectation des formateurs
+
+`CohortViewSet.perform_create` forçait `trainer=request.user`. Correct pour un
+formateur — il ne doit pas créer de classe au nom d'un collègue — mais faux
+pour un admin : il devenait formateur de chaque classe qu'il créait, sans aucun
+moyen d'en désigner un autre. Le compteur « classes orphelines » du pilotage
+signalait donc un problème sans offrir de moyen de le corriger.
+
+- Un **admin** peut passer `trainer_id` à la création, et réaffecter ensuite via
+  `POST /api/cohorts/cohorts/<id>/set_trainer/` (**`IsAdmin`**, pas
+  `IsTrainerOrAdmin` : laisser un formateur se réaffecter une classe casserait
+  le cloisonnement de `get_queryset`).
+- Un **formateur** voit son `trainer_id` ignoré, pas honoré.
+- On ne peut confier une classe qu'à un compte de rôle `TRAINER` — sinon un
+  apprenant hériterait, via `visible_learners`, de la vue sur ses camarades.
+
+### Le pilotage voit désormais le temps et les personnes
+
+`AdminOverviewViewSet` expose en plus :
+
+- `activity.trend` — 30 jours d'activité quotidienne. Les jours creux sont
+  réintroduits côté Python : la base ne renvoie que les jours présents, et une
+  courbe à trous se lit comme une courbe qui remonte.
+- `activity.stalled_learners` / `never_started_learners` — les deux seuls
+  chiffres qui désignent des **personnes** plutôt que des volumes. Un total
+  d'activités en hausse peut parfaitement masquer une moitié de promo à l'arrêt.
+
+### N+1 corrigés — ils frappaient l'admin en premier
+
+Trois boucles faisaient des requêtes par élément. Ce n'était pas un détail de
+style : ce sont les vues de l'administrateur, donc les seules qui portent sur
+*toutes* les classes ou *tous* les apprenants à la fois.
+
+| Emplacement | Avant | Après |
+|---|---|---|
+| `AdminOverviewViewSet` (par classe) | 2 requêtes | 2 agrégations globales (`_per_cohort`) |
+| `TrainerSerializer` via `Cohort.member_count` | 1 requête | `annotate(members_total=…)`, `_member_count()` en repli |
+| `TrainerDashboardViewSet.learners_summary` | **4 par apprenant** | 4 agrégations groupées par `user_id` |
+
+Les tests comparent le **nombre de requêtes à deux volumes différents** et
+exigent l'égalité, plutôt que de fixer un plafond chiffré : un plafond se
+contente d'être « assez grand » et laisserait repasser un N+1 modéré.
+
+⚠️ `Cohort.member_count` reste une propriété qui interroge la base à chaque
+appel. Ne pas l'utiliser dans une boucle sans annoter le queryset en amont.
+
+### RGPD : anonymisation, pas suppression en cascade
+
+Le droit à l'effacement porte sur les données personnelles, pas sur les
+agrégats. `anonymize()` vide l'identité (email remplacé par
+`anonyme-xxx@anonymized.invalid`, nom, mot de passe, bio, avatar, classe) et
+**conserve la progression, les points et les badges**, désormais rattachés à un
+compte qui ne désigne plus personne.
+
+Effacer en cascade fausserait rétroactivement les statistiques des classes : un
+formateur verrait le taux de complétion de sa promo changer sans explication.
+
+L'opération est **irréversible** et marquée par `Profile.anonymized_at` — sans
+ce marqueur, impossible de distinguer un compte anonymisé d'un compte étrange.
+La désactivation, elle, reste réversible.
+
+### Décisions d'architecture actées
+
+Prises en session du 2026-07-21 :
+
+1. **Classes explicites** (`Cohort`) plutôt que rattachement plat ou
+   mono-formateur. Les requêtes formateur doivent se filtrer dessus —
+   aujourd'hui `learners_summary` renvoie *tous* les apprenants de la
+   plateforme et n'importe quel formateur peut débloquer pour n'importe qui.
+2. **Une seule classe active par apprenant** (clé étrangère, pas de table de
+   liaison) : garde le déblocage de chapitre non ambigu.
+3. **Inscription par lien d'invitation généré**, pas par email envoyé par
+   l'app. Le formateur produit une URL et la diffuse par le canal qu'il veut
+   (Teams, Discord…). Aucune dépendance SMTP en production.
+   - Jeton stocké **en clair** (le formateur doit pouvoir réafficher son lien),
+     avec expiration et révocation obligatoires.
+   - L'endpoint public de résolution du jeton ne renvoie que le nom de la
+     classe et du formateur — jamais la liste des élèves — et doit être limité
+     en débit (énumération).
+   - Ni `role` ni `cohort` ne viennent du formulaire : rôle forcé à `LEARNER`,
+     classe déduite du jeton côté serveur.
+   - Le même mécanisme sert à créer des formateurs, avec une règle stricte :
+     seul un admin peut émettre une invitation `TRAINER`.
+4. **L'inscription autonome reste possible.** Un apprenant sans classe
+   progresse en **rythme libre auto-débloqué** : terminer le chapitre N ouvre
+   le N+1. En classe, c'est le formateur qui donne le tempo. Rejoindre une
+   classe plus tard ne retire jamais un accès déjà obtenu.
+
+### Mot de passe oublié — ✅ Fait
+
+```
+POST /api/auth/password-reset/          demande un lien  (public)
+GET  /api/auth/password-reset/validate/ vérifie un lien  (public)
+POST /api/auth/password-reset/confirm/  définit le mdp   (public)
+```
+Front : `/forgot-password` et `/reset-password/:uid/:token`.
+
+**Jeton sans état** : on utilise `default_token_generator` de Django, signé
+sur le hash du mot de passe et `last_login`. Rien n'est stocké en base, et on
+obtient gratuitement l'usage unique (le hash change) et l'invalidation si
+l'utilisateur se reconnecte entre-temps. C'est le choix inverse de celui prévu
+pour les invitations de classe (stockées en clair, car le formateur doit
+pouvoir réafficher son lien) : ici le lien part une fois par email et n'est
+jamais réaffiché, donc il n'y a rien à voler dans la base.
+
+Trois propriétés à ne pas casser, chacune couverte par un test :
+
+- **Aucun oracle d'énumération** : `POST /password-reset/` répond exactement la
+  même chose que le compte existe, soit inexistant, soit désactivé. Ne jamais
+  « améliorer » l'UX en signalant qu'un email est inconnu.
+- **Révocation des sessions** : `revoke_refresh_tokens` blackliste les refresh
+  tokens après réinitialisation. Sans ça, un compte compromis reste accessible
+  7 jours malgré le changement de mot de passe.
+- **Throttle `password_reset`** (5/h) sur les trois vues publiques : elles sont
+  anonymes et déclenchent des envois de mail. Note : `development.py` désactive
+  tout throttling, la limite ne s'applique donc qu'en production.
+
+Configuration : `PASSWORD_RESET_TIMEOUT` (défaut 3600 s), `FRONTEND_URL`,
+`DEFAULT_FROM_EMAIL`. En dev, l'email s'affiche dans `docker-compose logs
+backend` ; le SMTP de production était déjà câblé dans `production.py`.
+
+L'envoi est **synchrone** : une réinitialisation est rare, et passer par Celery
+rendrait un échec d'envoi invisible. Le throttle borne le risque de blocage
+worker. À revoir si le volume augmente.
+
+### Gardes de rôle côté front — ✅ Fait
+
+`PrivateRoute` accepte une prop `roles` :
+
+```jsx
+<PrivateRoute roles={STAFF_ROLES}>   // TRAINER + ADMIN
+```
+
+Rôles centralisés dans `src/constants/roles.js` (`ROLES`, `STAFF_ROLES`,
+`ROLE_LABELS`) — miroir de `User.Role` côté Django. Le header filtre ses liens
+sur la même liste : un lien vers une page interdite n'est jamais affiché.
+
+**Ces gardes sont un confort d'affichage, pas une sécurité.** Elles évitent
+qu'un apprenant tombe sur une page vide criblée de 403. L'autorité reste
+`IsTrainerOrAdmin` côté API. Ne jamais déplacer une décision d'autorisation
+ici.
+
+`authSlice` expose un drapeau **`initialized`**, passé à `true` dès que la
+question « qui est connecté ? » a reçu une réponse, succès *ou* échec. Sans
+lui, deux bugs : trancher sur le rôle avant chargement du profil renverrait un
+formateur vers `/dashboard` à chaque rafraîchissement, et une panne réseau
+laisserait un écran de chargement infini. Toute nouvelle garde doit attendre
+`initialized` avant de décider.
+
+### Décision actée : stockage des jetons
+
+Rester en `localStorage`. Migrer vers des cookies `httpOnly` impliquerait de
+refaire l'intercepteur axios, CORS et la protection CSRF pour un gain réel
+seulement en cas de XSS par ailleurs. Réduire `ACCESS_TOKEN_LIFETIME` couvre
+l'essentiel du risque pour une ligne.
+
+## Reste à faire — audit du 2026-07-21
+
+Inventaire vérifié dans le code, pas recopié du roadmap. Classé par risque,
+pas par visibilité.
+
+### Risque réel
+
+1. **`courses` et `progression` : zéro fichier de test.** C'est là que vivent le
+   verrou de chapitre, la notation des quiz et le suivi du temps. Le bug
+   `Exercise.total_points` (liste des exercices de l'admin inaccessible) y vivait
+   depuis l'origine, invisible.
+2. **Pas de throttle dédié sur `/api/auth/login/`.** Le global anonyme à 100/h
+   laisse passer une attaque par dictionnaire. Un `ScopedRateThrottle` suffit —
+   les scopes `password_reset` et `invite` montrent déjà le motif.
+
+### Dette structurelle
+
+4. **Contrat incohérent des services API** — `authApi` et `coursesApi` rendent
+   la réponse axios brute, les autres les données déballées (cf. la section
+   dédiée). A déjà coûté une page blanche. Uniformiser demande un test de
+   contrat par module d'abord, puis un changement d'un seul bloc.
+5. **Aucun découpage de bundle** — `App.jsx` importe tout statiquement, ~535 kB
+   d'un tenant. `React.lazy` par route est mécanique.
+6. **`Profile.avatar` (ImageField) est mort** — conservé pour d'éventuels
+   téléversements historiques, jamais alimenté. À supprimer si l'on confirme
+   qu'aucune base n'en contient.
+
+### Fonctionnalités jamais commencées
+
+7. **WebSocket / temps réel** — voir la section dédiée : `asgi.py` a un routeur
+   vide et `channels/consumers/` est un dossier vide. Rien n'en dépend
+   aujourd'hui.
+8. **Soumission et correction de projets** (Phase 4) — le modèle `Project`
+   existe dans `courses`, mais **aucun modèle de soumission** nulle part, donc
+   rien à rendre ni à corriger.
+9. **Forum** (Phase 4) — l'app n'existe pas, ni dans `INSTALLED_APPS` ni sur le
+   disque.
+10. **Leaderboard** — reporté volontairement (choix produit : progression
+    personnelle d'abord). Le grand livre de points le rend trivial à ajouter.
+11. **Déploiement** (Phase 5) — le garde-fou `SECRET_KEY` de production est en
+    place et testé, mais rien n'est déployé et la CI ne construit aucune image.
+
+### Ce qui vient d'être fait
+
+- [x] Infrastructure de test frontend (Vitest) — 37 tests
+- [x] Intégration continue (`.github/workflows/ci.yml`)
+- [x] `npm run lint` ramené à zéro erreur **et zéro avertissement**
+- [x] Couverture du bac à sable — 20 tests simulés (en CI) + 7 tests réels
+- [x] Retrait de la liste noire de motifs (voir « Security Considerations »)
+
+## Intégration continue
+
+`.github/workflows/ci.yml`, sur `push` vers `main` et sur chaque *pull
+request*. Deux jobs indépendants qui échouent séparément.
+
+**Backend** — PostgreSQL 15 et Redis 7 en services, puis :
+
+| Étape | Ce qu'elle attrape |
+|---|---|
+| `makemigrations --check --dry-run` | Un modèle modifié sans migration |
+| `migrate` sur base vierge | Une migration qui ne s'applique pas dans l'ordre |
+| `manage.py check` | Erreurs de configuration |
+| `pytest --create-db` | Les 155 tests |
+
+⚠️ Les deux premières étapes ne sont pas décoratives. `pytest.ini` fixe
+**`--nomigrations`** : le schéma de test est bâti directement depuis les
+modèles, donc la suite complète peut passer au vert alors qu'il manque une
+migration — et casser au déploiement. La CI est le seul endroit où ce décalage
+est visible.
+
+`ENVIRONMENT: development` est explicite dans le workflow :
+`config/settings/__init__.py` bascule sur `production.py` dès que la variable
+vaut `production`, et ce module **refuse de démarrer** sans vraie `SECRET_KEY`.
+
+**Frontend** — Node 22, `npm ci`, puis `lint`, `test`, `build`.
+
+Le `build` n'est pas redondant avec les tests : il attrape les imports cassés
+et surtout les **chemins dont la casse ne correspond pas**. Le runner Linux est
+sensible à la casse, contrairement au poste Windows de développement — c'est
+exactement le piège qui a fait renommer `ThemeContext.jsx` en
+`ThemeProvider.jsx`, pour ne pas cohabiter avec `themeContext.js`.
+
+⚠️ `npm run lint` tourne avec `--max-warnings 0` et le dépôt est à zéro.
+**Un simple avertissement casse la CI** — c'est voulu : c'est ce qui empêche de
+revenir aux 15 erreurs tolérées pendant des mois. Si une règle gêne
+légitimement, la désactiver avec un commentaire qui explique pourquoi (voir
+`ExerciseInterface.jsx`, où inclure la dépendance suggérée effacerait le
+travail de l'apprenant), jamais relever le seuil.
+
 ## Development Commands
 
 ### Backend (Django)
@@ -378,13 +1064,19 @@ npm run dev                         # http://localhost:5173
 npm run build
 npm run preview                     # Preview production build
 
-# Tests
-npm run test                        # Unit tests (Vitest)
-npm run test:coverage               # With coverage
-npm run test:e2e                    # End-to-end tests (Playwright)
+# Linting — zéro erreur ET zéro avertissement (porte de CI)
+npm run lint        # ⚠️ `--max-warnings 0` : un avertissement casse la CI.
+                    # Ne jamais relever le seuil ; désactiver la règle au cas
+                    # par cas, avec un commentaire qui justifie.
 
-# Linting
-npm run lint
+# Tests (Vitest + Testing Library, environnement jsdom)
+npm test            # une passe
+npm run test:watch  # mode veille
+npx vitest run src/features/auth   # un dossier
+npx vitest run -t "file de révélation"  # un test par son nom
+
+# ⚠️ Toujours pas de tests bout-en-bout (Playwright) : les parcours complets
+# se vérifient encore à la main dans le navigateur.
 ```
 
 ### Infrastructure (Docker)
@@ -441,10 +1133,13 @@ React app organized by features in `frontend/src/features/`:
 **Key patterns:**
 - Redux Toolkit for state management with slices per feature
 - Axios interceptors for JWT token refresh on 401
-- WebSocket service (`wsService.js`) for real-time updates with auto-reconnect
-- Custom hooks: `useAutosave` (3-second debounce), `useDebounce`, `useWebSocket`
-- Code splitting with React.lazy for performance
-- Tailwind CSS for styling
+- Hooks maison : `useTimeTracker` (temps réellement actif),
+  `useThemePreferenceSync` (thème rattaché au compte)
+- Tailwind CSS **et** SCSS par feature — les deux coexistent
+
+⚠️ Trois éléments listés ici auparavant n'existent pas : `wsService.js`,
+`useAutosave` / `useWebSocket`, et le découpage par `React.lazy`. `App.jsx`
+importe tout statiquement, d'où un bundle de ~535 kB en un seul morceau.
 
 ### Database Schema
 
@@ -469,35 +1164,92 @@ PostgreSQL with UUID primary keys throughout:
 - Progress queries: `idx_progress_user_lesson`, `idx_progress_status`
 - Activity logs: `idx_activity_created` (DESC for recent activity)
 
-### WebSocket Architecture
+### WebSocket — ⚠️ RIEN N'EXISTE
 
-Real-time communication via Django Channels:
+**Cette section décrivait une architecture temps réel complète qui n'a jamais
+été écrite.** Vérifié le 2026-07-21 :
 
-**Endpoints:**
-- `ws://api/ws/progress/{exercise_id}/` - Auto-save code every 3 seconds
-- `ws://api/ws/activity/chapter/{chapter_id}/` - Trainer sees student activity
-- `ws://api/ws/notifications/` - Badge awards, chapter unlocks
+- `config/asgi.py` : l'`URLRouter` est **vide**, avec un commentaire
+  « WebSocket URL patterns will be added here ».
+- `backend/channels/consumers/` : **dossier vide**, aucun consumer.
+- `frontend/src/services/websocket/wsService.js` : **n'existe pas**.
+- Le service Docker `daphne` démarre, écoute sur 8001 et ne sert rien.
 
-**Message types (server → client):**
-- `progress_saved` - Confirmation of saved code
-- `user_activity` - Student started/completed lesson
-- `chapter_unlocked` - Trainer unlocked new chapter
-- `badge_earned` - New badge awarded
-- `validation_result` - Code validation completed
+Aucune fonctionnalité de l'application ne dépend du temps réel : l'auto-save de
+code, l'activité formateur et les notifications de badges passent tous par des
+appels HTTP classiques. Il n'y a donc rien de cassé — seulement une brique
+prévue et jamais posée.
 
-**Implementation notes:**
-- Redis channel layer for pub/sub between server instances
-- Auto-save: Client debounces 3s → WebSocket → Redis cache → Async DB write (batched every 10s)
-- JWT authentication in WebSocket handshake via `scope['user']`
+Cible souhaitée, si le chantier est repris un jour :
+
+| Endpoint | Rôle |
+|---|---|
+| `ws/progress/{exercise_id}/` | Sauvegarde du code en cours |
+| `ws/activity/chapter/{chapter_id}/` | Activité des élèves, vue formateur |
+| `ws/notifications/` | Badges obtenus, chapitres débloqués |
+
+L'authentification devra passer par le JWT dans la poignée de main
+(`scope['user']`), et le *channel layer* Redis est déjà configuré.
+
+⚠️ **Ne pas décrire ici ce qui n'est pas construit.** Cette section a induit en
+erreur pendant des mois, comme l'a fait la mention d'une infrastructure de test
+frontend inexistante. Documenter une intention est utile ; la documenter au
+présent de l'indicatif ne l'est pas.
 
 ### Security Considerations
 
-**Code execution sandbox:**
-- User code runs in isolated Docker containers
-- Network disabled (`network_mode='none'`)
-- Resource limits: 128MB RAM, 50% CPU quota, 5s timeout
-- Dangerous patterns blocked: `eval`, `exec`, `__import__`, `os.system`, `subprocess`
-- Validation: Serializer checks before sandbox execution
+**Bac à sable d'exécution de code** (`apps/validation/services.py`)
+
+La frontière de sécurité, c'est **le conteneur** — et rien d'autre :
+
+- `network_disabled=True` : aucun accès réseau depuis le code d'apprenant
+- `mem_limit='128m'`, `cpu_quota=50000` (50 % d'un cœur)
+- `container.wait(timeout=5)`, puis `kill()` + `remove()` quoi qu'il arrive
+- Conteneur jetable, recréé à chaque soumission
+
+Ces quatre réglages sont verrouillés par des tests
+(`apps/validation/tests/test_sandbox.py`) qui vérifient **les arguments passés
+à Docker**. C'est délibéré : lancer un vrai conteneur ne dirait pas si
+`network_disabled` a disparu d'un appel.
+
+S'y ajoute un garde-fou moins évident, devenu le plus important :
+
+- **Aucun montage** (`volumes` / `mounts`) dans le conteneur d'exécution. Le
+  worker Celery, lui, a `/var/run/docker.sock` monté — c'est ainsi qu'il pilote
+  le bac à sable. Monter quoi que ce soit de l'hôte donnerait au code
+  d'apprenant un chemin vers cette socket, donc le contrôle du démon, donc
+  l'hôte entier. Un test vérifie qu'aucun montage n'est passé.
+
+### Il n'y a plus de filtrage du code en amont — c'est délibéré
+
+Une liste noire `DANGEROUS_PATTERNS` (`eval`, `exec`, `open(`, `require(`…) a
+existé. **Retirée le 2026-07-21**, après mesure de ses deux effets :
+
+- Elle **rejetait du code d'apprenant légitime** : `exec` déclenchait sur
+  `executeTask`, `eval` sur `evaluation` et jusque dans le mot français
+  « evaluer » d'un commentaire, `open(` sur `document.open()`. L'élève voyait
+  sa soumission refusée par un message l'accusant d'une faute inexistante.
+- Elle **n'arrêtait aucun contournement** : `new Function("…")()` et
+  `this["ev"+"al"]("…")` passaient sans encombre.
+
+Une recherche de sous-chaîne ne gêne que ceux qui ne cherchent pas à la
+contourner. Sur une plateforme d'apprentissage, c'est exactement la population
+à ne pas gêner.
+
+Ce que du code arbitraire peut faire aujourd'hui : lire et écrire dans le
+système de fichiers **du conteneur** — une image publique, jetée aussitôt — et
+consommer ses propres ressources plafonnées. Vérifié en conditions réelles :
+une tentative de requête HTTP sortante n'aboutit pas et l'exécution est coupée
+au délai, sans laisser de conteneur derrière elle.
+
+⚠️ **Corollaire : toute atténuation de l'isolement du conteneur est désormais
+une régression de sécurité directe.** Il n'y a plus de filet en amont pour
+rattraper l'erreur. Ne pas ajouter de `volumes=`, ne pas retirer
+`network_disabled`, ne pas allonger le délai sans y penser à deux fois.
+
+**Piste de durcissement non faite** : le conteneur s'exécute en `root` (aucun
+`user=` n'est passé). Ajouter `user='nobody'` serait peu coûteux, mais c'est un
+changement de comportement à valider sur les quatre langages.
 
 **Authentication:**
 - JWT tokens: 1-hour access token, 7-day refresh token with rotation
@@ -549,39 +1301,10 @@ When adding a new frontend feature (e.g., `notifications`):
 
 ### Working with WebSocket
 
-To add real-time functionality:
-
-**Backend (Django Channels consumer):**
-```python
-# backend/channels/consumers/your_consumer.py
-from channels.generic.websocket import AsyncWebsocketConsumer
-
-class YourConsumer(AsyncWebsocketConsumer):
-    async def connect(self):
-        # Join channel group
-        await self.channel_layer.group_add("group_name", self.channel_name)
-        await self.accept()
-
-    async def receive(self, text_data):
-        # Handle incoming messages
-        # Broadcast: await self.channel_layer.group_send("group_name", {...})
-```
-
-**Frontend (React hook):**
-```javascript
-// Use existing wsService or create custom hook
-import wsService from '@/services/websocket/wsService';
-
-useEffect(() => {
-  wsService.connect(token);
-
-  wsService.socket.on('your_event', (data) => {
-    dispatch(updateState(data));
-  });
-
-  return () => wsService.disconnect();
-}, []);
-```
+Sans objet aujourd'hui : aucun consumer n'existe (cf. « WebSocket — RIEN
+N'EXISTE » plus haut). Ce guide décrivait comment brancher un consumer sur un
+`wsService.js` qui n'a jamais été écrit. Il sera à rédiger *avec* le chantier,
+pas avant.
 
 ### Code Validation System
 
@@ -620,6 +1343,23 @@ When adding new exercise types:
 - Pagination: Default 20 items per page
 - Query params: `?search=`, `?ordering=`, `?chapter=`, `?status=`
 
+### ⚠️ Contrat des services API — incohérent, à connaître
+
+Les modules de `services/api/` ne renvoient **pas tous la même chose** :
+
+| Module | Renvoie |
+|---|---|
+| `authApi`, `coursesApi` | la **réponse axios brute** → faire `.data` |
+| `progressionApi`, `gamificationApi`, `cohortsApi` | les **données déjà déballées** → ne pas refaire `.data` |
+
+Cette incohérence a déjà coûté une page blanche : `trainerSlice` faisait un
+`.data` sur un tableau déjà déballé, obtenait `undefined`, et le rendu plantait
+sur `.length`. Le bug est resté invisible des mois faute de lien vers
+`/trainer` dans le header.
+
+Vérifier le module avant d'écrire un thunk. Uniformiser serait souhaitable,
+mais c'est un changement transverse à faire d'un bloc, pas à moitié.
+
 ### Frontend State Management
 - Redux slices per feature with createAsyncThunk for API calls
 - Loading states: `{ loading: false, error: null, data: null }`
@@ -635,11 +1375,72 @@ When adding new exercise types:
 - **Frontend:** Debounce user input (search, auto-save) with custom hooks
 
 ### Testing Strategy
-- **Backend:** pytest-django for models, views, services
-- **Backend:** factory_boy for test fixtures
-- **Backend:** Target 80%+ code coverage
-- **Frontend:** Vitest for component/hook tests
-- **Frontend:** Playwright for E2E critical flows (register → login → complete exercise)
+
+**Backend — en place.** pytest-django, 182 tests. Couverts : `accounts`,
+`administration`, `cohorts`, `gamification`, `validation`.
+**Non couverts : `courses` et `progression`.**
+
+⚠️ **Deux modes d'exécution.** `pytest.ini` exclut par défaut les tests marqués
+`docker` (`-m "not docker"`) : ils lancent de vrais conteneurs et exigent
+`/var/run/docker.sock`, monté **uniquement sur le service `celery`**.
+
+```bash
+docker-compose exec backend pytest              # tout sauf les tests Docker
+docker-compose exec celery pytest -m docker     # les tests de bout en bout
+```
+
+Ce n'est pas un contournement : lancer le bac à sable depuis `backend` échoue
+sur `DockerException`, car ce conteneur n'a pas accès au démon. Les tests
+marqués sont *ignorés* ailleurs, jamais en échec — un test rouge faute
+d'environnement finit désactivé, et emporte les autres avec lui.
+
+⚠️ `pytest.ini` contient `--reuse-db`. **Après toute migration, lancer au moins
+une fois `pytest --create-db`**, sinon les tests tournent contre un schéma
+périmé et peuvent passer à tort (c'est arrivé sur la contrainte d'unicité des
+emails).
+
+**Frontend — en place depuis le 2026-07-21.** Vitest + Testing Library, en
+environnement jsdom. Configuration dans le bloc `test` de `vite.config.js`,
+amorce dans `src/test/setup.js` (matchers `jest-dom`, `cleanup` et purge du
+`localStorage` après chaque test — sans cette purge, un jeton posé par un test
+fait passer le suivant à tort).
+
+Les fichiers de test vivent **à côté du code qu'ils couvrent**
+(`PrivateRoute.test.jsx` face à `PrivateRoute.jsx`), pas dans un dossier
+`__tests__` séparé : un test qu'on voit en éditant le fichier est un test qu'on
+met à jour.
+
+Ce qui est couvert aujourd'hui — délibérément les **invariants déjà décrits
+dans ce document**, pas la couverture de ligne :
+
+| Fichier | Invariant verrouillé |
+|---|---|
+| `features/auth/PrivateRoute.test.jsx` | La garde attend `initialized` avant de trancher sur le rôle (sinon un formateur est éjecté à chaque rafraîchissement) |
+| `features/gamification/gamificationSlice.test.js` | Une célébration ne rejoue jamais, même si `unseen_badges` et `newly_earned` mentionnent le même badge |
+| `features/progression/useTimeTracker.test.jsx` | Onglet caché ou inactif depuis 90 s ⇒ aucun temps crédité (le compteur alimente des badges) |
+| `features/administration/AdminSpace.test.jsx` | L'anonymisation exige une confirmation ; le journal affiche l'identité **figée**, pas l'identité courante |
+| `features/profile/avatars.test.js` | Chaque clé du catalogue sait se dessiner ; une clé inconnue retombe sur les initiales |
+| `features/profile/ProfilePage.test.jsx` | Le formulaire n'envoie ni `role` ni les points ; les erreurs DRF imbriquées restent lisibles |
+
+Écrire les tests **en français**, comme le reste des commentaires du dépôt.
+
+Conventions utiles :
+
+- Pour un hook à minuterie, utiliser `vi.useFakeTimers()` et avancer par
+  `vi.advanceTimersByTime` dans un `act()`. `document.visibilityState` n'est pas
+  assignable en jsdom : passer par `Object.defineProperty` (voir le helper
+  `setVisibility`).
+- Pour une garde de route, monter un store jetable via `configureStore` avec un
+  réducteur constant plutôt que le vrai store : le test décrit un état, il n'a
+  pas à rejouer les thunks pour y arriver.
+
+**Cible non atteinte :** Playwright pour les parcours critiques (inscription
+par invitation, déblocage de chapitre, soumission d'exercice).
+
+⚠️ **Piège Windows/OneDrive.** Juste après un `npm install`, `npm test` peut
+échouer sur `Error: UNKNOWN: unknown error, read` (errno -4094) : OneDrive
+n'a pas encore hydraté les fichiers fraîchement écrits dans `node_modules`.
+Ce n'est pas une erreur de configuration — relancer la commande suffit.
 
 ## Project Phases (from Roadmap)
 

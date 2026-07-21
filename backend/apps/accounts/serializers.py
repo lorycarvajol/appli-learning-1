@@ -3,7 +3,18 @@ Serializers for User and Profile models.
 """
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
+from django.db import transaction
+
+from .avatars import is_valid_avatar_key
 from .models import User, Profile
+
+#: Seuls champs du profil qu'un apprenant peut écrire lui-même.
+#:
+#: Cette liste est le garde-fou central de l'écriture imbriquée : `total_points`
+#: et `level` sont des soldes dérivés du grand livre, `cohort` relève du
+#: formateur, `anonymized_at` du RGPD. Aucun ne doit pouvoir bouger depuis un
+#: formulaire de profil.
+EDITABLE_PROFILE_FIELDS = ('bio', 'avatar_key', 'theme', 'timezone', 'github_username')
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -12,15 +23,44 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = [
-            'bio', 'avatar', 'total_points', 'level',
+            'bio', 'avatar', 'avatar_key', 'theme', 'total_points', 'level',
             'timezone', 'github_username', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['total_points', 'level', 'created_at', 'updated_at']
+        read_only_fields = [
+            'avatar', 'total_points', 'level', 'created_at', 'updated_at'
+        ]
+
+    def validate_avatar_key(self, value):
+        """Refuse toute clé absente du catalogue.
+
+        Sans cette validation, un `PATCH` pourrait poser une chaîne arbitraire
+        qui finirait interpolée dans le rendu SVG du client.
+        """
+        if not is_valid_avatar_key(value):
+            raise serializers.ValidationError(
+                "Cet avatar ne fait pas partie du catalogue."
+            )
+        return value
+
+    def validate_bio(self, value):
+        if len(value) > 500:
+            raise serializers.ValidationError(
+                "La biographie ne peut pas dépasser 500 caractères."
+            )
+        return value
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Serializer for User model with nested profile."""
-    profile = ProfileSerializer(read_only=True)
+    """Compte et profil, avec écriture imbriquée du profil.
+
+    ⚠️ L'écriture imbriquée demande une précaution particulière ici. Un signal
+    `post_save` qui sauvait `instance.profile` a déjà écrasé des points en
+    mémoire par le passé (cf. `signals.py`). On ne réenregistre donc **jamais
+    le profil en entier** : seuls les champs effectivement reçus sont écrits,
+    via `update_fields`. Un solde mis à jour en parallèle par
+    `award_points` ne peut pas être écrasé par un formulaire de profil.
+    """
+    profile = ProfileSerializer(required=False)
 
     class Meta:
         model = User
@@ -29,6 +69,25 @@ class UserSerializer(serializers.ModelSerializer):
             'is_active', 'date_joined', 'last_login', 'profile'
         ]
         read_only_fields = ['id', 'date_joined', 'last_login', 'role', 'is_active']
+
+    def update(self, instance, validated_data):
+        profile_data = validated_data.pop('profile', None)
+
+        with transaction.atomic():
+            user = super().update(instance, validated_data)
+
+            if profile_data:
+                profile = user.profile
+                touched = [
+                    field for field in EDITABLE_PROFILE_FIELDS
+                    if field in profile_data
+                ]
+                for field in touched:
+                    setattr(profile, field, profile_data[field])
+                if touched:
+                    profile.save(update_fields=[*touched, 'updated_at'])
+
+        return user
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -69,6 +128,45 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
 
         return user
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Demande de réinitialisation. Ne valide que la forme de l'email.
+
+    On ne vérifie surtout pas que le compte existe : la vue doit répondre à
+    l'identique dans tous les cas, sinon l'endpoint devient un oracle
+    permettant de savoir qui est inscrit sur la plateforme.
+    """
+    email = serializers.EmailField(required=True)
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """Choix du nouveau mot de passe à partir du lien reçu."""
+    uid = serializers.CharField(required=True)
+    token = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, write_only=True)
+    new_password_confirm = serializers.CharField(required=True, write_only=True)
+
+    def validate(self, attrs):
+        from .services import resolve_reset_token
+
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError({
+                "new_password": "Les deux mots de passe ne correspondent pas."
+            })
+
+        user = resolve_reset_token(attrs['uid'], attrs['token'])
+        if user is None:
+            raise serializers.ValidationError({
+                "token": "Ce lien est invalide ou a expiré. Demandez-en un nouveau."
+            })
+
+        # Validation avec l'utilisateur en contexte : permet aussi de refuser
+        # un mot de passe trop proche de l'email ou du nom.
+        validate_password(attrs['new_password'], user)
+
+        attrs['user'] = user
+        return attrs
 
 
 class ChangePasswordSerializer(serializers.Serializer):

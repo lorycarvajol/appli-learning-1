@@ -10,9 +10,9 @@
   height: 46px;
   border: none;
   border-radius: 50%;
-  background-color: #2563eb;
+  background-color: var(--brand);
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--brand) 45%, transparent);
   cursor: pointer;
 
   opacity: 0;
@@ -29,8 +29,8 @@
 }
 
 .scroll-to-top:hover {
-  background-color: #1d4ed8;
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.45);
+  background-color: var(--brand-strong);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--brand) 55%, transparent);
   transform: translateY(-2px);
 }
 

@@ -3,6 +3,7 @@ import authReducer from '../features/auth/authSlice'
 import chaptersReducer from '../features/chapters/chaptersSlice'
 import trainerReducer from '../features/trainer/trainerSlice'
 import progressionReducer from '../features/progression/progressionSlice'
+import gamificationReducer from '../features/gamification/gamificationSlice'
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     chapters: chaptersReducer,
     trainer: trainerReducer,
     progression: progressionReducer,
+    gamification: gamificationReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

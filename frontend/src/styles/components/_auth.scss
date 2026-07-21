@@ -8,19 +8,56 @@
 .auth-page {
   min-height: 100vh;
   @include flex-center;
+  flex-direction: column;
+  gap: $spacing-2xl;
   background-color: $bg-light;
+  background-image:
+    radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--brand) 12%, transparent), transparent 45%),
+    radial-gradient(circle at 85% 80%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 45%);
   padding: $spacing-xl;
+}
+
+.auth-logo {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  text-decoration: none;
+  color: $text-primary;
+  font-family: $font-family-heading;
+  font-weight: 700;
+  font-size: $font-size-xl;
+  @include fade-in;
+
+  &__mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: $border-radius-md;
+    background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+    color: #fff;
+    font-family: $font-family-mono;
+    font-size: 0.85rem;
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--brand) 40%, transparent);
+  }
 }
 
 .auth-container {
   width: 100%;
-  max-width: 450px;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-xl;
   @include slide-up;
 }
 
 .auth-card {
   @include card;
+  width: 100%;
   box-shadow: $shadow-xl;
+  padding: $spacing-2xl;
 }
 
 .auth-header {
@@ -39,6 +76,16 @@
 }
 
 .auth-form {
+  &__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: $spacing-md;
+
+    @media (max-width: 400px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
   &__group {
     margin-bottom: $spacing-lg;
   }
@@ -54,20 +101,29 @@
   &__input {
     width: 100%;
     padding: $spacing-md;
+    background-color: $bg-white;
+    color: $text-primary;
     border: $border-width solid $border-color;
     border-radius: $border-radius-md;
     font-size: $font-size-base;
-    transition: all $transition-fast;
+    transition: border-color $transition-fast, box-shadow $transition-fast;
 
     &:focus {
       outline: none;
       border-color: $primary-color;
-      box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 15%, transparent);
     }
 
     &::placeholder {
       color: $text-muted;
     }
+  }
+
+  &__hint {
+    display: block;
+    margin-top: $spacing-sm;
+    color: $text-muted;
+    font-size: $font-size-xs;
   }
 
   &__error {
@@ -76,12 +132,70 @@
     font-size: $font-size-sm;
   }
 
+  // Aligné à droite sous le champ mot de passe, là où l'œil le cherche
+  &__forgot {
+    display: block;
+    margin-top: $spacing-sm;
+    text-align: right;
+    color: var(--brand);
+    font-size: $font-size-xs;
+    font-weight: 600;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
   &__submit {
     @include button-primary;
     width: 100%;
     padding: $spacing-md;
     font-size: $font-size-base;
-    margin-top: $spacing-lg;
+    margin-top: $spacing-sm;
+  }
+}
+
+// Champ mot de passe avec bouton d'affichage (cf. components/ui/PasswordInput)
+.password-field {
+  position: relative;
+
+  &__input {
+    // Réserve la place du bouton pour que le texte ne passe pas dessous
+    padding-right: 3rem;
+  }
+
+  &__toggle {
+    position: absolute;
+    top: 50%;
+    right: $spacing-sm;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: none;
+    border-radius: $border-radius-md;
+    background: transparent;
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color $transition-fast, transform $transition-fast;
+
+    &:hover {
+      background-color: color-mix(in srgb, var(--brand) 10%, transparent);
+    }
+
+    &:active {
+      transform: translateY(-50%) scale(0.9);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--brand);
+      outline-offset: 2px;
+    }
   }
 }
 
@@ -99,7 +213,7 @@
 
   &__link {
     color: $primary-color;
-    font-weight: $font-weight-medium;
+    font-weight: $font-weight-semibold;
     transition: color $transition-fast;
 
     &:hover {
@@ -114,16 +228,22 @@
   border-radius: $border-radius-md;
   margin-bottom: $spacing-lg;
   font-size: $font-size-sm;
+  line-height: $line-height-normal;
+
+  ul {
+    padding-left: $spacing-lg;
+    list-style: disc;
+  }
 
   &--error {
-    background-color: #fef2f2;
+    background-color: $hard-bg;
     color: $error-color;
-    border: $border-width solid lighten($error-color, 30%);
+    border: $border-width solid color-mix(in srgb, var(--danger) 35%, transparent);
   }
 
   &--success {
-    background-color: #f0fdf4;
+    background-color: $easy-bg;
     color: $success-color;
-    border: $border-width solid lighten($success-color, 30%);
+    border: $border-width solid color-mix(in srgb, var(--ok) 35%, transparent);
   }
 }

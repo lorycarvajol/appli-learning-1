@@ -30,4 +30,12 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/test/setup.js',
+    css: false,
+    // Les fichiers de test vivent à côté du code qu'ils couvrent.
+    include: ['src/**/*.{test,spec}.{js,jsx}'],
+  },
 })

@@ -1,0 +1,364 @@
+/* Page « Vos trophées » */
+
+.badges-page {
+  min-height: calc(100vh - 80px);
+  background-color: var(--bg);
+}
+
+/* ---------- Hero ---------- */
+
+.badges-page__hero {
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  padding: 3rem 2rem 2.5rem;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.badges-page__hero::after {
+  /* Halo doré : la gamification a sa propre couleur dans le thème */
+  content: '';
+  position: absolute;
+  top: -40%;
+  right: -5%;
+  width: 460px;
+  height: 460px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--accent) 35%, transparent),
+    transparent 65%
+  );
+  pointer-events: none;
+}
+
+.badges-page__hero-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.badges-page__title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #fff;
+  margin-bottom: 0.4rem;
+}
+
+.badges-page__subtitle {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1.05rem;
+  margin-bottom: 1.75rem;
+}
+
+.badges-page__hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.trophy-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.trophy-stat__value {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+}
+
+.trophy-stat__total {
+  font-size: 1rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  margin-left: 0.3rem;
+}
+
+.trophy-stat__label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.badges-page__completion {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  overflow: hidden;
+  max-width: 520px;
+}
+
+.badges-page__completion-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), #ffe08a);
+  transition: width 0.6s ease;
+}
+
+.badges-page__completion-label {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ---------- Corps ---------- */
+
+.badges-page__container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem 3rem;
+}
+
+.badges-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1.75rem;
+}
+
+.badges-filter {
+  padding: 0.5rem 1.05rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.badges-filter:hover {
+  border-color: var(--brand);
+  color: var(--ink);
+}
+
+.badges-filter--active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.badges-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 1.25rem;
+}
+
+.badges-page__empty,
+.badges-page__teaser {
+  color: var(--ink-soft);
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.badges-page__teaser {
+  margin-top: 2rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: 16px;
+  background: var(--surface-2);
+}
+
+/* ---------- Carte de badge ---------- */
+
+.badge-card {
+  display: flex;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.badge-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.badge-card__medal {
+  flex-shrink: 0;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.75rem;
+  background: var(--surface-2);
+  border: 2px solid var(--border);
+}
+
+/* Paliers : seuls les badges obtenus portent leur couleur, ce qui rend la
+   collection lisible d'un coup d'œil. */
+.badge-card--earned.badge-card--bronze .badge-card__medal {
+  background: #f6e3d2;
+  border-color: #c98b4b;
+}
+
+.badge-card--earned.badge-card--silver .badge-card__medal {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+
+.badge-card--earned.badge-card--gold .badge-card__medal {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.badge-card--earned.badge-card--legendary .badge-card__medal {
+  background: var(--brand-soft);
+  border-color: var(--brand);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+.badge-card--earned {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.badge-card--locked .badge-card__medal {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+.badge-card--locked .badge-card__name,
+.badge-card--locked .badge-card__description {
+  color: var(--ink-soft);
+}
+
+.badge-card--secret {
+  border-style: dashed;
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.badge-card--secret .badge-card__medal {
+  filter: none;
+  opacity: 1;
+  background: transparent;
+  border-style: dashed;
+  color: var(--ink-faint);
+}
+
+.badge-card--secret .badge-card__description {
+  font-style: italic;
+}
+
+.badge-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.badge-card__name {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.badge-card__revealed-tag {
+  font-family: system-ui, sans-serif;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+}
+
+.badge-card__description {
+  font-size: 0.87rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin-bottom: 0.75rem;
+}
+
+.badge-card__progress {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+
+.badge-card__progress-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.badge-card--secret .badge-card__progress-track {
+  background: var(--border);
+}
+
+.badge-card__progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--brand), var(--accent));
+  transition: width 0.5s ease;
+}
+
+.badge-card__progress-label {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}
+
+.badge-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+}
+
+.badge-card__earned-at {
+  color: var(--ok-text);
+  font-weight: 500;
+}
+
+.badge-card__status {
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.badge-card__reward {
+  font-weight: 600;
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+}
+
+@media (max-width: 640px) {
+  .badges-page__hero,
+  .badges-page__container {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  .badges-page__hero-stats {
+    gap: 1.5rem;
+  }
+
+  .badges-page__grid {
+    grid-template-columns: 1fr;
+  }
+}

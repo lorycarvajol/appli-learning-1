@@ -7,6 +7,9 @@ import './MarkdownImage.css';
  * Affiche l'image avec un effet hover et ouvre un lightbox au clic
  */
 export default function MarkdownImage(props) {
+  // `node` est l'AST fourni par react-markdown : on l'extrait pour qu'il ne
+  // finisse pas dans les attributs DOM via `...rest`, mais on ne s'en sert pas.
+  // eslint-disable-next-line no-unused-vars
   const { src, alt, title, node, ...rest } = props;
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 

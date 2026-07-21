@@ -1,8 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '@/features/auth/authSlice';
+import ThemeToggle from '@/components/ui/ThemeToggle';
+import Avatar from '@/components/ui/Avatar';
+import { ROLES, ROLE_LABELS, STAFF_ROLES } from '@/constants/roles';
 import './Header.css';
+
+// Une entrée sans `roles` est visible par tout le monde.
+const NAV_LINKS = [
+  { path: '/dashboard', label: 'Tableau de bord' },
+  { path: '/chapters', label: 'Chapitres' },
+  { path: '/progression', label: 'Ma progression' },
+  { path: '/badges', label: 'Trophées' },
+  { path: '/trainer', label: 'Espace formateur', roles: STAFF_ROLES },
+  { path: '/administration', label: 'Administration', roles: [ROLES.ADMIN] },
+];
 
 export default function Header() {
   const navigate = useNavigate();
@@ -11,6 +24,32 @@ export default function Header() {
   const { user } = useSelector((state) => state.auth);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const userMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setShowUserMenu(false);
+      }
+    };
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        setShowUserMenu(false);
+        setShowMobileMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, []);
+
+  useEffect(() => {
+    setShowMobileMenu(false);
+    setShowUserMenu(false);
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     await dispatch(logoutUser());
@@ -21,133 +60,133 @@ export default function Header() {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  const navLinks = [
-    { path: '/dashboard', label: 'Tableau de bord', icon: '📊' },
-    { path: '/chapters', label: 'Chapitres', icon: '📚' },
-    { path: '/progression', label: 'Ma progression', icon: '📈' },
-  ];
+  // Un lien non autorisé n'est pas affiché : inutile de proposer une page
+  // dont la garde de route renverra l'utilisateur.
+  const navLinks = NAV_LINKS.filter(
+    (link) => !link.roles || link.roles.includes(user?.role)
+  );
+
+  // Les initiales sont désormais calculées par `Avatar`, qui gère aussi le
+  // cas d'un avatar choisi au catalogue.
+  const displayName =
+    user?.first_name && user?.last_name ? `${user.first_name} ${user.last_name}` : user?.email;
+  const roleLabel = ROLE_LABELS[user?.role] || '';
 
   return (
     <header className="header">
       <div className="header__container">
-        {/* Logo */}
         <Link to="/dashboard" className="header__logo">
-          <span className="header__logo-icon">🎓</span>
+          <span className="header__logo-mark" aria-hidden="true">
+            &lt;/&gt;
+          </span>
           <span className="header__logo-text">
             <span className="header__logo-name">Code</span>
             <span className="header__logo-suffix">Academy</span>
           </span>
         </Link>
 
-        {/* Navigation Desktop */}
-        <nav className="header__nav">
+        <nav className="header__nav" aria-label="Navigation principale">
           {navLinks.map((link) => (
             <Link
               key={link.path}
               to={link.path}
               className={`header__nav-link ${isActive(link.path) ? 'header__nav-link--active' : ''}`}
+              aria-current={isActive(link.path) ? 'page' : undefined}
             >
-              <span className="header__nav-icon">{link.icon}</span>
-              <span className="header__nav-label">{link.label}</span>
+              {link.label}
             </Link>
           ))}
         </nav>
 
-        {/* Actions */}
         <div className="header__actions">
-          {/* User Profile Dropdown */}
-          <div className="header__user-menu">
+          <ThemeToggle />
+
+          <div className="header__user-menu" ref={userMenuRef}>
             <button
+              type="button"
               className="header__user-button"
-              onClick={() => setShowUserMenu(!showUserMenu)}
-              onBlur={() => setTimeout(() => setShowUserMenu(false), 200)}
+              onClick={() => setShowUserMenu((open) => !open)}
+              aria-haspopup="menu"
+              aria-expanded={showUserMenu}
+              aria-controls="user-menu"
             >
-              <div className="header__user-avatar">
-                {user?.first_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
-              </div>
-              <div className="header__user-info">
-                <span className="header__user-name">
-                  {user?.first_name && user?.last_name
-                    ? `${user.first_name} ${user.last_name}`
-                    : user?.email}
-                </span>
-                <span className="header__user-role">
-                  {user?.role === 'LEARNER' ? 'Apprenant' : user?.role === 'TRAINER' ? 'Formateur' : 'Admin'}
-                </span>
-              </div>
-              <span className="header__user-arrow">▼</span>
+              <Avatar user={user} size={36} className="header__user-avatar" />
+              <span className="header__user-info">
+                <span className="header__user-name">{displayName}</span>
+                <span className="header__user-role">{roleLabel}</span>
+              </span>
+              <svg
+                className="header__user-arrow"
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
             </button>
 
             {showUserMenu && (
-              <div className="header__user-dropdown">
-                <Link to="/profile" className="header__dropdown-item">
-                  <span className="header__dropdown-icon">👤</span>
+              <div className="header__user-dropdown" id="user-menu" role="menu">
+                <Link
+                  to="/profil"
+                  className="header__dropdown-item"
+                  role="menuitem"
+                  onClick={() => setShowUserMenu(false)}
+                >
                   Mon profil
                 </Link>
-                <Link to="/settings" className="header__dropdown-item">
-                  <span className="header__dropdown-icon">⚙️</span>
-                  Paramètres
-                </Link>
-                <div className="header__dropdown-divider"></div>
-                <button onClick={handleLogout} className="header__dropdown-item header__dropdown-item--logout">
-                  <span className="header__dropdown-icon">🚪</span>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="header__dropdown-item header__dropdown-item--logout"
+                  role="menuitem"
+                >
                   Déconnexion
                 </button>
               </div>
             )}
           </div>
 
-          {/* Mobile Menu Toggle */}
           <button
+            type="button"
             className="header__mobile-toggle"
-            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            onClick={() => setShowMobileMenu((open) => !open)}
+            aria-expanded={showMobileMenu}
+            aria-controls="mobile-nav"
+            aria-label={showMobileMenu ? 'Fermer le menu' : 'Ouvrir le menu'}
           >
-            <span className="header__mobile-toggle-icon">
-              {showMobileMenu ? '✕' : '☰'}
+            <span className={`header__mobile-toggle-icon ${showMobileMenu ? 'header__mobile-toggle-icon--open' : ''}`} aria-hidden="true">
+              <span />
+              <span />
+              <span />
             </span>
           </button>
         </div>
       </div>
 
-      {/* Mobile Navigation */}
       {showMobileMenu && (
-        <div className="header__mobile-nav">
+        <nav className="header__mobile-nav" id="mobile-nav" aria-label="Navigation mobile">
           {navLinks.map((link) => (
             <Link
               key={link.path}
               to={link.path}
               className={`header__mobile-link ${isActive(link.path) ? 'header__mobile-link--active' : ''}`}
-              onClick={() => setShowMobileMenu(false)}
+              aria-current={isActive(link.path) ? 'page' : undefined}
             >
-              <span className="header__mobile-icon">{link.icon}</span>
-              <span className="header__mobile-label">{link.label}</span>
+              {link.label}
             </Link>
           ))}
-          <div className="header__mobile-divider"></div>
-          <Link
-            to="/profile"
-            className="header__mobile-link"
-            onClick={() => setShowMobileMenu(false)}
-          >
-            <span className="header__mobile-icon">👤</span>
-            <span className="header__mobile-label">Mon profil</span>
-          </Link>
-          <Link
-            to="/settings"
-            className="header__mobile-link"
-            onClick={() => setShowMobileMenu(false)}
-          >
-            <span className="header__mobile-icon">⚙️</span>
-            <span className="header__mobile-label">Paramètres</span>
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="header__mobile-link header__mobile-link--logout"
-          >
-            <span className="header__mobile-icon">🚪</span>
-            <span className="header__mobile-label">Déconnexion</span>
+          <div className="header__mobile-divider" role="separator"></div>
+          <button type="button" onClick={handleLogout} className="header__mobile-link header__mobile-link--logout">
+            Déconnexion
           </button>
-        </div>
+        </nav>
       )}
     </header>
   );

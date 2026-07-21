@@ -92,12 +92,19 @@ class Exercise(models.Model):
         ('HARD', 'Difficile'),
     ]
 
+    LANGUAGES = [
+        ('html', 'HTML'),
+        ('css', 'CSS'),
+        ('javascript', 'JavaScript'),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     lesson = models.OneToOneField(Lesson, on_delete=models.CASCADE, related_name='exercise')
 
     instructions = models.TextField(help_text="Exercise instructions in Markdown")
     starter_code = models.TextField(help_text="Initial code template")
     solution = models.TextField(help_text="Reference solution (hidden from students)")
+    language = models.CharField(max_length=20, choices=LANGUAGES, default='html')
 
     # Tests stored as JSONB
     tests = models.JSONField(
@@ -128,9 +135,29 @@ class Exercise(models.Model):
         return f"Exercise: {self.lesson.title}"
 
     @property
+    def test_cases(self):
+        """Liste des tests, quelle que soit la forme du champ JSONB.
+
+        Deux formes coexistent en base : `{'tests': [...]}` — celle produite
+        par l'admin et documentée — et `[...]` directement, pour les exercices
+        les plus anciens. Normaliser ici évite que chaque lecteur refasse le
+        test à sa manière, ou l'oublie.
+        """
+        tests = self.tests
+        if isinstance(tests, dict):
+            tests = tests.get('tests', [])
+        return [test for test in (tests or []) if isinstance(test, dict)]
+
+    @property
     def total_points(self):
-        """Calculate total points from all tests."""
-        return sum(test.get('points', 0) for test in self.tests)
+        """Total des points de tous les tests.
+
+        Cette propriété itérait `self.tests` directement. Sur la forme
+        `{'tests': [...]}` — la seule présente en base — elle parcourait donc
+        les *clés* du dictionnaire et levait `AttributeError`, ce qui rendait
+        la liste des exercices de l'admin Django inaccessible.
+        """
+        return sum(test.get('points', 0) for test in self.test_cases)
 
 
 class Quiz(models.Model):
