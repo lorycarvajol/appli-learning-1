@@ -46,7 +46,14 @@
       "Bash(grep -oE \"#[0-9a-fA-F]{3,6}\" features/quizzes/QuizInterface.css)",
       "Bash(docker cp *)",
       "PowerShell(docker-compose *)",
-      "Skill(claude-in-chrome)"
+      "Skill(claude-in-chrome)",
+      "Bash(npm -v)",
+      "Bash(npm test *)",
+      "Bash(npx vitest *)",
+      "Bash(node --input-type=module -e \"import\\('vitest/node'\\).then\\(\\(\\)=>console.log\\('OK'\\)\\).catch\\(e=>console.log\\('FAIL',e.message\\)\\)\")",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\loryc\\\\OneDrive\\\\Desktop\\\\appli learning\\\\frontend\\\\node_modules\\\\vitest\" -Recurse -File -Force | Where-Object { $_.Attributes -match 'Offline' -or $_.Attributes -match 'ReparsePoint' } | Select-Object -First 10 FullName, Attributes)",
+      "Bash(node --import \"file:///C:/Users/loryc/AppData/Local/Temp/claude/C--Users-loryc-OneDrive-Desktop-appli-learning/85bdbaa6-02a5-4c12-84af-9a7348850f21/scratchpad/trace-read.mjs\" ./node_modules/vitest/vitest.mjs run)",
+      "Bash(npm run *)"
     ]
   }
 }

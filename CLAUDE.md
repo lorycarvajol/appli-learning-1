@@ -720,9 +720,9 @@ laisserait un écran de chargement infini. Toute nouvelle garde doit attendre
 
 - [ ] Throttle dédié sur `/api/auth/login/` (le global à 100/h anonyme laisse
       passer une attaque par dictionnaire).
-- [ ] Infrastructure de test frontend (Vitest) — rien n'est vérifiable
-      automatiquement côté React aujourd'hui.
-- [ ] Uniformiser le contrat des services API (cf. avertissement plus bas).
+- [x] Infrastructure de test frontend (Vitest) — voir « Testing Strategy ».
+- [ ] Uniformiser le contrat des services API (cf. avertissement plus bas) —
+      un test de contrat par module d'API serait le bon filet avant d'y toucher.
 
 Sur le stockage des tokens : rester en `localStorage`. Migrer vers des cookies
 `httpOnly` impliquerait de refaire l'intercepteur axios, CORS et la protection
@@ -780,13 +780,19 @@ npm run dev                         # http://localhost:5173
 npm run build
 npm run preview                     # Preview production build
 
-# Linting (seule vérification automatisée côté front à ce jour)
-npm run lint
+# Linting
+npm run lint        # ⚠️ échoue aujourd'hui sur ~15 erreurs préexistantes
+                    # (apostrophes non échappées, imports morts) — non liées
+                    # aux tests. À nettoyer avant d'en faire une porte de CI.
 
-# ⚠️ Il n'existe AUCUNE infrastructure de test frontend : ni Vitest, ni
-# Playwright, ni script `test` dans package.json. Les seuls scripts sont
-# dev / build / preview / lint. Tout changement côté front se vérifie
-# manuellement dans le navigateur.
+# Tests (Vitest + Testing Library, environnement jsdom)
+npm test            # une passe
+npm run test:watch  # mode veille
+npx vitest run src/features/auth   # un dossier
+npx vitest run -t "file de révélation"  # un test par son nom
+
+# ⚠️ Toujours pas de tests bout-en-bout (Playwright) : les parcours complets
+# se vérifient encore à la main dans le navigateur.
 ```
 
 ### Infrastructure (Docker)
@@ -1063,10 +1069,45 @@ une fois `pytest --create-db`**, sinon les tests tournent contre un schéma
 périmé et peuvent passer à tort (c'est arrivé sur la contrainte d'unicité des
 emails).
 
-**Frontend — inexistant, malgré ce que laissait entendre ce document.** Ni
-Vitest, ni Playwright, ni script `test`. Cible souhaitable (non réalisée) :
-Vitest pour les composants et hooks, Playwright pour les parcours critiques.
-En attendant, toute modification front se vérifie à la main dans le navigateur.
+**Frontend — en place depuis le 2026-07-21.** Vitest + Testing Library, en
+environnement jsdom. Configuration dans le bloc `test` de `vite.config.js`,
+amorce dans `src/test/setup.js` (matchers `jest-dom`, `cleanup` et purge du
+`localStorage` après chaque test — sans cette purge, un jeton posé par un test
+fait passer le suivant à tort).
+
+Les fichiers de test vivent **à côté du code qu'ils couvrent**
+(`PrivateRoute.test.jsx` face à `PrivateRoute.jsx`), pas dans un dossier
+`__tests__` séparé : un test qu'on voit en éditant le fichier est un test qu'on
+met à jour.
+
+Ce qui est couvert aujourd'hui — délibérément les **invariants déjà décrits
+dans ce document**, pas la couverture de ligne :
+
+| Fichier | Invariant verrouillé |
+|---|---|
+| `features/auth/PrivateRoute.test.jsx` | La garde attend `initialized` avant de trancher sur le rôle (sinon un formateur est éjecté à chaque rafraîchissement) |
+| `features/gamification/gamificationSlice.test.js` | Une célébration ne rejoue jamais, même si `unseen_badges` et `newly_earned` mentionnent le même badge |
+| `features/progression/useTimeTracker.test.jsx` | Onglet caché ou inactif depuis 90 s ⇒ aucun temps crédité (le compteur alimente des badges) |
+
+Écrire les tests **en français**, comme le reste des commentaires du dépôt.
+
+Conventions utiles :
+
+- Pour un hook à minuterie, utiliser `vi.useFakeTimers()` et avancer par
+  `vi.advanceTimersByTime` dans un `act()`. `document.visibilityState` n'est pas
+  assignable en jsdom : passer par `Object.defineProperty` (voir le helper
+  `setVisibility`).
+- Pour une garde de route, monter un store jetable via `configureStore` avec un
+  réducteur constant plutôt que le vrai store : le test décrit un état, il n'a
+  pas à rejouer les thunks pour y arriver.
+
+**Cible non atteinte :** Playwright pour les parcours critiques (inscription
+par invitation, déblocage de chapitre, soumission d'exercice).
+
+⚠️ **Piège Windows/OneDrive.** Juste après un `npm install`, `npm test` peut
+échouer sur `Error: UNKNOWN: unknown error, read` (errno -4094) : OneDrive
+n'a pas encore hydraté les fichiers fraîchement écrits dans `node_modules`.
+Ce n'est pas une erreur de configuration — relancer la commande suffit.
 
 ## Project Phases (from Roadmap)
 
