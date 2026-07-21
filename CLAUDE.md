@@ -535,6 +535,99 @@ Règles non négociables, chacune couverte par un test :
 Supprimer une invitation la **révoque** sans l'effacer : on garde trace de ce
 qui a été diffusé.
 
+## SECRET_KEY — garde-fou de production
+
+`base.py` définit une valeur de repli publique (`INSECURE_DEV_SECRET_KEY`) pour
+ne pas imposer de configuration en développement. Cette clé signe **les JWT,
+les sessions, les jetons CSRF et les liens de réinitialisation de mot de
+passe** : la connaître permet de forger un jeton pour n'importe quel compte,
+administrateur compris.
+
+`production.py` **refuse donc de démarrer** si `SECRET_KEY` est absente, égale
+à la valeur de développement, ou plus courte que 50 caractères. Échouer au
+démarrage vaut mieux qu'une compromission silencieuse — sans ce garde-fou,
+l'application tournerait normalement tout en étant ouverte à quiconque lit le
+dépôt.
+
+⚠️ **Piège associé.** `SIMPLE_JWT` est un dictionnaire construit dans `base.py`
+qui **copie** la valeur de `SECRET_KEY` au moment de l'import. Redéfinir
+`SECRET_KEY` dans `production.py` ne le met pas à jour : sans la ligne
+`SIMPLE_JWT['SIGNING_KEY'] = SECRET_KEY`, les jetons resteraient signés avec la
+clé de développement, alors même que `settings.SECRET_KEY` affiche la bonne
+valeur. Le test `test_les_jwt_sont_signes_avec_la_cle_courante`
+(`apps/accounts/tests/test_settings_security.py`) verrouille cette égalité.
+
+La même précaution vaut pour tout réglage dérivé de `SECRET_KEY` ajouté plus
+tard : le redéfinir dans un settings d'environnement ne suffit jamais.
+
+Générer une clé :
+```bash
+python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+
+## Administration — ✅ Fait
+
+App `apps/administration` (**vues seulement, aucun modèle**), route front
+`/administration`, réservée au rôle `ADMIN`.
+
+### Parti pris : hybride, pas de remplacement de l'admin Django
+
+Le CRUD de contenu (chapitres, leçons, exercices, quiz, badges, classes) reste
+dans `/admin/`, qui le fait mieux et gratuitement — recherche, filtres,
+inlines, historique. L'espace React ne couvre que ce que l'admin Django ne sait
+pas faire, et un lien y renvoie explicitement depuis l'en-tête de la page.
+
+**Ne pas reconstruire de CRUD de contenu en React.** Ce serait des semaines de
+travail pour une capacité inférieure.
+
+### `role` et `is_staff` sont désormais synchronisés
+
+⚠️ L'application avait **deux notions d'administrateur** que rien ne reliait :
+`role == ADMIN` (privilèges API) et `is_staff` (accès à `/admin/`). Promouvoir
+quelqu'un en ADMIN produisait un administrateur incapable d'ouvrir l'admin
+Django ; rétrograder un admin lui laissait cet accès.
+
+`User.save()` impose maintenant `is_staff = is_superuser or role == ADMIN`.
+Conséquences à connaître :
+
+- Cocher `is_staff` à la main sur un non-ADMIN **ne tient pas** — changer le rôle.
+- Les superutilisateurs gardent l'accès quoi qu'il arrive (filet anti-enfermement).
+- `apps/progression/services.py` : `is_staff_user` a été renommée
+  `has_staff_role` — elle teste le **rôle**, pas le champ Django, et son
+  ancien nom induisait en erreur.
+
+### Cycle de vie des comptes
+
+```
+POST /api/administration/users/<id>/set_role/
+POST /api/administration/users/<id>/set_active/
+POST /api/administration/users/<id>/anonymize/
+POST /api/administration/users/<id>/assign_cohort/
+```
+
+Garde-fous dans `services.py`, chacun couvert par un test :
+
+- **Impossible de supprimer le dernier administrateur actif** (rétrogradation,
+  désactivation, anonymisation) — sinon la plateforme devient impilotable.
+- **Impossible d'agir sur son propre compte** (rôle, désactivation,
+  anonymisation).
+- Désactiver **révoque les refresh tokens** : l'effet doit être immédiat.
+
+### RGPD : anonymisation, pas suppression en cascade
+
+Le droit à l'effacement porte sur les données personnelles, pas sur les
+agrégats. `anonymize()` vide l'identité (email remplacé par
+`anonyme-xxx@anonymized.invalid`, nom, mot de passe, bio, avatar, classe) et
+**conserve la progression, les points et les badges**, désormais rattachés à un
+compte qui ne désigne plus personne.
+
+Effacer en cascade fausserait rétroactivement les statistiques des classes : un
+formateur verrait le taux de complétion de sa promo changer sans explication.
+
+L'opération est **irréversible** et marquée par `Profile.anonymized_at` — sans
+ce marqueur, impossible de distinguer un compte anonymisé d'un compte étrange.
+La désactivation, elle, reste réversible.
+
 ### Décisions d'architecture actées
 
 Prises en session du 2026-07-21 :
@@ -627,9 +720,9 @@ laisserait un écran de chargement infini. Toute nouvelle garde doit attendre
 
 - [ ] Throttle dédié sur `/api/auth/login/` (le global à 100/h anonyme laisse
       passer une attaque par dictionnaire).
-- [ ] Désactivation / suppression de compte (RGPD).
 - [ ] Infrastructure de test frontend (Vitest) — rien n'est vérifiable
       automatiquement côté React aujourd'hui.
+- [ ] Uniformiser le contrat des services API (cf. avertissement plus bas).
 
 Sur le stockage des tokens : rester en `localStorage`. Migrer vers des cookies
 `httpOnly` impliquerait de refaire l'intercepteur axios, CORS et la protection

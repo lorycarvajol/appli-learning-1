@@ -23,8 +23,14 @@ from apps.accounts.models import User
 
 pytestmark = pytest.mark.django_db
 
-PASSWORD = 'Motdepasse!2026'
-NEW_PASSWORD = 'NouveauSecret!2026'
+# Mots de passe de test. Valeurs volontairement descriptives : elles ne
+# ressemblent pas à un identifiant réel, ce qui évite de déclencher les
+# détecteurs de secrets sur chaque nouveau test. Elles satisfont malgré tout
+# les validateurs Django (longueur, non courant, non numérique).
+TEST_PASSWORD = 'fixture-pwd-not-a-real-secret'
+NEW_PASSWORD = 'fixture-pwd-rotated'
+MISMATCHED_PASSWORD = 'fixture-pwd-does-not-match'
+
 
 REQUEST_URL = '/api/auth/password-reset/'
 VALIDATE_URL = '/api/auth/password-reset/validate/'
@@ -39,7 +45,7 @@ def api():
 @pytest.fixture
 def learner():
     return User.objects.create_user(
-        email='eleve@example.com', password=PASSWORD, first_name='Eve'
+        email='eleve@example.com', password=TEST_PASSWORD, first_name='Eve'
     )
 
 
@@ -148,7 +154,7 @@ def test_le_mot_de_passe_est_bien_remplace(api, learner):
     ).status_code == 200
 
     assert api.post(
-        '/api/auth/login/', {'email': learner.email, 'password': PASSWORD},
+        '/api/auth/login/', {'email': learner.email, 'password': TEST_PASSWORD},
         format='json',
     ).status_code == 401
 
@@ -173,12 +179,12 @@ def test_les_deux_mots_de_passe_doivent_correspondre(api, learner):
 
     response = api.post(CONFIRM_URL, {
         'uid': uid, 'token': token,
-        'new_password': NEW_PASSWORD, 'new_password_confirm': 'AutreChose!2026',
+        'new_password': NEW_PASSWORD, 'new_password_confirm': MISMATCHED_PASSWORD,
     }, format='json')
 
     assert response.status_code == 400
     learner.refresh_from_db()
-    assert learner.check_password(PASSWORD)
+    assert learner.check_password(TEST_PASSWORD)
 
 
 def test_un_mot_de_passe_trop_faible_est_refuse(api, learner):
@@ -192,7 +198,7 @@ def test_un_mot_de_passe_trop_faible_est_refuse(api, learner):
 
     assert response.status_code == 400
     learner.refresh_from_db()
-    assert learner.check_password(PASSWORD)
+    assert learner.check_password(TEST_PASSWORD)
 
 
 @override_settings(PASSWORD_RESET_TIMEOUT=3600)
@@ -215,7 +221,7 @@ def test_un_lien_expire_est_refuse(api, learner):
 
     assert response.status_code == 400
     learner.refresh_from_db()
-    assert learner.check_password(PASSWORD)
+    assert learner.check_password(TEST_PASSWORD)
 
 
 @override_settings(PASSWORD_RESET_TIMEOUT=3600)
@@ -244,7 +250,7 @@ def test_se_connecter_entre_temps_invalide_le_lien(api, learner):
     uid, token = extract_link(mail.outbox[0])
 
     api.post(
-        '/api/auth/login/', {'email': learner.email, 'password': PASSWORD},
+        '/api/auth/login/', {'email': learner.email, 'password': TEST_PASSWORD},
         format='json',
     )
 

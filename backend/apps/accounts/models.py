@@ -96,15 +96,29 @@ class User(AbstractBaseUser, PermissionsMixin):
         ]
 
     def save(self, *args, **kwargs):
-        """Normalise l'email en minuscules avant écriture.
+        """Normalise l'email et aligne `is_staff` sur le rôle.
 
-        `BaseUserManager.normalize_email` ne met en minuscules que le domaine :
-        « Loryc@example.com » et « loryc@example.com » créeraient deux comptes
-        distincts, et l'apprenant perdrait sa progression en se connectant
-        « au mauvais ».
+        **Email** : `BaseUserManager.normalize_email` ne met en minuscules que
+        le domaine. « Loryc@example.com » et « loryc@example.com » créeraient
+        deux comptes distincts, et l'apprenant perdrait sa progression en se
+        connectant « au mauvais ».
+
+        **is_staff** : l'application avait deux notions d'administrateur qui
+        pouvaient diverger — `role == ADMIN` (privilèges API) et `is_staff`
+        (accès à /admin/). Rien ne les synchronisait : promouvoir quelqu'un en
+        ADMIN produisait un administrateur incapable d'ouvrir l'admin Django,
+        et rétrograder un admin lui laissait cet accès.
+
+        Le rôle fait autorité. Conséquence assumée : cocher `is_staff` à la
+        main dans l'admin Django sur un non-ADMIN ne tient pas — il faut
+        changer le rôle. Les superutilisateurs conservent l'accès quoi qu'il
+        arrive, pour ne jamais s'enfermer dehors.
         """
         if self.email:
             self.email = self.email.strip().lower()
+
+        self.is_staff = bool(self.is_superuser) or self.role == self.Role.ADMIN
+
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -151,6 +165,11 @@ class Profile(models.Model):
 
     total_points = models.IntegerField(default=0)
     level = models.IntegerField(default=1)
+    anonymized_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Date d'exercice du droit à l'effacement (RGPD)."
+    )
     timezone = models.CharField(max_length=50, default='Europe/Paris')
     github_username = models.CharField(max_length=100, blank=True)
 

@@ -1,0 +1,27 @@
+# Configuration GitGuardian
+#
+# Les fichiers de test contiennent des mots de passe de fixtures — des valeurs
+# synthétiques nécessaires pour exercer l'inscription, la connexion et la
+# réinitialisation. Aucune ne correspond à un compte réel.
+#
+# Elles sont exclues parce qu'une alerte récurrente et inoffensive est pire
+# qu'une absence d'alerte : elle habitue à ignorer les notifications, et c'est
+# une vraie fuite qui finit par passer inaperçue.
+#
+# ⚠️ Cette exclusion vaut pour les fixtures de test uniquement. Le code
+# applicatif, les fichiers de configuration et les scripts restent scannés.
+
+version: 2
+
+secret:
+  ignored-paths:
+    - 'backend/apps/*/tests/**'
+    - '**/conftest.py'
+
+  # Documentation de conception : contient des exemples de configuration avec
+  # des valeurs manifestement fictives (`your-secret-key-here`).
+  ignored-matches:
+    - name: Placeholders de documentation
+      match: your-secret-key-here
+    - name: Placeholder SMTP de documentation
+      match: your-sendgrid-api-key

@@ -21,7 +21,11 @@ from apps.progression.services import ensure_self_paced_access
 
 pytestmark = pytest.mark.django_db
 
-PASSWORD = 'Motdepasse!2026'
+# Mots de passe de test. Valeurs volontairement descriptives : elles ne
+# ressemblent pas à un identifiant réel, ce qui évite de déclencher les
+# détecteurs de secrets sur chaque nouveau test. Elles satisfont malgré tout
+# les validateurs Django (longueur, non courant, non numérique).
+TEST_PASSWORD = 'fixture-pwd-not-a-real-secret'
 
 
 def client_for(user):
@@ -33,7 +37,7 @@ def client_for(user):
 @pytest.fixture
 def trainer():
     return User.objects.create_user(
-        email='formateur@example.com', password=PASSWORD,
+        email='formateur@example.com', password=TEST_PASSWORD,
         first_name='Formateur', role=User.Role.TRAINER,
     )
 
@@ -41,14 +45,14 @@ def trainer():
 @pytest.fixture
 def other_trainer():
     return User.objects.create_user(
-        email='autre@example.com', password=PASSWORD, role=User.Role.TRAINER,
+        email='autre@example.com', password=TEST_PASSWORD, role=User.Role.TRAINER,
     )
 
 
 @pytest.fixture
 def admin():
     return User.objects.create_user(
-        email='admin@example.com', password=PASSWORD, role=User.Role.ADMIN,
+        email='admin@example.com', password=TEST_PASSWORD, role=User.Role.ADMIN,
     )
 
 
@@ -60,7 +64,7 @@ def cohort(trainer):
 @pytest.fixture
 def learner(cohort):
     user = User.objects.create_user(
-        email='eleve@example.com', password=PASSWORD, first_name='Eve',
+        email='eleve@example.com', password=TEST_PASSWORD, first_name='Eve',
     )
     user.profile.cohort = cohort
     user.profile.save()
@@ -70,7 +74,7 @@ def learner(cohort):
 @pytest.fixture
 def solo_learner():
     """Apprenant inscrit en autonomie, sans classe."""
-    return User.objects.create_user(email='solo@example.com', password=PASSWORD)
+    return User.objects.create_user(email='solo@example.com', password=TEST_PASSWORD)
 
 
 @pytest.fixture
@@ -139,7 +143,7 @@ def test_un_formateur_ne_voit_que_les_apprenants_de_ses_classes(
 ):
     """Régression : `learners_summary` renvoyait toute la plateforme."""
     autre_classe = Cohort.objects.create(name='Ailleurs', trainer=other_trainer)
-    etranger = User.objects.create_user(email='etranger@example.com', password=PASSWORD)
+    etranger = User.objects.create_user(email='etranger@example.com', password=TEST_PASSWORD)
     etranger.profile.cohort = autre_classe
     etranger.profile.save()
 
@@ -155,7 +159,7 @@ def test_un_formateur_ne_peut_pas_debloquer_pour_un_etranger(
     trainer, other_trainer, chapters
 ):
     autre_classe = Cohort.objects.create(name='Ailleurs', trainer=other_trainer)
-    etranger = User.objects.create_user(email='etranger@example.com', password=PASSWORD)
+    etranger = User.objects.create_user(email='etranger@example.com', password=TEST_PASSWORD)
     etranger.profile.cohort = autre_classe
     etranger.profile.save()
 
@@ -171,7 +175,7 @@ def test_un_formateur_ne_peut_pas_debloquer_pour_un_etranger(
 
 def test_le_detail_dun_apprenant_etranger_est_introuvable(trainer, other_trainer):
     autre_classe = Cohort.objects.create(name='Ailleurs', trainer=other_trainer)
-    etranger = User.objects.create_user(email='etranger@example.com', password=PASSWORD)
+    etranger = User.objects.create_user(email='etranger@example.com', password=TEST_PASSWORD)
     etranger.profile.cohort = autre_classe
     etranger.profile.save()
 
@@ -183,7 +187,7 @@ def test_le_detail_dun_apprenant_etranger_est_introuvable(trainer, other_trainer
 
 
 def test_deblocage_groupe_pour_toute_la_classe(trainer, cohort, learner, chapters):
-    autre = User.objects.create_user(email='eleve2@example.com', password=PASSWORD)
+    autre = User.objects.create_user(email='eleve2@example.com', password=TEST_PASSWORD)
     autre.profile.cohort = cohort
     autre.profile.save()
 
@@ -238,8 +242,8 @@ def test_accepter_une_invitation_cree_le_compte_et_rattache(invite, cohort):
     response = APIClient().post(
         f'/api/cohorts/join/{invite.token}/register/',
         {
-            'email': 'nouveau@example.com', 'password': PASSWORD,
-            'password_confirm': PASSWORD, 'first_name': 'Nouveau',
+            'email': 'nouveau@example.com', 'password': TEST_PASSWORD,
+            'password_confirm': TEST_PASSWORD, 'first_name': 'Nouveau',
         },
         format='json',
     )
@@ -259,8 +263,8 @@ def test_le_role_ne_peut_pas_etre_force_par_le_formulaire(invite):
     APIClient().post(
         f'/api/cohorts/join/{invite.token}/register/',
         {
-            'email': 'malin@example.com', 'password': PASSWORD,
-            'password_confirm': PASSWORD, 'role': 'ADMIN', 'is_staff': True,
+            'email': 'malin@example.com', 'password': TEST_PASSWORD,
+            'password_confirm': TEST_PASSWORD, 'role': 'ADMIN', 'is_staff': True,
         },
         format='json',
     )
@@ -276,8 +280,8 @@ def test_la_classe_ne_peut_pas_etre_forcee_par_le_formulaire(invite, cohort, tra
     APIClient().post(
         f'/api/cohorts/join/{invite.token}/register/',
         {
-            'email': 'malin@example.com', 'password': PASSWORD,
-            'password_confirm': PASSWORD, 'cohort': str(autre.id),
+            'email': 'malin@example.com', 'password': TEST_PASSWORD,
+            'password_confirm': TEST_PASSWORD, 'cohort': str(autre.id),
         },
         format='json',
     )
@@ -300,8 +304,8 @@ def test_une_adresse_deja_inscrite_est_orientee_vers_la_connexion(invite, learne
     response = APIClient().post(
         f'/api/cohorts/join/{invite.token}/register/',
         {
-            'email': learner.email, 'password': PASSWORD,
-            'password_confirm': PASSWORD,
+            'email': learner.email, 'password': TEST_PASSWORD,
+            'password_confirm': TEST_PASSWORD,
         },
         format='json',
     )
@@ -318,8 +322,8 @@ def test_le_nombre_dusages_est_respecte(invite, solo_learner):
 
     response = APIClient().post(
         f'/api/cohorts/join/{invite.token}/register/',
-        {'email': 'trop-tard@example.com', 'password': PASSWORD,
-         'password_confirm': PASSWORD},
+        {'email': 'trop-tard@example.com', 'password': TEST_PASSWORD,
+         'password_confirm': TEST_PASSWORD},
         format='json',
     )
 
@@ -345,8 +349,8 @@ def test_un_admin_peut_inviter_un_formateur(admin):
     token = response.json()['token']
     APIClient().post(
         f'/api/cohorts/join/{token}/register/',
-        {'email': 'futur@example.com', 'password': PASSWORD,
-         'password_confirm': PASSWORD},
+        {'email': 'futur@example.com', 'password': TEST_PASSWORD,
+         'password_confirm': TEST_PASSWORD},
         format='json',
     )
 

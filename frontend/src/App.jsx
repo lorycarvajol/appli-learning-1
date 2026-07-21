@@ -16,7 +16,8 @@ import TrainerDashboard from './features/trainer/TrainerDashboard'
 import ProgressionPage from './features/progression/ProgressionPage'
 import BadgesPage from './features/gamification/BadgesPage'
 import { fetchCurrentUser } from './features/auth/authSlice'
-import { STAFF_ROLES } from './constants/roles'
+import AdminSpace from './features/administration/AdminSpace'
+import { ROLES, STAFF_ROLES } from './constants/roles'
 
 function App() {
   const dispatch = useDispatch()
@@ -106,6 +107,16 @@ function App() {
           <PrivateRoute>
             <Layout>
               <BadgesPage />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/administration"
+        element={
+          <PrivateRoute roles={[ROLES.ADMIN]}>
+            <Layout>
+              <AdminSpace />
             </Layout>
           </PrivateRoute>
         }

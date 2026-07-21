@@ -1,9 +1,43 @@
 """
 Production settings - with strict security and performance optimizations.
 """
+from django.core.exceptions import ImproperlyConfigured
+
 from .base import *
 
 DEBUG = False
+
+# ---------------------------------------------------------------------------
+# Clé de signature — échec au démarrage plutôt que compromission silencieuse
+# ---------------------------------------------------------------------------
+#
+# `base.py` prévoit une valeur de repli pour le confort du développement. Sans
+# ce garde-fou, une production démarrée sans variable d'environnement
+# fonctionnerait normalement tout en signant ses jetons avec une clé lisible
+# dans le dépôt : n'importe qui pourrait forger un JWT d'administrateur ou un
+# lien de réinitialisation de mot de passe pour un compte arbitraire.
+SECRET_KEY = config('SECRET_KEY', default='')
+
+if not SECRET_KEY or SECRET_KEY == INSECURE_DEV_SECRET_KEY:
+    raise ImproperlyConfigured(
+        "SECRET_KEY doit être défini en production, et ne peut pas être la "
+        "valeur de développement (elle est publique). Générez-en une avec :\n"
+        "  python -c \"from django.core.management.utils import "
+        "get_random_secret_key; print(get_random_secret_key())\""
+    )
+
+if len(SECRET_KEY) < 50:
+    raise ImproperlyConfigured(
+        f"SECRET_KEY est trop courte ({len(SECRET_KEY)} caractères). "
+        "Django en génère 50 ; une clé plus courte affaiblit toutes les "
+        "signatures qui en dépendent."
+    )
+
+# ⚠️ Indispensable : `SIMPLE_JWT` est un dictionnaire construit dans base.py,
+# qui a **copié** l'ancienne valeur de SECRET_KEY au moment de l'import.
+# Redéfinir SECRET_KEY ci-dessus ne le met pas à jour — sans cette ligne, les
+# JWT continueraient d'être signés avec la clé de développement.
+SIMPLE_JWT['SIGNING_KEY'] = SECRET_KEY
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='').split(',')
 

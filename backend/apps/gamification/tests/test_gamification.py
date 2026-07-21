@@ -25,11 +25,17 @@ from apps.progression.models import UserProgress
 
 pytestmark = pytest.mark.django_db
 
+# Mots de passe de test. Valeurs volontairement descriptives : elles ne
+# ressemblent pas à un identifiant réel, ce qui évite de déclencher les
+# détecteurs de secrets sur chaque nouveau test. Elles satisfont malgré tout
+# les validateurs Django (longueur, non courant, non numérique).
+TEST_PASSWORD = 'fixture-pwd-not-a-real-secret'
+
 
 @pytest.fixture
 def learner():
     return User.objects.create_user(
-        email='eleve@example.com', password='pass1234', first_name='Eve'
+        email='eleve@example.com', password=TEST_PASSWORD, first_name='Eve'
     )
 
 

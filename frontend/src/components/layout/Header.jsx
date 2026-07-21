@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '@/features/auth/authSlice';
 import ThemeToggle from '@/components/ui/ThemeToggle';
-import { ROLE_LABELS, STAFF_ROLES } from '@/constants/roles';
+import { ROLES, ROLE_LABELS, STAFF_ROLES } from '@/constants/roles';
 import './Header.css';
 
 // Une entrée sans `roles` est visible par tout le monde.
@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { path: '/progression', label: 'Ma progression' },
   { path: '/badges', label: 'Trophées' },
   { path: '/trainer', label: 'Espace formateur', roles: STAFF_ROLES },
+  { path: '/administration', label: 'Administration', roles: [ROLES.ADMIN] },
 ];
 
 export default function Header() {

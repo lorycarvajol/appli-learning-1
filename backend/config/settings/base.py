@@ -12,7 +12,17 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production-12345')
+#
+# Cette valeur de repli est publique (elle est dans le dépôt). Elle n'existe
+# que pour ne pas imposer de configuration en développement. `production.py`
+# refuse de démarrer si elle est encore utilisée — voir le garde-fou là-bas.
+#
+# Ce que signerait cette clé si elle passait en production : les JWT
+# (SIMPLE_JWT.SIGNING_KEY), les cookies de session, les jetons CSRF **et** les
+# liens de réinitialisation de mot de passe. La connaître permet de forger un
+# jeton pour n'importe quel compte, administrateur compris.
+INSECURE_DEV_SECRET_KEY = 'django-insecure-change-this-in-production-12345'
+SECRET_KEY = config('SECRET_KEY', default=INSECURE_DEV_SECRET_KEY)
 
 # Application definition
 INSTALLED_APPS = [
@@ -38,6 +48,7 @@ INSTALLED_APPS = [
     'apps.validation',
     'apps.gamification',
     'apps.cohorts',
+    'apps.administration',
 ]
 
 MIDDLEWARE = [

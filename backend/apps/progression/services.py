@@ -24,7 +24,12 @@ from .models import ChapterAccess, UserProgress
 STAFF_ROLES = ('TRAINER', 'ADMIN')
 
 
-def is_staff_user(user):
+def has_staff_role(user):
+    """Teste le **rôle**, pas le champ Django `is_staff`.
+
+    Nommée `is_staff_user` à l'origine, ce qui laissait croire qu'elle lisait
+    `user.is_staff` — deux notions distinctes à l'époque.
+    """
     return bool(user) and getattr(user, 'role', None) in STAFF_ROLES
 
 
@@ -54,7 +59,7 @@ def ensure_self_paced_access(user):
     Ne fait rien pour un apprenant rattaché à une classe : c'est son formateur
     qui décide.
     """
-    if is_staff_user(user):
+    if has_staff_role(user):
         return []
 
     profile = getattr(user, 'profile', None)
@@ -100,7 +105,7 @@ def ensure_self_paced_access(user):
 
 def accessible_chapter_ids(user):
     """Ensemble des ids de chapitres que cet utilisateur peut ouvrir."""
-    if is_staff_user(user):
+    if has_staff_role(user):
         return set(
             Chapter.objects.filter(is_published=True).values_list('id', flat=True)
         )
@@ -114,7 +119,7 @@ def accessible_chapter_ids(user):
 
 
 def can_access_chapter(user, chapter):
-    if is_staff_user(user):
+    if has_staff_role(user):
         return True
     ensure_self_paced_access(user)
     return ChapterAccess.objects.filter(

@@ -20,18 +20,24 @@ from apps.gamification.services import award_points
 
 pytestmark = pytest.mark.django_db
 
+# Mots de passe de test. Valeurs volontairement descriptives : elles ne
+# ressemblent pas à un identifiant réel, ce qui évite de déclencher les
+# détecteurs de secrets sur chaque nouveau test. Elles satisfont malgré tout
+# les validateurs Django (longueur, non courant, non numérique).
+TEST_PASSWORD = 'fixture-pwd-not-a-real-secret'
+
 
 @pytest.fixture
 def learner():
     return User.objects.create_user(
-        email='eleve@example.com', password='Motdepasse!2026', first_name='Eve'
+        email='eleve@example.com', password=TEST_PASSWORD, first_name='Eve'
     )
 
 
 @pytest.fixture
 def trainer():
     return User.objects.create_user(
-        email='formateur@example.com', password='Motdepasse!2026',
+        email='formateur@example.com', password=TEST_PASSWORD,
         role=User.Role.TRAINER,
     )
 
@@ -140,26 +146,26 @@ def test_le_profil_est_cree_une_seule_fois(learner):
 
 def test_lemail_est_normalise_en_minuscules():
     user = User.objects.create_user(
-        email='  Prenom.Nom@Ecole.FR  ', password='Motdepasse!2026'
+        email='  Prenom.Nom@Ecole.FR  ', password=TEST_PASSWORD
     )
     assert user.email == 'prenom.nom@ecole.fr'
 
 
 def test_deux_casses_du_meme_email_sont_le_meme_compte():
     """Régression : `normalize_email` ne minuscule que le domaine."""
-    User.objects.create_user(email='Loryc@example.com', password='Motdepasse!2026')
+    User.objects.create_user(email='Loryc@example.com', password=TEST_PASSWORD)
 
     with pytest.raises(IntegrityError):
         with transaction.atomic():
             User.objects.create_user(
-                email='loryc@example.com', password='Motdepasse!2026'
+                email='loryc@example.com', password=TEST_PASSWORD
             )
 
 
 def test_la_contrainte_resiste_a_une_ecriture_hors_modele():
     """`update()` court-circuite `save()` : la base doit tenir seule."""
-    User.objects.create_user(email='a@example.com', password='Motdepasse!2026')
-    other = User.objects.create_user(email='b@example.com', password='Motdepasse!2026')
+    User.objects.create_user(email='a@example.com', password=TEST_PASSWORD)
+    other = User.objects.create_user(email='b@example.com', password=TEST_PASSWORD)
 
     with pytest.raises(IntegrityError):
         with transaction.atomic():
@@ -172,7 +178,7 @@ def test_connexion_insensible_a_la_casse(learner):
 
     response = client.post(
         '/api/auth/login/',
-        {'email': 'Eleve@Example.com', 'password': 'Motdepasse!2026'},
+        {'email': 'Eleve@Example.com', 'password': TEST_PASSWORD},
         format='json',
     )
 
@@ -187,8 +193,8 @@ def test_inscription_puis_connexion_avec_une_autre_casse():
         '/api/auth/register/',
         {
             'email': 'Nouvel.Eleve@Ecole.FR',
-            'password': 'Motdepasse!2026',
-            'password_confirm': 'Motdepasse!2026',
+            'password': TEST_PASSWORD,
+            'password_confirm': TEST_PASSWORD,
             'first_name': 'Nouvel',
             'last_name': 'Eleve',
         },
@@ -199,7 +205,7 @@ def test_inscription_puis_connexion_avec_une_autre_casse():
 
     login = client.post(
         '/api/auth/login/',
-        {'email': 'nouvel.eleve@ecole.fr', 'password': 'Motdepasse!2026'},
+        {'email': 'nouvel.eleve@ecole.fr', 'password': TEST_PASSWORD},
         format='json',
     )
     assert login.status_code == 200
