@@ -1,15 +1,25 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { fetchMyProgress, selectAllProgress } from '../progression/progressionSlice';
+import {
+  fetchMyProgress,
+  fetchNextLesson,
+  selectAllProgress,
+  selectNextLesson,
+} from '../progression/progressionSlice';
 import NextObjectives from '../gamification/NextObjectives';
 import {
   selectLevel,
-  selectStreak,
   selectSummary,
   syncGamification,
 } from '../gamification/gamificationSlice';
 import './Dashboard.css';
+
+const LESSON_TYPE_LABELS = {
+  THEORY: '📖 Théorie',
+  EXERCISE: '💻 Exercice',
+  QUIZ: '❓ Quiz',
+};
 
 export default function Dashboard() {
   const dispatch = useDispatch();
@@ -17,10 +27,11 @@ export default function Dashboard() {
   const progressByLesson = useSelector(selectAllProgress);
   const summary = useSelector(selectSummary);
   const level = useSelector(selectLevel);
-  const streak = useSelector(selectStreak);
+  const nextLesson = useSelector(selectNextLesson);
 
   useEffect(() => {
     dispatch(fetchMyProgress());
+    dispatch(fetchNextLesson());
     // `sync` est idempotent côté serveur : il rattrape un éventuel badge
     // manqué (session interrompue, onglet fermé) sans rien redistribuer.
     dispatch(syncGamification());
@@ -107,24 +118,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="stat-card stat-card--streak">
-            <div className="stat-card__icon" aria-hidden="true">
-              {streak?.active_today ? '🔥' : '🕯️'}
-            </div>
-            <div className="stat-card__content">
-              <div className="stat-card__value">{streak?.current_streak ?? 0} j</div>
-              <div className="stat-card__label">Série en cours</div>
-              <div className="stat-card__sublabel">
-                {streak?.active_today
-                  ? 'Série entretenue aujourd’hui !'
-                  : 'Une leçon aujourd’hui et elle repart.'}
-              </div>
-            </div>
-            {streak?.longest_streak > 0 && (
-              <div className="stat-card__badge">Record {streak.longest_streak} j</div>
-            )}
-          </div>
-
           <div className="stat-card stat-card--trophy">
             <div className="stat-card__icon" aria-hidden="true">🏅</div>
             <div className="stat-card__content">
@@ -156,21 +149,63 @@ export default function Dashboard() {
                 </Link>
               </div>
 
-              <div className="learning-card">
-                <div className="learning-card__content">
-                  <h3 className="learning-card__title">Introduction au HTML</h3>
-                  <p className="learning-card__description">
-                    Apprenez les bases du langage HTML et créez votre première page web
-                  </p>
-                  <div className="learning-card__meta">
-                    <span className="learning-card__badge">🏷️ Débutant</span>
-                    <span className="learning-card__duration">⏱️ 2h estimées</span>
+              {nextLesson?.lesson ? (
+                <div className="learning-card">
+                  <div className="learning-card__content">
+                    <span className="learning-card__kicker">
+                      {nextLesson.chapter.title}
+                    </span>
+                    <h3 className="learning-card__title">{nextLesson.lesson.title}</h3>
+                    <p className="learning-card__description">
+                      {nextLesson.is_resuming
+                        ? 'Vous aviez commencé cette leçon — reprenez où vous en étiez.'
+                        : 'La prochaine étape de votre parcours vous attend.'}
+                    </p>
+                    <div className="learning-card__meta">
+                      <span className="learning-card__badge">
+                        {LESSON_TYPE_LABELS[nextLesson.lesson.lesson_type] || '📄 Leçon'}
+                      </span>
+                      <span className="learning-card__duration">
+                        ⏱️ {nextLesson.lesson.estimated_duration} min
+                      </span>
+                      <span className="learning-card__duration">
+                        📍 Leçon {nextLesson.chapter_progress.position} sur{' '}
+                        {nextLesson.chapter_progress.total}
+                      </span>
+                    </div>
+                  </div>
+                  <Link
+                    to={`/lessons/${nextLesson.lesson.slug}`}
+                    className="learning-card__button"
+                  >
+                    {nextLesson.is_resuming ? 'Reprendre' : 'Commencer'}
+                  </Link>
+                </div>
+              ) : nextLesson?.all_completed ? (
+                <div className="learning-card learning-card--done">
+                  <div className="learning-card__content">
+                    <h3 className="learning-card__title">
+                      Parcours terminé, félicitations ! 🎉
+                    </h3>
+                    <p className="learning-card__description">
+                      Vous avez complété toutes les leçons disponibles. Il reste
+                      peut-être des trophées à décrocher.
+                    </p>
+                  </div>
+                  <Link to="/badges" className="learning-card__button">
+                    Voir mes trophées
+                  </Link>
+                </div>
+              ) : (
+                <div className="learning-card learning-card--empty">
+                  <div className="learning-card__content">
+                    <h3 className="learning-card__title">Aucune leçon disponible</h3>
+                    <p className="learning-card__description">
+                      Le contenu n’est pas encore publié. Revenez bientôt !
+                    </p>
                   </div>
                 </div>
-                <Link to="/chapters/introduction-html" className="learning-card__button">
-                  Commencer
-                </Link>
-              </div>
+              )}
             </section>
 
             {/* Quick Actions */}
@@ -192,6 +227,21 @@ export default function Dashboard() {
                   <div className="quick-action__content">
                     <h3 className="quick-action__title">Ma progression</h3>
                     <p className="quick-action__description">Suivez vos résultats</p>
+                  </div>
+                  <span className="quick-action__arrow">→</span>
+                </Link>
+
+                <Link to="/badges" className="quick-action">
+                  <div className="quick-action__icon">🏆</div>
+                  <div className="quick-action__content">
+                    <h3 className="quick-action__title">Mes trophées</h3>
+                    <p className="quick-action__description">
+                      {summary?.badges
+                        ? `${summary.badges.earned}/${summary.badges.total} obtenus, ${
+                            summary.badges.secret_total - summary.badges.secret_found
+                          } encore cachés`
+                        : 'Badges obtenus et objectifs cachés'}
+                    </p>
                   </div>
                   <span className="quick-action__arrow">→</span>
                 </Link>

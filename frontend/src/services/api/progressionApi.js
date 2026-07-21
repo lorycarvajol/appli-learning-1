@@ -61,6 +61,12 @@ const progressionApi = {
     return response.data;
   },
 
+  // Leçon à reprendre pour le bloc « Continuer l'apprentissage »
+  getNextLesson: async () => {
+    const response = await apiService.get('/progression/progress/next_lesson/');
+    return response.data;
+  },
+
   // Temps passé : on envoie un incrément, jamais un total (le serveur fait
   // un F('time_spent') + n et plafonne la valeur).
   trackTime: async (lessonId, seconds) => {

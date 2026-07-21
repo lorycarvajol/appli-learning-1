@@ -262,6 +262,89 @@ def test_mark_seen_ne_rejoue_pas_la_revelation(api, learner, lesson, first_step_
 
 
 # ---------------------------------------------------------------------------
+# « Continuer l'apprentissage » : quelle leçon proposer
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def parcours():
+    """Un chapitre de trois leçons publiées, dans l'ordre."""
+    chapter = Chapter.objects.create(
+        title='HTML', slug='html-parcours', description='…',
+        estimated_duration=60, is_published=True, order_index=0,
+    )
+    return [
+        Lesson.objects.create(
+            chapter=chapter, title=f'Leçon {i}', slug=f'lecon-{i}',
+            lesson_type='THEORY', points=10, is_published=True, order_index=i,
+        )
+        for i in range(3)
+    ]
+
+
+def test_propose_la_premiere_lecon_quand_rien_nest_commence(api, parcours):
+    data = api.get('/api/progression/progress/next_lesson/').json()
+
+    assert data['lesson']['slug'] == 'lecon-0'
+    assert data['is_resuming'] is False
+    assert data['chapter_progress'] == {'position': 1, 'total': 3, 'completed': 0}
+
+
+def test_saute_les_lecons_deja_terminees(api, learner, parcours):
+    UserProgress.objects.create(
+        user=learner, lesson=parcours[0],
+        status=UserProgress.ProgressStatus.COMPLETED,
+    )
+
+    data = api.get('/api/progression/progress/next_lesson/').json()
+
+    assert data['lesson']['slug'] == 'lecon-1'
+    assert data['chapter_progress']['completed'] == 1
+
+
+def test_privilegie_la_lecon_entamee_meme_si_elle_est_plus_loin(api, learner, parcours):
+    """« Continuer » doit ramener où l'on s'est arrêté, pas en arrière."""
+    UserProgress.objects.create(
+        user=learner, lesson=parcours[2],
+        status=UserProgress.ProgressStatus.IN_PROGRESS,
+    )
+
+    data = api.get('/api/progression/progress/next_lesson/').json()
+
+    assert data['lesson']['slug'] == 'lecon-2'
+    assert data['is_resuming'] is True
+
+
+def test_signale_un_parcours_entierement_termine(api, learner, parcours):
+    for lesson in parcours:
+        UserProgress.objects.create(
+            user=learner, lesson=lesson,
+            status=UserProgress.ProgressStatus.COMPLETED,
+        )
+
+    data = api.get('/api/progression/progress/next_lesson/').json()
+
+    assert data['lesson'] is None
+    assert data['all_completed'] is True
+
+
+def test_ignore_les_lecons_non_publiees(api, parcours):
+    parcours[0].is_published = False
+    parcours[0].save()
+
+    data = api.get('/api/progression/progress/next_lesson/').json()
+
+    assert data['lesson']['slug'] == 'lecon-1'
+    assert data['chapter_progress']['total'] == 2
+
+
+def test_sans_contenu_publie_aucune_lecon_nest_proposee(api):
+    data = api.get('/api/progression/progress/next_lesson/').json()
+
+    assert data['lesson'] is None
+    assert data['all_completed'] is False
+
+
+# ---------------------------------------------------------------------------
 # Temps d'apprentissage
 # ---------------------------------------------------------------------------
 

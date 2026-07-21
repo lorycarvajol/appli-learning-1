@@ -263,6 +263,77 @@ class UserProgressViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK
         )
 
+    @action(detail=False, methods=['get'])
+    def next_lesson(self, request):
+        """Leçon à afficher dans le bloc « Continuer l'apprentissage ».
+
+        Priorité à la leçon **entamée la plus récemment** : c'est le sens de
+        « continuer ». À défaut, la première leçon non terminée dans l'ordre
+        du programme. Si tout est terminé, on le signale au client plutôt que
+        de renvoyer une leçon déjà faite.
+        """
+        lessons = list(
+            Lesson.objects.filter(is_published=True, chapter__is_published=True)
+            .select_related('chapter')
+            .order_by('chapter__order_index', 'order_index')
+        )
+
+        if not lessons:
+            return Response({'lesson': None, 'all_completed': False})
+
+        progress_by_lesson = {
+            p.lesson_id: p for p in UserProgress.objects.filter(user=request.user)
+        }
+
+        def status_of(lesson):
+            progress = progress_by_lesson.get(lesson.id)
+            return progress.status if progress else UserProgress.ProgressStatus.NOT_STARTED
+
+        started = [
+            lesson for lesson in lessons
+            if status_of(lesson) == UserProgress.ProgressStatus.IN_PROGRESS
+        ]
+        if started:
+            target = max(started, key=lambda l: progress_by_lesson[l.id].updated_at)
+            is_resuming = True
+        else:
+            unfinished = [
+                lesson for lesson in lessons
+                if status_of(lesson) != UserProgress.ProgressStatus.COMPLETED
+            ]
+            if not unfinished:
+                return Response({'lesson': None, 'all_completed': True})
+            target = unfinished[0]
+            is_resuming = False
+
+        chapter_lessons = [l for l in lessons if l.chapter_id == target.chapter_id]
+        completed_in_chapter = sum(
+            1 for l in chapter_lessons
+            if status_of(l) == UserProgress.ProgressStatus.COMPLETED
+        )
+
+        return Response({
+            'all_completed': False,
+            'is_resuming': is_resuming,
+            'lesson': {
+                'id': str(target.id),
+                'title': target.title,
+                'slug': target.slug,
+                'lesson_type': target.lesson_type,
+                'estimated_duration': target.estimated_duration,
+                'points': target.points,
+            },
+            'chapter': {
+                'title': target.chapter.title,
+                'slug': target.chapter.slug,
+            },
+            'chapter_progress': {
+                'position': chapter_lessons.index(target) + 1,
+                'total': len(chapter_lessons),
+                'completed': completed_in_chapter,
+            },
+        })
+
     @action(detail=False, methods=['post'])
     def track_time(self, request):
         """Ajoute du temps passé sur une leçon.
