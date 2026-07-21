@@ -164,6 +164,12 @@ REST_FRAMEWORK = {
         'password_reset': '5/hour',
         # Résolution publique de jetons d'invitation : borne l'énumération.
         'invite': '30/hour',
+        # Échecs de connexion, comptés **par compte visé** et non par IP —
+        # une classe entière partage le NAT de son établissement. Seuls les
+        # échecs consomment le quota, et une réussite l'efface : dix essais
+        # tuent une attaque par dictionnaire sans jamais gêner quelqu'un qui
+        # connaît son mot de passe. Voir `apps/accounts/throttling.py`.
+        'login': '10/hour',
     }
 }
 

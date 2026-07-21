@@ -856,6 +856,45 @@ Prises en session du 2026-07-21 :
    le N+1. En classe, c'est le formateur qui donne le tempo. Rejoindre une
    classe plus tard ne retire jamais un accès déjà obtenu.
 
+### Connexion : limitation des échecs — ✅ Fait
+
+`apps/accounts/throttling.FailedLoginThrottle`, appliqué par
+`views.LoginView` (qui remplace `TokenObtainPairView` dans `urls.py`).
+Débit : **`login: 10/hour`**. Avant cela, seul le plafond anonyme global de
+100 requêtes/heure s'appliquait — de quoi essayer cent mots de passe par heure
+sur un compte.
+
+Trois décisions, chacune couverte par un test :
+
+- **On compte par compte visé, pas par adresse IP.** C'est le piège propre à
+  cette application : une classe entière se connecte depuis le NAT de son
+  établissement, donc depuis **une seule IP**. Un plafond par IP mettrait la
+  promo dehors chaque matin. Compter par compte arrête en prime une attaque
+  répartie sur plusieurs machines, qu'un compteur par IP ne voit pas.
+- **Seuls les échecs consomment le quota**, et une réussite l'efface. Compter
+  toutes les tentatives ouvrirait un déni de service trivial : brûler le quota
+  d'un camarade suffirait à l'empêcher d'entrer. Là, quiconque connaît son mot
+  de passe passe toujours.
+- **La clé est normalisée en minuscules**, comme les emails le sont par
+  `User.save()` : sinon varier la casse offrirait un compteur neuf.
+
+L'implémentation sépare la vérification de la consommation :
+`allow_request` regarde sans décompter, et `LoginView.post` appelle
+`record_failure()` ou `reset()` selon l'issue. `LoginView` conserve pour cela
+les instances de throttle dans `check_throttles` — `APIView` les jette
+autrement.
+
+⚠️ **Deux pièges rencontrés, tous deux verrouillés par un test :**
+
+1. `development.py` vide `DEFAULT_THROTTLE_RATES`. Le throttle étant déclaré
+   sur la vue, il est instancié quand même ; `SimpleRateThrottle.get_rate`
+   aurait levé `ImproperlyConfigured` et **cassé la connexion en
+   développement**. D'où la tolérance à un débit absent.
+2. `SimpleRateThrottle.THROTTLE_RATES` est un instantané pris à l'import de
+   DRF, qu'`override_settings` **ne restaure pas** : un débit posé par un test
+   fuyait sur les suivants. `get_rate` relit donc `api_settings` à chaque
+   appel. Toute nouvelle classe de throttle devrait faire de même.
+
 ### Mot de passe oublié — ✅ Fait
 
 ```
@@ -935,9 +974,8 @@ pas par visibilité.
    verrou de chapitre, la notation des quiz et le suivi du temps. Le bug
    `Exercise.total_points` (liste des exercices de l'admin inaccessible) y vivait
    depuis l'origine, invisible.
-2. **Pas de throttle dédié sur `/api/auth/login/`.** Le global anonyme à 100/h
-   laisse passer une attaque par dictionnaire. Un `ScopedRateThrottle` suffit —
-   les scopes `password_reset` et `invite` montrent déjà le motif.
+*(Le throttle de connexion, longtemps second de cette liste, est fait — voir
+« Connexion : limitation des échecs ».)*
 
 ### Dette structurelle
 
@@ -973,6 +1011,7 @@ pas par visibilité.
 - [x] `npm run lint` ramené à zéro erreur **et zéro avertissement**
 - [x] Couverture du bac à sable — 20 tests simulés (en CI) + 7 tests réels
 - [x] Retrait de la liste noire de motifs (voir « Security Considerations »)
+- [x] Limitation des échecs de connexion
 
 ## Intégration continue
 

@@ -11,6 +11,7 @@ from django.contrib.auth import get_user_model
 
 from .avatars import MOTIFS, PALETTES, avatar_choices
 from .models import User, Profile
+from .throttling import FailedLoginThrottle
 from .serializers import (
     RegisterSerializer,
     UserSerializer,
@@ -65,6 +66,54 @@ class CurrentUserView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class LoginView(TokenObtainPairView):
+    """
+    Connexion.
+    POST /api/auth/login/
+
+    Identique à la vue de SimpleJWT, à ceci près que les **échecs** sont
+    comptés par compte visé (cf. `throttling.FailedLoginThrottle`). Sans cela,
+    la seule limite était le plafond anonyme global de 100 requêtes par heure,
+    qui laisse largement passer une attaque par dictionnaire.
+    """
+    throttle_classes = [FailedLoginThrottle]
+
+    def check_throttles(self, request):
+        """Conserve les instances de throttle pour pouvoir les alimenter après.
+
+        `APIView.check_throttles` les crée, les consulte et les jette. Or on ne
+        sait qu'après l'appel s'il faut décompter une tentative — il faut donc
+        retrouver l'objet qui porte la clé et l'historique déjà calculés.
+        """
+        self._throttles = self.get_throttles()
+        durations = [
+            throttle.wait()
+            for throttle in self._throttles
+            if not throttle.allow_request(request, self)
+        ]
+        if durations:
+            known = [d for d in durations if d]
+            self.throttled(request, max(known, default=None))
+
+    def post(self, request, *args, **kwargs):
+        try:
+            response = super().post(request, *args, **kwargs)
+        except Exception:
+            # Identifiants refusés : c'est la tentative qu'on décompte.
+            for throttle in getattr(self, '_throttles', []):
+                if hasattr(throttle, 'record_failure'):
+                    throttle.record_failure()
+            raise
+
+        # Réussite : on efface l'ardoise, pour que quelques fautes de frappe
+        # ne laissent pas l'apprenant à un essai du blocage.
+        for throttle in getattr(self, '_throttles', []):
+            if hasattr(throttle, 'reset'):
+                throttle.reset()
+
+        return response
 
 
 class ProfileView(generics.RetrieveUpdateAPIView):
