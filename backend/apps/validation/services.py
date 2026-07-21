@@ -17,7 +17,42 @@ class CodeValidationError(Exception):
 
 class DockerSandbox:
     """
-    Sandbox Docker pour exécuter du code de manière sécurisée
+    Exécute du code d'apprenant dans un conteneur jetable.
+
+    ### Le conteneur est la seule frontière de sécurité
+
+    Ce qui protège l'hôte, et rien d'autre :
+
+    - `network_disabled=True` — aucune sortie réseau, donc pas d'exfiltration,
+      pas de minage, et **aucun moyen d'atteindre le démon Docker** dont le
+      worker Celery détient pourtant le socket.
+    - **Aucun montage** : le conteneur ne voit jamais le système de fichiers de
+      l'hôte. Ne jamais ajouter de `volumes=` ici.
+    - `mem_limit` / `cpu_quota` — une boucle qui alloue ne peut pas emporter
+      la machine.
+    - `TIMEOUT`, puis `kill()` et `remove()` dans tous les cas.
+    - Instance recréée à chaque soumission : rien ne persiste d'une exécution
+      à l'autre.
+
+    ### Pourquoi il n'y a plus de liste de motifs interdits
+
+    Une liste noire (`eval`, `exec`, `open(`…) a existé ici. Elle a été retirée
+    après mesure : elle **rejetait du code d'apprenant parfaitement légitime**
+    — `executeTask` déclenchait sur `exec`, `evaluation` sur `eval`, et même le
+    mot français « evaluer » dans un commentaire — tout en laissant passer les
+    contournements évidents (`new Function("…")()`, `this["ev"+"al"]`).
+
+    Une recherche de sous-chaîne ne peut pas arrêter quelqu'un qui cherche à la
+    contourner ; elle ne gênait donc que les élèves de bonne foi, en leur
+    reprochant une faute qu'ils n'avaient pas commise.
+
+    Ce que du code arbitraire peut faire aujourd'hui : lire et écrire dans le
+    système de fichiers **du conteneur** (une image de base publique, jetée
+    aussitôt), et consommer ses propres ressources plafonnées. Rien de cela
+    n'atteint l'hôte ni les autres apprenants.
+
+    ⚠️ Corollaire : **toute atténuation de l'isolement du conteneur est
+    désormais une régression de sécurité directe**, sans filet en amont.
     """
 
     # Limites de ressources
@@ -33,22 +68,6 @@ class DockerSandbox:
         'javascript': 'node:18-alpine',
     }
 
-    # Patterns dangereux à bloquer
-    DANGEROUS_PATTERNS = [
-        'eval',
-        'exec',
-        '__import__',
-        'os.system',
-        'subprocess',
-        'open(',
-        'file(',
-        'require(',
-        'process.',
-        'child_process',
-        '__dirname',
-        '__filename',
-    ]
-
     def __init__(self, language='html'):
         """
         Initialize Docker sandbox
@@ -58,23 +77,6 @@ class DockerSandbox:
         """
         self.language = language.lower()
         self.client = docker.from_env()
-
-    def _check_dangerous_code(self, code: str) -> None:
-        """
-        Vérifie si le code contient des patterns dangereux
-
-        Args:
-            code: Code à vérifier
-
-        Raises:
-            CodeValidationError: Si du code dangereux est détecté
-        """
-        code_lower = code.lower()
-        for pattern in self.DANGEROUS_PATTERNS:
-            if pattern in code_lower:
-                raise CodeValidationError(
-                    f"Code dangereux détecté: '{pattern}' n'est pas autorisé"
-                )
 
     def _create_validation_script(self, user_code: str, tests: List[Dict]) -> str:
         """
@@ -253,10 +255,8 @@ console.log(JSON.stringify({
             Résultats de l'exécution avec tests passés/échoués
         """
         try:
-            # Vérifier le code dangereux
-            self._check_dangerous_code(user_code)
-
-            # Créer le script de validation
+            # Aucun filtrage du code en amont : c'est l'isolement du conteneur
+            # qui protège (cf. la docstring de la classe).
             validation_script = self._create_validation_script(user_code, tests)
 
             # Image Docker et interpréteur à utiliser selon le langage

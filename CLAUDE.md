@@ -931,17 +931,11 @@ pas par visibilité.
 
 ### Risque réel
 
-1. **Le bac à sable de code n'est pas testé.** `apps/validation/tests.py` fait
-   3 lignes — le squelette généré par Django. C'est l'app qui **exécute du code
-   utilisateur arbitraire dans Docker** : le composant le plus dangereux du
-   système, sans un seul test. À couvrir en priorité : coupure réseau, plafonds
-   mémoire/CPU, expiration, motifs interdits, et le cas d'une image qui ne
-   s'arrête pas.
-2. **`courses` et `progression` : zéro fichier de test.** C'est là que vivent le
+1. **`courses` et `progression` : zéro fichier de test.** C'est là que vivent le
    verrou de chapitre, la notation des quiz et le suivi du temps. Le bug
    `Exercise.total_points` (liste des exercices de l'admin inaccessible) y vivait
    depuis l'origine, invisible.
-3. **Pas de throttle dédié sur `/api/auth/login/`.** Le global anonyme à 100/h
+2. **Pas de throttle dédié sur `/api/auth/login/`.** Le global anonyme à 100/h
    laisse passer une attaque par dictionnaire. Un `ScopedRateThrottle` suffit —
    les scopes `password_reset` et `invite` montrent déjà le motif.
 
@@ -977,6 +971,8 @@ pas par visibilité.
 - [x] Infrastructure de test frontend (Vitest) — 37 tests
 - [x] Intégration continue (`.github/workflows/ci.yml`)
 - [x] `npm run lint` ramené à zéro erreur **et zéro avertissement**
+- [x] Couverture du bac à sable — 20 tests simulés (en CI) + 7 tests réels
+- [x] Retrait de la liste noire de motifs (voir « Security Considerations »)
 
 ## Intégration continue
 
@@ -1202,12 +1198,58 @@ présent de l'indicatif ne l'est pas.
 
 ### Security Considerations
 
-**Code execution sandbox:**
-- User code runs in isolated Docker containers
-- Network disabled (`network_mode='none'`)
-- Resource limits: 128MB RAM, 50% CPU quota, 5s timeout
-- Dangerous patterns blocked: `eval`, `exec`, `__import__`, `os.system`, `subprocess`
-- Validation: Serializer checks before sandbox execution
+**Bac à sable d'exécution de code** (`apps/validation/services.py`)
+
+La frontière de sécurité, c'est **le conteneur** — et rien d'autre :
+
+- `network_disabled=True` : aucun accès réseau depuis le code d'apprenant
+- `mem_limit='128m'`, `cpu_quota=50000` (50 % d'un cœur)
+- `container.wait(timeout=5)`, puis `kill()` + `remove()` quoi qu'il arrive
+- Conteneur jetable, recréé à chaque soumission
+
+Ces quatre réglages sont verrouillés par des tests
+(`apps/validation/tests/test_sandbox.py`) qui vérifient **les arguments passés
+à Docker**. C'est délibéré : lancer un vrai conteneur ne dirait pas si
+`network_disabled` a disparu d'un appel.
+
+S'y ajoute un garde-fou moins évident, devenu le plus important :
+
+- **Aucun montage** (`volumes` / `mounts`) dans le conteneur d'exécution. Le
+  worker Celery, lui, a `/var/run/docker.sock` monté — c'est ainsi qu'il pilote
+  le bac à sable. Monter quoi que ce soit de l'hôte donnerait au code
+  d'apprenant un chemin vers cette socket, donc le contrôle du démon, donc
+  l'hôte entier. Un test vérifie qu'aucun montage n'est passé.
+
+### Il n'y a plus de filtrage du code en amont — c'est délibéré
+
+Une liste noire `DANGEROUS_PATTERNS` (`eval`, `exec`, `open(`, `require(`…) a
+existé. **Retirée le 2026-07-21**, après mesure de ses deux effets :
+
+- Elle **rejetait du code d'apprenant légitime** : `exec` déclenchait sur
+  `executeTask`, `eval` sur `evaluation` et jusque dans le mot français
+  « evaluer » d'un commentaire, `open(` sur `document.open()`. L'élève voyait
+  sa soumission refusée par un message l'accusant d'une faute inexistante.
+- Elle **n'arrêtait aucun contournement** : `new Function("…")()` et
+  `this["ev"+"al"]("…")` passaient sans encombre.
+
+Une recherche de sous-chaîne ne gêne que ceux qui ne cherchent pas à la
+contourner. Sur une plateforme d'apprentissage, c'est exactement la population
+à ne pas gêner.
+
+Ce que du code arbitraire peut faire aujourd'hui : lire et écrire dans le
+système de fichiers **du conteneur** — une image publique, jetée aussitôt — et
+consommer ses propres ressources plafonnées. Vérifié en conditions réelles :
+une tentative de requête HTTP sortante n'aboutit pas et l'exécution est coupée
+au délai, sans laisser de conteneur derrière elle.
+
+⚠️ **Corollaire : toute atténuation de l'isolement du conteneur est désormais
+une régression de sécurité directe.** Il n'y a plus de filet en amont pour
+rattraper l'erreur. Ne pas ajouter de `volumes=`, ne pas retirer
+`network_disabled`, ne pas allonger le délai sans y penser à deux fois.
+
+**Piste de durcissement non faite** : le conteneur s'exécute en `root` (aucun
+`user=` n'est passé). Ajouter `user='nobody'` serait peu coûteux, mais c'est un
+changement de comportement à valider sur les quatre langages.
 
 **Authentication:**
 - JWT tokens: 1-hour access token, 7-day refresh token with rotation
@@ -1334,8 +1376,23 @@ mais c'est un changement transverse à faire d'un bloc, pas à moitié.
 
 ### Testing Strategy
 
-**Backend — en place.** pytest-django. Tests existants :
-`apps/accounts/tests/` et `apps/gamification/tests/`.
+**Backend — en place.** pytest-django, 182 tests. Couverts : `accounts`,
+`administration`, `cohorts`, `gamification`, `validation`.
+**Non couverts : `courses` et `progression`.**
+
+⚠️ **Deux modes d'exécution.** `pytest.ini` exclut par défaut les tests marqués
+`docker` (`-m "not docker"`) : ils lancent de vrais conteneurs et exigent
+`/var/run/docker.sock`, monté **uniquement sur le service `celery`**.
+
+```bash
+docker-compose exec backend pytest              # tout sauf les tests Docker
+docker-compose exec celery pytest -m docker     # les tests de bout en bout
+```
+
+Ce n'est pas un contournement : lancer le bac à sable depuis `backend` échoue
+sur `DockerException`, car ce conteneur n'a pas accès au démon. Les tests
+marqués sont *ignorés* ailleurs, jamais en échec — un test rouge faute
+d'environnement finit désactivé, et emporte les autres avec lui.
 
 ⚠️ `pytest.ini` contient `--reuse-db`. **Après toute migration, lancer au moins
 une fois `pytest --create-db`**, sinon les tests tournent contre un schéma
