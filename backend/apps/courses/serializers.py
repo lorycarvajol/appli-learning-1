@@ -26,7 +26,7 @@ class ExerciseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exercise
         fields = [
-            'id', 'lesson', 'instructions', 'starter_code', 'solution',
+            'id', 'lesson', 'instructions', 'starter_code', 'solution', 'language',
             'tests', 'difficulty', 'max_attempts', 'time_limit', 'hints',
             'total_points', 'created_at', 'updated_at'
         ]

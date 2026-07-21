@@ -92,12 +92,19 @@ class Exercise(models.Model):
         ('HARD', 'Difficile'),
     ]
 
+    LANGUAGES = [
+        ('html', 'HTML'),
+        ('css', 'CSS'),
+        ('javascript', 'JavaScript'),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     lesson = models.OneToOneField(Lesson, on_delete=models.CASCADE, related_name='exercise')
 
     instructions = models.TextField(help_text="Exercise instructions in Markdown")
     starter_code = models.TextField(help_text="Initial code template")
     solution = models.TextField(help_text="Reference solution (hidden from students)")
+    language = models.CharField(max_length=20, choices=LANGUAGES, default='html')
 
     # Tests stored as JSONB
     tests = models.JSONField(

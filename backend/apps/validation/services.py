@@ -28,6 +28,7 @@ class DockerSandbox:
     # Images Docker par langage
     DOCKER_IMAGES = {
         'html': 'python:3.11-slim',  # On utilise Python pour valider le HTML
+        'css': 'python:3.11-slim',   # Même principe : tests par regex sur le texte brut
         'python': 'python:3.11-slim',
         'javascript': 'node:18-alpine',
     }
@@ -41,6 +42,11 @@ class DockerSandbox:
         'subprocess',
         'open(',
         'file(',
+        'require(',
+        'process.',
+        'child_process',
+        '__dirname',
+        '__filename',
     ]
 
     def __init__(self, language='html'):
@@ -81,8 +87,11 @@ class DockerSandbox:
         Returns:
             Script Python qui valide le code
         """
-        if self.language == 'html':
-            # Pour HTML, on crée un script Python qui parse et valide
+        if self.language in ('html', 'css'):
+            # Pour HTML et CSS, on crée un script Python qui expose le texte
+            # brut (solution) pour des tests par regex/chaîne. Pour HTML,
+            # tags/attrs donnent en plus un accès structuré via HTMLParser
+            # (sans effet pour du CSS, qui n'a simplement pas de balises).
             script = '''
 import json
 import sys
@@ -161,6 +170,71 @@ output = {
 
 print(json.dumps(output))
 '''
+        elif self.language == 'javascript':
+            # Pour JavaScript : le code utilisateur est exécuté tel quel (ses
+            # variables/fonctions restent donc accessibles aux tests), et le
+            # texte source brut est aussi exposé (variable __source) pour les
+            # tests qui ont besoin de vérifier la présence de code plutôt que
+            # son comportement (ex: manipulation du DOM, non exécutable ici
+            # faute de vrai navigateur dans le sandbox).
+            script = '''
+const assert = require('assert');
+const __source = ''' + json.dumps(user_code) + ''';
+const __tests = ''' + json.dumps(tests) + ''';
+const __results = [];
+
+// Le sandbox n'a pas de vrai navigateur : on fournit des mocks minimalistes
+// pour que du code de manipulation du DOM s'exécute sans planter (les tests
+// portant sur ce type de code vérifient __source plutôt que le comportement).
+function __mockElement() {
+    const el = {
+        textContent: '', innerHTML: '', value: '', style: {},
+        classList: {
+            _classes: new Set(),
+            add(...names) { names.forEach(n => this._classes.add(n)); },
+            remove(...names) { names.forEach(n => this._classes.delete(n)); },
+            toggle(name) { this._classes.has(name) ? this._classes.delete(name) : this._classes.add(name); },
+            contains(name) { return this._classes.has(name); },
+        },
+        addEventListener() {}, removeEventListener() {},
+        setAttribute(name, value) { el[name] = value; },
+        getAttribute(name) { return el[name]; },
+        appendChild() {}, remove() {},
+    };
+    return el;
+}
+const document = {
+    querySelector: () => __mockElement(),
+    querySelectorAll: () => [__mockElement()],
+    getElementById: () => __mockElement(),
+    createElement: () => __mockElement(),
+    addEventListener: () => {},
+    body: __mockElement(),
+};
+const window = { document, addEventListener: () => {}, alert: () => {} };
+const alert = () => {};
+
+''' + user_code + '''
+
+for (const __test of __tests) {
+    const __name = __test.name || 'Test';
+    const __points = __test.points || 1;
+    const __errorMessage = __test.error_message || '';
+    try {
+        eval(__test.code);
+        __results.push({ name: __name, passed: true, points: __points, message: '✓ Parfait !' });
+    } catch (__e) {
+        const __message = __errorMessage || __e.message || 'Le test a échoué';
+        __results.push({ name: __name, passed: false, points: 0, message: __message });
+    }
+}
+
+console.log(JSON.stringify({
+    results: __results,
+    total_points: __results.reduce((s, r) => s + r.points, 0),
+    max_points: __tests.reduce((s, t) => s + (t.points || 1), 0),
+}));
+'''
         else:
             # Pour Python pur
             script = user_code + '\n\n' + '\n'.join(test['code'] for test in tests)
@@ -185,13 +259,17 @@ print(json.dumps(output))
             # Créer le script de validation
             validation_script = self._create_validation_script(user_code, tests)
 
-            # Image Docker à utiliser
+            # Image Docker et interpréteur à utiliser selon le langage
             image = self.DOCKER_IMAGES.get(self.language, self.DOCKER_IMAGES['python'])
+            if self.language == 'javascript':
+                command = ['node', '-e', validation_script]
+            else:
+                command = ['python', '-c', validation_script]
 
             # Créer et exécuter le conteneur
             container = self.client.containers.run(
                 image,
-                command=['python', '-c', validation_script],
+                command=command,
                 detach=True,
                 mem_limit=self.MEMORY_LIMIT,
                 cpu_quota=self.CPU_QUOTA,
@@ -273,8 +351,9 @@ def validate_exercise_code(exercise, user_code: str) -> Dict[str, Any]:
     Returns:
         Résultats de la validation
     """
-    # Déterminer le langage (pour l'instant, on suppose HTML)
-    language = 'html'
+    # Déterminer le langage à partir de l'exercice (html par défaut, pour
+    # rester compatible avec les exercices existants créés avant ce champ)
+    language = getattr(exercise, 'language', None) or 'html'
 
     # Créer le sandbox
     sandbox = DockerSandbox(language=language)
