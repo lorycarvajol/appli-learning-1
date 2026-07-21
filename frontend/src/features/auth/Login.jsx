@@ -97,7 +97,7 @@ function Login() {
           <div className="auth-footer">
             <p className="auth-footer__text">Pas encore de compte ?</p>
             <Link to="/register" className="auth-footer__link">
-              S'inscrire
+              S’inscrire
             </Link>
           </div>
         </div>

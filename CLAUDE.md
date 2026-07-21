@@ -457,6 +457,74 @@ lecture d'une leçon de théorie compte désormais comme activité.
   qui sauve `instance.profile` depuis `post_save` sur User (cf. le commentaire
   dans `signals.py`) : il écrase les points en mémoire.
 
+## Profil personnalisable — ✅ Fait
+
+Route front `/profil` (`features/profile/ProfilePage.jsx`), accessible depuis le
+menu utilisateur de l'en-tête. Avant ce chantier, **aucun écran ne permettait
+d'éditer son profil** : `bio`, `timezone` et `github_username` existaient dans
+le modèle depuis l'origine mais `UserSerializer` déclarait
+`profile = ProfileSerializer(read_only=True)`, donc l'API elle-même les
+refusait en écriture.
+
+La page couvre l'identité, l'avatar, le thème, le mot de passe (l'endpoint
+`change-password/` existait et n'était appelé nulle part — changer son mot de
+passe imposait de passer par « mot de passe oublié ») et un récapitulatif de
+progression en lecture seule.
+
+### Avatars : catalogue, pas téléversement
+
+`Profile.avatar` (un `ImageField`) reste dans le modèle mais **n'est pas
+alimenté**. Le choix se fait par `Profile.avatar_key`, une clé
+`<motif>-<palette>` prise dans une liste close (`apps/accounts/avatars.py`,
+6 × 6 = 36 combinaisons), et le rendu se fait en SVG côté client.
+
+Le raisonnement, à ne pas défaire à la légère : sur une plateforme scolaire
+sans outil de modération, un téléversement libre signifie que n'importe quelle
+image peut apparaître à côté d'un nom dans le tableau de bord du formateur, et
+que personne ne dispose du moyen de la retirer. S'y ajoutent la liste blanche
+de formats (un SVG téléversé est un vecteur de XSS), les bombes de
+décompression et un stockage à sauvegarder. Le catalogue supprime tout cela.
+
+Le repli — initiales sur une couleur **dérivée du nom**, donc stable d'une
+session à l'autre — est l'état par défaut de tout compte, pas un pis-aller.
+
+⚠️ Les listes `MOTIFS` / `PALETTES` sont **dupliquées** entre
+`backend/apps/accounts/avatars.py` (autorité) et
+`frontend/src/features/profile/avatars.js` (rendu). En modifier une seule donne
+soit un avatar vide, soit un choix refusé à l'enregistrement. Un test front
+vérifie que chaque clé sait se dessiner.
+
+### L'écriture imbriquée du profil et le piège des points
+
+`PATCH /api/auth/me/` accepte désormais un objet `profile`. C'est exactement le
+terrain du bug documenté dans `signals.py` — un enregistrement du profil entier
+écrase un solde mis à jour entre-temps par `award_points`.
+
+`UserSerializer.update` n'écrit donc **que les champs effectivement reçus**,
+via `update_fields`, et uniquement ceux de `EDITABLE_PROFILE_FIELDS` :
+`bio`, `avatar_key`, `theme`, `timezone`, `github_username`. `total_points`,
+`level`, `cohort` et `anonymized_at` restent hors d'atteinte d'un formulaire de
+profil. Un test reproduit le scénario concurrent.
+
+### Thème rattaché au compte
+
+`Profile.theme` vaut `AUTO`, `LIGHT` ou `DARK`. `AUTO` n'est pas un troisième
+thème : c'est l'absence de choix, qui suit le système **et continue de le
+suivre** s'il change en cours de session. L'ancien `ThemeContext` confondait
+les deux et ne permettait plus d'y revenir une fois un choix fait.
+
+⚠️ `ThemeProvider` est monté **au-dessus du store Redux** (`main.jsx`) : il ne
+peut pas lire le profil. La synchronisation passe par
+`features/profile/useThemePreferenceSync.js`, monté dans `App`. Les deux flux
+sont asymétriques (le compte gagne à la connexion, l'utilisateur gagne quand il
+bascule) et `appliedRef` empêche la boucle serveur → contexte → serveur. Ne pas
+« simplifier » en un effet bidirectionnel.
+
+```
+GET  /api/auth/avatars/   catalogue (motifs, palettes, clés)
+PATCH /api/auth/me/       { first_name, last_name, profile: { … } }
+```
+
 ## Classes (cohortes) — ✅ Fait
 
 App `apps/cohorts`. Modèles : `Cohort`, `CohortInvite`, plus `Profile.cohort`
@@ -849,18 +917,105 @@ formateur vers `/dashboard` à chaque rafraîchissement, et une panne réseau
 laisserait un écran de chargement infini. Toute nouvelle garde doit attendre
 `initialized` avant de décider.
 
-### Reste à faire (par ordre de valeur)
+### Décision actée : stockage des jetons
 
-- [ ] Throttle dédié sur `/api/auth/login/` (le global à 100/h anonyme laisse
-      passer une attaque par dictionnaire).
-- [x] Infrastructure de test frontend (Vitest) — voir « Testing Strategy ».
-- [ ] Uniformiser le contrat des services API (cf. avertissement plus bas) —
-      un test de contrat par module d'API serait le bon filet avant d'y toucher.
+Rester en `localStorage`. Migrer vers des cookies `httpOnly` impliquerait de
+refaire l'intercepteur axios, CORS et la protection CSRF pour un gain réel
+seulement en cas de XSS par ailleurs. Réduire `ACCESS_TOKEN_LIFETIME` couvre
+l'essentiel du risque pour une ligne.
 
-Sur le stockage des tokens : rester en `localStorage`. Migrer vers des cookies
-`httpOnly` impliquerait de refaire l'intercepteur axios, CORS et la protection
-CSRF pour un gain réel seulement en cas de XSS par ailleurs. Réduire
-`ACCESS_TOKEN_LIFETIME` couvre l'essentiel du risque pour une ligne.
+## Reste à faire — audit du 2026-07-21
+
+Inventaire vérifié dans le code, pas recopié du roadmap. Classé par risque,
+pas par visibilité.
+
+### Risque réel
+
+1. **Le bac à sable de code n'est pas testé.** `apps/validation/tests.py` fait
+   3 lignes — le squelette généré par Django. C'est l'app qui **exécute du code
+   utilisateur arbitraire dans Docker** : le composant le plus dangereux du
+   système, sans un seul test. À couvrir en priorité : coupure réseau, plafonds
+   mémoire/CPU, expiration, motifs interdits, et le cas d'une image qui ne
+   s'arrête pas.
+2. **`courses` et `progression` : zéro fichier de test.** C'est là que vivent le
+   verrou de chapitre, la notation des quiz et le suivi du temps. Le bug
+   `Exercise.total_points` (liste des exercices de l'admin inaccessible) y vivait
+   depuis l'origine, invisible.
+3. **Pas de throttle dédié sur `/api/auth/login/`.** Le global anonyme à 100/h
+   laisse passer une attaque par dictionnaire. Un `ScopedRateThrottle` suffit —
+   les scopes `password_reset` et `invite` montrent déjà le motif.
+
+### Dette structurelle
+
+4. **Contrat incohérent des services API** — `authApi` et `coursesApi` rendent
+   la réponse axios brute, les autres les données déballées (cf. la section
+   dédiée). A déjà coûté une page blanche. Uniformiser demande un test de
+   contrat par module d'abord, puis un changement d'un seul bloc.
+5. **Aucun découpage de bundle** — `App.jsx` importe tout statiquement, ~535 kB
+   d'un tenant. `React.lazy` par route est mécanique.
+6. **`Profile.avatar` (ImageField) est mort** — conservé pour d'éventuels
+   téléversements historiques, jamais alimenté. À supprimer si l'on confirme
+   qu'aucune base n'en contient.
+
+### Fonctionnalités jamais commencées
+
+7. **WebSocket / temps réel** — voir la section dédiée : `asgi.py` a un routeur
+   vide et `channels/consumers/` est un dossier vide. Rien n'en dépend
+   aujourd'hui.
+8. **Soumission et correction de projets** (Phase 4) — le modèle `Project`
+   existe dans `courses`, mais **aucun modèle de soumission** nulle part, donc
+   rien à rendre ni à corriger.
+9. **Forum** (Phase 4) — l'app n'existe pas, ni dans `INSTALLED_APPS` ni sur le
+   disque.
+10. **Leaderboard** — reporté volontairement (choix produit : progression
+    personnelle d'abord). Le grand livre de points le rend trivial à ajouter.
+11. **Déploiement** (Phase 5) — le garde-fou `SECRET_KEY` de production est en
+    place et testé, mais rien n'est déployé et la CI ne construit aucune image.
+
+### Ce qui vient d'être fait
+
+- [x] Infrastructure de test frontend (Vitest) — 37 tests
+- [x] Intégration continue (`.github/workflows/ci.yml`)
+- [x] `npm run lint` ramené à zéro erreur **et zéro avertissement**
+
+## Intégration continue
+
+`.github/workflows/ci.yml`, sur `push` vers `main` et sur chaque *pull
+request*. Deux jobs indépendants qui échouent séparément.
+
+**Backend** — PostgreSQL 15 et Redis 7 en services, puis :
+
+| Étape | Ce qu'elle attrape |
+|---|---|
+| `makemigrations --check --dry-run` | Un modèle modifié sans migration |
+| `migrate` sur base vierge | Une migration qui ne s'applique pas dans l'ordre |
+| `manage.py check` | Erreurs de configuration |
+| `pytest --create-db` | Les 155 tests |
+
+⚠️ Les deux premières étapes ne sont pas décoratives. `pytest.ini` fixe
+**`--nomigrations`** : le schéma de test est bâti directement depuis les
+modèles, donc la suite complète peut passer au vert alors qu'il manque une
+migration — et casser au déploiement. La CI est le seul endroit où ce décalage
+est visible.
+
+`ENVIRONMENT: development` est explicite dans le workflow :
+`config/settings/__init__.py` bascule sur `production.py` dès que la variable
+vaut `production`, et ce module **refuse de démarrer** sans vraie `SECRET_KEY`.
+
+**Frontend** — Node 22, `npm ci`, puis `lint`, `test`, `build`.
+
+Le `build` n'est pas redondant avec les tests : il attrape les imports cassés
+et surtout les **chemins dont la casse ne correspond pas**. Le runner Linux est
+sensible à la casse, contrairement au poste Windows de développement — c'est
+exactement le piège qui a fait renommer `ThemeContext.jsx` en
+`ThemeProvider.jsx`, pour ne pas cohabiter avec `themeContext.js`.
+
+⚠️ `npm run lint` tourne avec `--max-warnings 0` et le dépôt est à zéro.
+**Un simple avertissement casse la CI** — c'est voulu : c'est ce qui empêche de
+revenir aux 15 erreurs tolérées pendant des mois. Si une règle gêne
+légitimement, la désactiver avec un commentaire qui explique pourquoi (voir
+`ExerciseInterface.jsx`, où inclure la dépendance suggérée effacerait le
+travail de l'apprenant), jamais relever le seuil.
 
 ## Development Commands
 
@@ -913,10 +1068,10 @@ npm run dev                         # http://localhost:5173
 npm run build
 npm run preview                     # Preview production build
 
-# Linting
-npm run lint        # ⚠️ échoue aujourd'hui sur ~15 erreurs préexistantes
-                    # (apostrophes non échappées, imports morts) — non liées
-                    # aux tests. À nettoyer avant d'en faire une porte de CI.
+# Linting — zéro erreur ET zéro avertissement (porte de CI)
+npm run lint        # ⚠️ `--max-warnings 0` : un avertissement casse la CI.
+                    # Ne jamais relever le seuil ; désactiver la règle au cas
+                    # par cas, avec un commentaire qui justifie.
 
 # Tests (Vitest + Testing Library, environnement jsdom)
 npm test            # une passe
@@ -982,10 +1137,13 @@ React app organized by features in `frontend/src/features/`:
 **Key patterns:**
 - Redux Toolkit for state management with slices per feature
 - Axios interceptors for JWT token refresh on 401
-- WebSocket service (`wsService.js`) for real-time updates with auto-reconnect
-- Custom hooks: `useAutosave` (3-second debounce), `useDebounce`, `useWebSocket`
-- Code splitting with React.lazy for performance
-- Tailwind CSS for styling
+- Hooks maison : `useTimeTracker` (temps réellement actif),
+  `useThemePreferenceSync` (thème rattaché au compte)
+- Tailwind CSS **et** SCSS par feature — les deux coexistent
+
+⚠️ Trois éléments listés ici auparavant n'existent pas : `wsService.js`,
+`useAutosave` / `useWebSocket`, et le découpage par `React.lazy`. `App.jsx`
+importe tout statiquement, d'où un bundle de ~535 kB en un seul morceau.
 
 ### Database Schema
 
@@ -1010,26 +1168,37 @@ PostgreSQL with UUID primary keys throughout:
 - Progress queries: `idx_progress_user_lesson`, `idx_progress_status`
 - Activity logs: `idx_activity_created` (DESC for recent activity)
 
-### WebSocket Architecture
+### WebSocket — ⚠️ RIEN N'EXISTE
 
-Real-time communication via Django Channels:
+**Cette section décrivait une architecture temps réel complète qui n'a jamais
+été écrite.** Vérifié le 2026-07-21 :
 
-**Endpoints:**
-- `ws://api/ws/progress/{exercise_id}/` - Auto-save code every 3 seconds
-- `ws://api/ws/activity/chapter/{chapter_id}/` - Trainer sees student activity
-- `ws://api/ws/notifications/` - Badge awards, chapter unlocks
+- `config/asgi.py` : l'`URLRouter` est **vide**, avec un commentaire
+  « WebSocket URL patterns will be added here ».
+- `backend/channels/consumers/` : **dossier vide**, aucun consumer.
+- `frontend/src/services/websocket/wsService.js` : **n'existe pas**.
+- Le service Docker `daphne` démarre, écoute sur 8001 et ne sert rien.
 
-**Message types (server → client):**
-- `progress_saved` - Confirmation of saved code
-- `user_activity` - Student started/completed lesson
-- `chapter_unlocked` - Trainer unlocked new chapter
-- `badge_earned` - New badge awarded
-- `validation_result` - Code validation completed
+Aucune fonctionnalité de l'application ne dépend du temps réel : l'auto-save de
+code, l'activité formateur et les notifications de badges passent tous par des
+appels HTTP classiques. Il n'y a donc rien de cassé — seulement une brique
+prévue et jamais posée.
 
-**Implementation notes:**
-- Redis channel layer for pub/sub between server instances
-- Auto-save: Client debounces 3s → WebSocket → Redis cache → Async DB write (batched every 10s)
-- JWT authentication in WebSocket handshake via `scope['user']`
+Cible souhaitée, si le chantier est repris un jour :
+
+| Endpoint | Rôle |
+|---|---|
+| `ws/progress/{exercise_id}/` | Sauvegarde du code en cours |
+| `ws/activity/chapter/{chapter_id}/` | Activité des élèves, vue formateur |
+| `ws/notifications/` | Badges obtenus, chapitres débloqués |
+
+L'authentification devra passer par le JWT dans la poignée de main
+(`scope['user']`), et le *channel layer* Redis est déjà configuré.
+
+⚠️ **Ne pas décrire ici ce qui n'est pas construit.** Cette section a induit en
+erreur pendant des mois, comme l'a fait la mention d'une infrastructure de test
+frontend inexistante. Documenter une intention est utile ; la documenter au
+présent de l'indicatif ne l'est pas.
 
 ### Security Considerations
 
@@ -1090,39 +1259,10 @@ When adding a new frontend feature (e.g., `notifications`):
 
 ### Working with WebSocket
 
-To add real-time functionality:
-
-**Backend (Django Channels consumer):**
-```python
-# backend/channels/consumers/your_consumer.py
-from channels.generic.websocket import AsyncWebsocketConsumer
-
-class YourConsumer(AsyncWebsocketConsumer):
-    async def connect(self):
-        # Join channel group
-        await self.channel_layer.group_add("group_name", self.channel_name)
-        await self.accept()
-
-    async def receive(self, text_data):
-        # Handle incoming messages
-        # Broadcast: await self.channel_layer.group_send("group_name", {...})
-```
-
-**Frontend (React hook):**
-```javascript
-// Use existing wsService or create custom hook
-import wsService from '@/services/websocket/wsService';
-
-useEffect(() => {
-  wsService.connect(token);
-
-  wsService.socket.on('your_event', (data) => {
-    dispatch(updateState(data));
-  });
-
-  return () => wsService.disconnect();
-}, []);
-```
+Sans objet aujourd'hui : aucun consumer n'existe (cf. « WebSocket — RIEN
+N'EXISTE » plus haut). Ce guide décrivait comment brancher un consumer sur un
+`wsService.js` qui n'a jamais été écrit. Il sera à rédiger *avec* le chantier,
+pas avant.
 
 ### Code Validation System
 
@@ -1222,6 +1362,8 @@ dans ce document**, pas la couverture de ligne :
 | `features/gamification/gamificationSlice.test.js` | Une célébration ne rejoue jamais, même si `unseen_badges` et `newly_earned` mentionnent le même badge |
 | `features/progression/useTimeTracker.test.jsx` | Onglet caché ou inactif depuis 90 s ⇒ aucun temps crédité (le compteur alimente des badges) |
 | `features/administration/AdminSpace.test.jsx` | L'anonymisation exige une confirmation ; le journal affiche l'identité **figée**, pas l'identité courante |
+| `features/profile/avatars.test.js` | Chaque clé du catalogue sait se dessiner ; une clé inconnue retombe sur les initiales |
+| `features/profile/ProfilePage.test.jsx` | Le formulaire n'envoie ni `role` ni les points ; les erreurs DRF imbriquées restent lisibles |
 
 Écrire les tests **en français**, comme le reste des commentaires du dépôt.
 

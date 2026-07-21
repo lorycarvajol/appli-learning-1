@@ -128,17 +128,13 @@
   border-color: var(--border-strong);
 }
 
+/* `Avatar` est un SVG qui porte son propre fond : ne pas lui en imposer un,
+   il masquerait le motif choisi. Le rayon est arrondi ici plutôt que dans le
+   composant, pour que la même image serve aussi en carré ailleurs. */
 .header__user-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: white;
   flex-shrink: 0;
 }
 

@@ -10,6 +10,17 @@ export const authApi = {
   getCurrentUser: () =>
     apiClient.get('/auth/me/'),
 
+  /**
+   * Met à jour le compte et, si `payload.profile` est fourni, le profil.
+   * L'écriture est imbriquée pour rester atomique : un formulaire de profil
+   * qui réussirait à moitié laisserait l'utilisateur devant un état incohérent.
+   */
+  updateProfile: (payload) =>
+    apiClient.patch('/auth/me/', payload),
+
+  getAvatarCatalog: () =>
+    apiClient.get('/auth/avatars/'),
+
   refreshToken: (refreshToken) =>
     apiClient.post('/auth/token/refresh/', { refresh: refreshToken }),
 

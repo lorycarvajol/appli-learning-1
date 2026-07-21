@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '@/features/auth/authSlice';
 import ThemeToggle from '@/components/ui/ThemeToggle';
+import Avatar from '@/components/ui/Avatar';
 import { ROLES, ROLE_LABELS, STAFF_ROLES } from '@/constants/roles';
 import './Header.css';
 
@@ -65,8 +66,8 @@ export default function Header() {
     (link) => !link.roles || link.roles.includes(user?.role)
   );
 
-  const initials =
-    (user?.first_name?.charAt(0) || user?.email?.charAt(0) || 'U').toUpperCase();
+  // Les initiales sont désormais calculées par `Avatar`, qui gère aussi le
+  // cas d'un avatar choisi au catalogue.
   const displayName =
     user?.first_name && user?.last_name ? `${user.first_name} ${user.last_name}` : user?.email;
   const roleLabel = ROLE_LABELS[user?.role] || '';
@@ -109,9 +110,7 @@ export default function Header() {
               aria-expanded={showUserMenu}
               aria-controls="user-menu"
             >
-              <span className="header__user-avatar" aria-hidden="true">
-                {initials}
-              </span>
+              <Avatar user={user} size={36} className="header__user-avatar" />
               <span className="header__user-info">
                 <span className="header__user-name">{displayName}</span>
                 <span className="header__user-role">{roleLabel}</span>
@@ -134,6 +133,14 @@ export default function Header() {
 
             {showUserMenu && (
               <div className="header__user-dropdown" id="user-menu" role="menu">
+                <Link
+                  to="/profil"
+                  className="header__dropdown-item"
+                  role="menuitem"
+                  onClick={() => setShowUserMenu(false)}
+                >
+                  Mon profil
+                </Link>
                 <button
                   type="button"
                   onClick={handleLogout}

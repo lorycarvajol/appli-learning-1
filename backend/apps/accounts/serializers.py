@@ -3,7 +3,18 @@ Serializers for User and Profile models.
 """
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
+from django.db import transaction
+
+from .avatars import is_valid_avatar_key
 from .models import User, Profile
+
+#: Seuls champs du profil qu'un apprenant peut écrire lui-même.
+#:
+#: Cette liste est le garde-fou central de l'écriture imbriquée : `total_points`
+#: et `level` sont des soldes dérivés du grand livre, `cohort` relève du
+#: formateur, `anonymized_at` du RGPD. Aucun ne doit pouvoir bouger depuis un
+#: formulaire de profil.
+EDITABLE_PROFILE_FIELDS = ('bio', 'avatar_key', 'theme', 'timezone', 'github_username')
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -12,15 +23,44 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = [
-            'bio', 'avatar', 'total_points', 'level',
+            'bio', 'avatar', 'avatar_key', 'theme', 'total_points', 'level',
             'timezone', 'github_username', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['total_points', 'level', 'created_at', 'updated_at']
+        read_only_fields = [
+            'avatar', 'total_points', 'level', 'created_at', 'updated_at'
+        ]
+
+    def validate_avatar_key(self, value):
+        """Refuse toute clé absente du catalogue.
+
+        Sans cette validation, un `PATCH` pourrait poser une chaîne arbitraire
+        qui finirait interpolée dans le rendu SVG du client.
+        """
+        if not is_valid_avatar_key(value):
+            raise serializers.ValidationError(
+                "Cet avatar ne fait pas partie du catalogue."
+            )
+        return value
+
+    def validate_bio(self, value):
+        if len(value) > 500:
+            raise serializers.ValidationError(
+                "La biographie ne peut pas dépasser 500 caractères."
+            )
+        return value
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Serializer for User model with nested profile."""
-    profile = ProfileSerializer(read_only=True)
+    """Compte et profil, avec écriture imbriquée du profil.
+
+    ⚠️ L'écriture imbriquée demande une précaution particulière ici. Un signal
+    `post_save` qui sauvait `instance.profile` a déjà écrasé des points en
+    mémoire par le passé (cf. `signals.py`). On ne réenregistre donc **jamais
+    le profil en entier** : seuls les champs effectivement reçus sont écrits,
+    via `update_fields`. Un solde mis à jour en parallèle par
+    `award_points` ne peut pas être écrasé par un formulaire de profil.
+    """
+    profile = ProfileSerializer(required=False)
 
     class Meta:
         model = User
@@ -29,6 +69,25 @@ class UserSerializer(serializers.ModelSerializer):
             'is_active', 'date_joined', 'last_login', 'profile'
         ]
         read_only_fields = ['id', 'date_joined', 'last_login', 'role', 'is_active']
+
+    def update(self, instance, validated_data):
+        profile_data = validated_data.pop('profile', None)
+
+        with transaction.atomic():
+            user = super().update(instance, validated_data)
+
+            if profile_data:
+                profile = user.profile
+                touched = [
+                    field for field in EDITABLE_PROFILE_FIELDS
+                    if field in profile_data
+                ]
+                for field in touched:
+                    setattr(profile, field, profile_data[field])
+                if touched:
+                    profile.save(update_fields=[*touched, 'updated_at'])
+
+        return user
 
 
 class RegisterSerializer(serializers.ModelSerializer):

@@ -150,7 +150,31 @@ class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
 
     bio = models.TextField(blank=True)
+
+    # Conservé pour ne pas perdre les données d'éventuels téléversements
+    # historiques, mais **non alimenté** : le choix d'avatar se fait par
+    # catalogue (`avatar_key`). Voir `apps/accounts/avatars.py` pour le
+    # raisonnement — modération, formats, stockage.
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+
+    avatar_key = models.CharField(
+        max_length=40,
+        blank=True,
+        help_text="Clé du catalogue (« motif-palette »). Vide = initiales.",
+    )
+
+    class Theme(models.TextChoices):
+        AUTO = 'AUTO', 'Selon le système'
+        LIGHT = 'LIGHT', 'Clair'
+        DARK = 'DARK', 'Sombre'
+
+    theme = models.CharField(
+        max_length=10,
+        choices=Theme.choices,
+        default=Theme.AUTO,
+        help_text="Préférence d'affichage, rattachée au compte plutôt qu'au "
+                  "navigateur : elle suit l'apprenant d'un poste à l'autre.",
+    )
 
     # Une seule classe active par apprenant : le déblocage de chapitre reste
     # non ambigu, un seul formateur donne le tempo. Vide = apprenant autonome,

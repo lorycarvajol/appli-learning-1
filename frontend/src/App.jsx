@@ -15,6 +15,8 @@ import LessonView from './features/chapters/LessonView'
 import TrainerDashboard from './features/trainer/TrainerDashboard'
 import ProgressionPage from './features/progression/ProgressionPage'
 import BadgesPage from './features/gamification/BadgesPage'
+import ProfilePage from './features/profile/ProfilePage'
+import useThemePreferenceSync from './features/profile/useThemePreferenceSync'
 import { fetchCurrentUser } from './features/auth/authSlice'
 import AdminSpace from './features/administration/AdminSpace'
 import { ROLES, STAFF_ROLES } from './constants/roles'
@@ -22,6 +24,10 @@ import { ROLES, STAFF_ROLES } from './constants/roles'
 function App() {
   const dispatch = useDispatch()
   const { user } = useSelector((state) => state.auth)
+
+  // Monté ici, à l'intérieur du store : `ThemeProvider` est au-dessus et ne
+  // peut pas lire le profil lui-même.
+  useThemePreferenceSync()
 
   useEffect(() => {
     const hasToken = localStorage.getItem('accessToken')
@@ -107,6 +113,16 @@ function App() {
           <PrivateRoute>
             <Layout>
               <BadgesPage />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/profil"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <ProfilePage />
             </Layout>
           </PrivateRoute>
         }

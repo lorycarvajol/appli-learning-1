@@ -94,7 +94,7 @@ export default function ImageLightbox({ src, alt, onClose }) {
 
         {/* Aide */}
         <div className="image-lightbox__help">
-          Appuyez sur <kbd>ESC</kbd> ou cliquez à l'extérieur pour fermer
+          Appuyez sur <kbd>ESC</kbd> ou cliquez à l’extérieur pour fermer
         </div>
       </div>
     </div>

@@ -17,10 +17,14 @@ export default function ExerciseInterface({ exercise, onSubmit }) {
   const [testResults, setTestResults] = useState(null);
   const [showHints, setShowHints] = useState(false);
 
-  // Réinitialiser le code quand l'exercice change
+  // Réinitialiser le code quand on change d'exercice — et **seulement** dans
+  // ce cas. Ajouter `exercise.starter_code` aux dépendances, comme le suggère
+  // react-hooks/exhaustive-deps, effacerait le travail en cours de l'apprenant
+  // dès qu'un formateur retouche le code de départ depuis l'admin.
   useEffect(() => {
     setCode(exercise.starter_code || '');
     setTestResults(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exercise.id]);
 
   // Gérer la soumission du code
@@ -223,7 +227,7 @@ export default function ExerciseInterface({ exercise, onSubmit }) {
       {/* Note pour l'utilisateur */}
       <div className="exercise-note">
         <strong>💻 Validation automatique :</strong> Votre code est exécuté dans un environnement
-        Docker sécurisé et isolé. Les tests définis pour l'exercice vérifient automatiquement
+        Docker sécurisé et isolé. Les tests définis pour l’exercice vérifient automatiquement
         la validité de votre solution.
       </div>
     </div>

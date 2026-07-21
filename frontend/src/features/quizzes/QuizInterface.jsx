@@ -118,7 +118,7 @@ export default function QuizInterface({ quiz, lessonId, initialProgress, onSubmi
     return (
       <div className="quiz-interface">
         <div className="quiz-start">
-          <p>Aucune question n'est disponible pour ce quiz.</p>
+          <p>Aucune question n’est disponible pour ce quiz.</p>
         </div>
       </div>
     );

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
@@ -87,15 +87,6 @@ export default function LessonView() {
       QUIZ: { label: 'Quiz', class: 'lesson-header__badge--quiz' },
     };
     return types[type] || types.THEORY;
-  };
-
-  const getDifficultyClass = (difficulty) => {
-    const classes = {
-      EASY: 'lesson-exercise__difficulty--easy',
-      MEDIUM: 'lesson-exercise__difficulty--medium',
-      HARD: 'lesson-exercise__difficulty--hard',
-    };
-    return classes[difficulty] || classes.EASY;
   };
 
   const typeInfo = getLessonTypeInfo(currentLesson.lesson_type);

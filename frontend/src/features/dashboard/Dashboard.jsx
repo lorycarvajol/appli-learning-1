@@ -62,7 +62,7 @@ export default function Dashboard() {
             Bonjour {user?.first_name || 'Apprenant'} ! 👋
           </h1>
           <p className="dashboard__hero-subtitle">
-            Prêt à continuer votre apprentissage aujourd'hui ?
+            Prêt à continuer votre apprentissage aujourd’hui ?
           </p>
         </div>
         <div className="dashboard__hero-illustration" aria-hidden="true">
@@ -106,7 +106,7 @@ export default function Dashboard() {
             <div className="stat-card__icon" aria-hidden="true">⏱️</div>
             <div className="stat-card__content">
               <div className="stat-card__value">{formatTime(totalTimeSpent)}</div>
-              <div className="stat-card__label">Temps d'apprentissage</div>
+              <div className="stat-card__label">Temps d’apprentissage</div>
             </div>
           </div>
 
@@ -143,7 +143,7 @@ export default function Dashboard() {
             {/* Continue Learning */}
             <section className="dashboard__section">
               <div className="dashboard__section-header">
-                <h2 className="dashboard__section-title">📚 Continuer l'apprentissage</h2>
+                <h2 className="dashboard__section-title">📚 Continuer l’apprentissage</h2>
                 <Link to="/chapters" className="dashboard__section-link">
                   Voir tout →
                 </Link>
@@ -253,7 +253,7 @@ export default function Dashboard() {
           <aside className="dashboard__sidebar">
             {/* Progress Overview */}
             <div className="sidebar-card">
-              <h3 className="sidebar-card__title"><span aria-hidden="true">🎯</span> Vue d'ensemble</h3>
+              <h3 className="sidebar-card__title"><span aria-hidden="true">🎯</span> Vue d’ensemble</h3>
               <div className="progress-overview">
                 <div className="progress-overview__item">
                   <div className="progress-overview__label" id="global-progress-label">Progression globale</div>

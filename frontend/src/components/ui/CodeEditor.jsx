@@ -68,7 +68,7 @@ export default function CodeEditor({
       {isLoading && (
         <div className="code-editor__loading">
           <div className="loading-spinner"></div>
-          <span>Chargement de l'éditeur...</span>
+          <span>Chargement de l’éditeur...</span>
         </div>
       )}
 
