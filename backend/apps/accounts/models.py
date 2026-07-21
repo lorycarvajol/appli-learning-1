@@ -115,12 +115,19 @@ class Profile(models.Model):
         return f"Profile of {self.user.email}"
 
     def calculate_level(self):
-        """Calculate user level based on total points."""
-        # Simple level calculation: 100 points per level
-        return max(1, self.total_points // 100)
+        """Calculate user level based on total points (100 points per level).
+
+        Level 1 = 0-99 pts, level 2 = 100-199 pts, etc.
+        """
+        return 1 + max(0, self.total_points) // 100
 
     def add_points(self, points, reason=''):
-        """Add points to user profile and update level."""
+        """Add points to user profile and update level.
+
+        Prefer ``apps.gamification.services.award_points`` : celui-ci passe par
+        le grand livre et garantit qu'une même source ne crédite qu'une fois.
+        Cette méthode reste pour les ajustements directs (admin, tests).
+        """
         self.total_points += points
         self.level = self.calculate_level()
         self.save()

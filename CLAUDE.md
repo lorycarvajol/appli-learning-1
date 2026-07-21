@@ -194,15 +194,13 @@ docker-compose exec backend python manage.py createsuperuser
 - [ ] Feedback immédiat sur les réponses
 - [ ] Randomisation questions/options si configuré
 
-#### Phase 4: Gamification
-- [ ] Créer app `gamification`:
-  - `Badge`: Définition des badges
-  - `UserBadge`: Badges gagnés
-  - `PointTransaction`: Historique points
-  - `Leaderboard`: Classement
-- [ ] Service d'attribution automatique de badges
-- [ ] API leaderboard
-- [ ] Frontend: Gallery badges + leaderboard
+#### Phase 4: Gamification — ✅ Fait (voir section dédiée plus bas)
+- [x] App `gamification` (Badge, UserBadge, PointTransaction, UserStreak)
+- [x] Attribution automatique idempotente des badges
+- [x] Objectifs secrets masqués côté serveur + révélation animée
+- [x] Frontend: page Trophées, prochains objectifs, série de jours
+- [ ] Leaderboard — volontairement reporté (choix produit : progression
+      personnelle d'abord, le grand livre de points le rend trivial à ajouter)
 
 #### Phase 5: Fonctionnalités Trainer
 - [ ] Dashboard trainer avec statistiques élèves
@@ -326,6 +324,99 @@ Aucun bug connu actuellement. Toutes les fonctionnalités implémentées sont te
 6. **JSONB Fields**: Utilisés pour tests (Exercise) et questions (Quiz), flexible pour évolution
 7. **UUID everywhere**: Tous les IDs sont des UUID, pas d'entiers séquentiels
 8. **Slugs**: Chapitres, leçons, projets utilisent des slugs pour URLs lisibles
+
+## Système de Gamification
+
+App `apps/gamification`. Objectif : encourager sans jamais récompenser deux fois.
+
+### L'invariant central
+
+**Aucun achievement ni crédit de points ne peut être validé deux fois.** Cette
+garantie ne repose pas sur du code prudent mais sur trois mécanismes cumulés :
+
+1. **Contraintes d'unicité en base** (la seule défense fiable en concurrence) :
+   - `UserBadge (user, badge)` → un badge est gagné au plus une fois
+   - `PointTransaction (user, source_key)` → une source ne crédite qu'une fois
+2. **Règles monotones** : chaque règle compare un *compteur cumulatif* à un
+   seuil. Réévaluer tous les badges est donc idempotent et ne peut jamais faire
+   régresser un apprenant, même si sa progression est modifiée ou supprimée.
+3. **Grand livre de points** : `Profile.total_points` est toujours égal à la
+   somme de `PointTransaction`. Le solde est vérifiable et reconstructible
+   (`services.recompute_profile_points`).
+
+Conséquence pratique : `sync_user_gamification(user)` peut être appelé
+n'importe quand, autant de fois qu'on veut, depuis n'importe quelle route.
+C'est ce qui permet l'endpoint d'auto-réparation `POST /summary/sync/`.
+
+**Toute nouvelle attribution de points doit passer par
+`services.award_points(user, amount, reason, source_key)`** — jamais par
+`Profile.add_points()` directement, sinon le grand livre décroche.
+
+### Modèles
+
+| Modèle | Rôle |
+|---|---|
+| `Badge` | Définition : règle, critère JSONB, palier, récompense, `is_secret`, `hint` |
+| `UserBadge` | Badge obtenu (unique par user+badge), `is_seen` pour la révélation |
+| `PointTransaction` | Grand livre idempotent, clé `source_key` (`lesson:<uuid>`, `badge:<code>`) |
+| `UserStreak` | Série de jours consécutifs, idempotente à la journée |
+
+### Objectifs cachés
+
+Le catalogue mêle **objectifs visibles** (avec barre de progression, pour
+baliser le parcours) et **objectifs secrets** (révélés à l'obtention).
+
+Le masquage se fait **côté serveur**, dans `serializers.BadgeSerializer` : un
+badge secret non obtenu sort de l'API sans son `code`, son nom, sa description,
+sa récompense ni ses critères — seule l'énigme `hint` est exposée. Impossible
+de les découvrir en inspectant les requêtes réseau. Un test verrouille ça
+(`test_api_masque_les_badges_secrets_non_obtenus`).
+
+### Ajouter un badge
+
+1. Ajouter une entrée dans `management/commands/seed_badges.py` (liste
+   `VISIBLE` ou `SECRET` — la présence d'un `hint` marque le badge comme secret)
+2. Si la règle n'existe pas : ajouter une valeur à `Badge.RuleType`, un
+   compteur dans `rules.UserStats` / `build_user_stats`, et une entrée dans le
+   registre `rules.RULES` (une lambda `(stats, criteria) -> (courant, cible)`)
+3. `python manage.py seed_badges` puis `python manage.py sync_gamification`
+
+### Commandes
+
+```bash
+# Crée/met à jour le catalogue de badges (idempotent)
+docker-compose exec backend python manage.py seed_badges
+
+# Réconcilie tous les apprenants : report des soldes historiques dans le
+# grand livre + réévaluation des badges. Idempotent, relançable à volonté.
+docker-compose exec backend python manage.py sync_gamification
+
+# Tests de l'invariant anti-double-validation
+docker-compose exec backend pytest apps/gamification/tests/
+```
+
+### Endpoints
+
+```
+GET  /api/gamification/badges/            Catalogue (secrets masqués)
+GET  /api/gamification/badges/mine/       Badges obtenus
+POST /api/gamification/badges/mark_seen/  Acquitte une révélation
+GET  /api/gamification/summary/           Points, niveau, série, prochains objectifs
+POST /api/gamification/summary/sync/      Resynchronise (auto-réparation)
+GET  /api/gamification/points/            Grand livre personnel
+```
+
+`mark_completed` et `submit_quiz` renvoient désormais aussi `points_earned`,
+`total_points` et `new_badges`.
+
+### Frontend
+
+- `features/gamification/` : slice, `BadgesPage`, `BadgeCard`,
+  `BadgeRevealModal`, `NextObjectives`
+- La modale de révélation est montée **une seule fois** dans `Layout.jsx` et
+  consomme la file `revealQueue` du store. La file est dédupliquée par id et
+  chaque fermeture appelle `mark_seen` : une célébration ne rejoue jamais.
+- Route `/badges`, lien « Trophées » dans le header.
 
 ## Development Commands
 

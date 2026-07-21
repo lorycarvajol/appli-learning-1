@@ -44,7 +44,9 @@
       "Bash(grep -n 'box-shadow: $shadow-sm;' styles/components/_chapters.scss styles/components/_lesson.scss)",
       "Bash(grep -n \"#[0-9a-fA-F]\\\\{3,6\\\\}\" styles/components/_lesson.scss styles/components/_chapters.scss styles/components/_auth.scss)",
       "Bash(grep -oE \"#[0-9a-fA-F]{3,6}\" features/quizzes/QuizInterface.css)",
-      "Bash(docker cp *)"
+      "Bash(docker cp *)",
+      "PowerShell(docker-compose *)",
+      "Skill(claude-in-chrome)"
     ]
   }
 }

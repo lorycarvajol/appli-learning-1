@@ -58,6 +58,7 @@ export default function Header() {
     { path: '/dashboard', label: 'Tableau de bord' },
     { path: '/chapters', label: 'Chapitres' },
     { path: '/progression', label: 'Ma progression' },
+    { path: '/badges', label: 'Trophées' },
   ];
 
   const initials =

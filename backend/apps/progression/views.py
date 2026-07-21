@@ -15,6 +15,12 @@ from .serializers import (
 )
 from apps.accounts.models import User
 from apps.courses.models import Chapter, Lesson, Quiz
+from apps.gamification.serializers import UserBadgeSerializer
+from apps.gamification.services import (
+    award_lesson_points,
+    get_points,
+    sync_user_gamification,
+)
 
 
 def _grade_quiz(quiz, answers):
@@ -214,22 +220,41 @@ class UserProgressViewSet(viewsets.ModelViewSet):
             }
         )
 
-        if not created and progress.status != UserProgress.ProgressStatus.COMPLETED:
+        was_already_completed = (
+            not created and progress.status == UserProgress.ProgressStatus.COMPLETED
+        )
+
+        if not created and not was_already_completed:
             progress.status = UserProgress.ProgressStatus.COMPLETED
             progress.completed_at = timezone.now()
             progress.save()
 
-        # Logger l'activité
-        ActivityLog.objects.create(
-            user=request.user,
-            activity_type=ActivityLog.ActivityType.LESSON_COMPLETED,
-            lesson=lesson,
-            chapter=lesson.chapter,
-            metadata={'time_spent': progress.time_spent}
-        )
+        # Les points de la leçon ne sont crédités qu'une fois dans la vie du
+        # compte : la clé d'idempotence est la leçon (cf. award_lesson_points).
+        points_earned = award_lesson_points(request.user, lesson)
+        if points_earned and not progress.points_awarded:
+            progress.points_awarded = True
+            progress.save(update_fields=['points_awarded', 'updated_at'])
+
+        # Ne pas polluer l'historique avec un log par reclic sur « terminé ».
+        if not was_already_completed:
+            ActivityLog.objects.create(
+                user=request.user,
+                activity_type=ActivityLog.ActivityType.LESSON_COMPLETED,
+                lesson=lesson,
+                chapter=lesson.chapter,
+                metadata={'time_spent': progress.time_spent}
+            )
+
+        new_badges = sync_user_gamification(request.user)
 
         return Response(
-            UserProgressSerializer(progress).data,
+            {
+                **UserProgressSerializer(progress).data,
+                'points_earned': points_earned,
+                'total_points': get_points(request.user),
+                'new_badges': UserBadgeSerializer(new_badges, many=True).data,
+            },
             status=status.HTTP_200_OK
         )
 
@@ -318,17 +343,18 @@ class UserProgressViewSet(viewsets.ModelViewSet):
 
         points_earned = 0
         if passed:
+            was_first_success = not progress.points_awarded
             progress.status = UserProgress.ProgressStatus.COMPLETED
             if not progress.completed_at:
                 progress.completed_at = timezone.now()
 
-            # N'attribuer les points qu'une seule fois, quel que soit le
-            # nombre de fois où l'apprenant repasse (et réussit) le quiz.
-            if not progress.points_awarded:
-                request.user.profile.add_points(lesson.points)
-                progress.points_awarded = True
-                points_earned = lesson.points
+            # Les points ne sont crédités qu'une fois, quel que soit le nombre
+            # de fois où l'apprenant repasse (et réussit) le quiz. La garantie
+            # vient du grand livre : la source `lesson:<id>` est unique.
+            points_earned = award_lesson_points(request.user, lesson)
+            progress.points_awarded = True
 
+            if was_first_success:
                 ActivityLog.objects.create(
                     user=request.user,
                     activity_type=ActivityLog.ActivityType.QUIZ_COMPLETED,
@@ -341,6 +367,8 @@ class UserProgressViewSet(viewsets.ModelViewSet):
 
         progress.save()
 
+        new_badges = sync_user_gamification(request.user)
+
         return Response({
             'score': score,
             'passing_score': quiz.passing_score,
@@ -348,7 +376,8 @@ class UserProgressViewSet(viewsets.ModelViewSet):
             'attempts': progress.attempts,
             'max_attempts': quiz.max_attempts,
             'points_earned': points_earned,
-            'total_points': request.user.profile.total_points,
+            'total_points': get_points(request.user),
+            'new_badges': UserBadgeSerializer(new_badges, many=True).data,
             'details': details,
         }, status=status.HTTP_200_OK)
 

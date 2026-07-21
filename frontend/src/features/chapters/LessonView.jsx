@@ -11,6 +11,7 @@ import {
   selectMarkingCompleted,
   selectProgressByLesson,
 } from '../progression/progressionSlice';
+import { badgesEarned } from '@/features/gamification/gamificationSlice';
 import ExerciseInterface from '@/features/exercises/ExerciseInterface';
 import QuizInterface from '@/features/quizzes/QuizInterface';
 import MarkdownImage from '@/components/ui/MarkdownImage';
@@ -216,10 +217,11 @@ export default function LessonView() {
               quiz={currentLesson.quiz}
               lessonId={currentLesson.id}
               initialProgress={lessonProgress}
-              onSubmit={() => {
+              onSubmit={(result) => {
                 // La notation, la complétion et les points sont gérés
                 // côté serveur (submit_quiz) : on resynchronise juste l'état local.
                 dispatch(fetchMyProgress());
+                dispatch(badgesEarned(result?.new_badges));
               }}
             />
           )}

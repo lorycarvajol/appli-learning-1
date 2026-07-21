@@ -2,15 +2,28 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { fetchMyProgress, selectAllProgress } from '../progression/progressionSlice';
+import NextObjectives from '../gamification/NextObjectives';
+import {
+  selectLevel,
+  selectStreak,
+  selectSummary,
+  syncGamification,
+} from '../gamification/gamificationSlice';
 import './Dashboard.css';
 
 export default function Dashboard() {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const progressByLesson = useSelector(selectAllProgress);
+  const summary = useSelector(selectSummary);
+  const level = useSelector(selectLevel);
+  const streak = useSelector(selectStreak);
 
   useEffect(() => {
     dispatch(fetchMyProgress());
+    // `sync` est idempotent côté serveur : il rattrape un éventuel badge
+    // manqué (session interrompue, onglet fermé) sans rien redistribuer.
+    dispatch(syncGamification());
   }, [dispatch]);
 
   // Calculer les statistiques
@@ -54,10 +67,19 @@ export default function Dashboard() {
           <div className="stat-card stat-card--purple">
             <div className="stat-card__icon" aria-hidden="true">🎯</div>
             <div className="stat-card__content">
-              <div className="stat-card__value">{user?.profile?.total_points || 0}</div>
+              <div className="stat-card__value">
+                {summary?.points ?? user?.profile?.total_points ?? 0}
+              </div>
               <div className="stat-card__label">Points totaux</div>
+              {level && (
+                <div className="stat-card__sublabel">
+                  Encore {level.points_for_next} pts avant le niveau {level.level + 1}
+                </div>
+              )}
             </div>
-            <div className="stat-card__badge">Niveau {user?.profile?.level || 1}</div>
+            <div className="stat-card__badge">
+              Niveau {level?.level ?? user?.profile?.level ?? 1}
+            </div>
           </div>
 
           <div className="stat-card stat-card--green">
@@ -82,6 +104,41 @@ export default function Dashboard() {
             <div className="stat-card__content">
               <div className="stat-card__value">{Math.round(avgScore)}%</div>
               <div className="stat-card__label">Score moyen</div>
+            </div>
+          </div>
+
+          <div className="stat-card stat-card--streak">
+            <div className="stat-card__icon" aria-hidden="true">
+              {streak?.active_today ? '🔥' : '🕯️'}
+            </div>
+            <div className="stat-card__content">
+              <div className="stat-card__value">{streak?.current_streak ?? 0} j</div>
+              <div className="stat-card__label">Série en cours</div>
+              <div className="stat-card__sublabel">
+                {streak?.active_today
+                  ? 'Série entretenue aujourd’hui !'
+                  : 'Une leçon aujourd’hui et elle repart.'}
+              </div>
+            </div>
+            {streak?.longest_streak > 0 && (
+              <div className="stat-card__badge">Record {streak.longest_streak} j</div>
+            )}
+          </div>
+
+          <div className="stat-card stat-card--trophy">
+            <div className="stat-card__icon" aria-hidden="true">🏅</div>
+            <div className="stat-card__content">
+              <div className="stat-card__value">
+                {summary?.badges?.earned ?? 0}
+                <span className="stat-card__value-total">
+                  /{summary?.badges?.total ?? 0}
+                </span>
+              </div>
+              <div className="stat-card__label">Trophées</div>
+              <div className="stat-card__sublabel">
+                {summary?.badges?.secret_found ?? 0} secret(s) sur{' '}
+                {summary?.badges?.secret_total ?? 0} révélé(s)
+              </div>
             </div>
           </div>
         </section>
@@ -170,32 +227,10 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Achievements */}
+            {/* Prochains objectifs — alimentés par le moteur de badges */}
             <div className="sidebar-card">
               <h3 className="sidebar-card__title">🏆 Prochains objectifs</h3>
-              <div className="achievements">
-                <div className="achievement">
-                  <div className="achievement__icon">🎓</div>
-                  <div className="achievement__content">
-                    <div className="achievement__name">Premier pas</div>
-                    <div className="achievement__progress">Terminer 5 leçons</div>
-                  </div>
-                </div>
-                <div className="achievement">
-                  <div className="achievement__icon">⭐</div>
-                  <div className="achievement__content">
-                    <div className="achievement__name">Expert HTML</div>
-                    <div className="achievement__progress">Compléter le chapitre HTML</div>
-                  </div>
-                </div>
-                <div className="achievement">
-                  <div className="achievement__icon">🔥</div>
-                  <div className="achievement__content">
-                    <div className="achievement__name">Série active</div>
-                    <div className="achievement__progress">7 jours consécutifs</div>
-                  </div>
-                </div>
-              </div>
+              <NextObjectives />
             </div>
 
             {/* Tips */}

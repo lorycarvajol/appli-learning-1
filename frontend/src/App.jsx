@@ -11,6 +11,7 @@ import ChapterDetail from './features/chapters/ChapterDetail'
 import LessonView from './features/chapters/LessonView'
 import TrainerDashboard from './features/trainer/TrainerDashboard'
 import ProgressionPage from './features/progression/ProgressionPage'
+import BadgesPage from './features/gamification/BadgesPage'
 import { fetchCurrentUser } from './features/auth/authSlice'
 
 function App() {
@@ -87,6 +88,16 @@ function App() {
           <PrivateRoute>
             <Layout>
               <ProgressionPage />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/badges"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <BadgesPage />
             </Layout>
           </PrivateRoute>
         }

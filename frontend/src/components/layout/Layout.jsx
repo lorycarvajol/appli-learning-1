@@ -1,6 +1,7 @@
 import Header from './Header';
 import Footer from './Footer';
 import ScrollToTopButton from '../ui/ScrollToTopButton';
+import BadgeRevealModal from '@/features/gamification/BadgeRevealModal';
 import './Layout.css';
 
 export default function Layout({ children }) {
@@ -15,6 +16,8 @@ export default function Layout({ children }) {
       </main>
       <Footer />
       <ScrollToTopButton />
+      {/* Monté une seule fois : consomme la file de révélation où qu'on soit */}
+      <BadgeRevealModal />
     </div>
   );
 }

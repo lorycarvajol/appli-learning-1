@@ -143,6 +143,9 @@
 .stat-card--green::before { background: var(--ok); }
 .stat-card--blue::before { background: var(--theory); }
 .stat-card--orange::before { background: var(--accent); }
+/* Série et trophées : liseré dégradé, la gamification a son propre registre */
+.stat-card--streak::before { background: linear-gradient(90deg, var(--danger), var(--accent)); }
+.stat-card--trophy::before { background: linear-gradient(90deg, var(--accent), var(--brand)); }
 
 .stat-card__icon {
   font-size: 2.25rem;
@@ -163,10 +166,24 @@
   margin-bottom: 0.4rem;
 }
 
+.stat-card__value-total {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--ink-faint);
+}
+
 .stat-card__label {
   font-size: 0.85rem;
   color: var(--ink-soft);
   font-weight: 500;
+}
+
+/* Ligne d'encouragement : dit ce qui est à portée, pas ce qui est acquis */
+.stat-card__sublabel {
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--ink-faint);
 }
 
 .stat-card__badge,

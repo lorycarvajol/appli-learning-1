@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'apps.courses',
     'apps.progression',
     'apps.validation',
+    'apps.gamification',
 ]
 
 MIDDLEWARE = [
