@@ -1,0 +1,197 @@
+/* Gestion des classes — onglet de l'espace formateur */
+
+.cohorts-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.cohorts-panel__section {
+  padding: 1.5rem;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.cohorts-panel__title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 0.75rem;
+}
+
+.cohorts-panel__hint,
+.cohorts-panel__empty {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin-bottom: 1rem;
+}
+
+.cohorts-panel__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.cohort-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.cohort-chip:hover:not(:disabled) {
+  border-color: var(--brand);
+  color: var(--ink);
+}
+
+.cohort-chip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.cohort-chip--active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.cohort-chip__count {
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cohorts-panel__create {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.cohorts-panel__create .auth-form__input {
+  flex: 1;
+}
+
+.cohorts-panel__button {
+  padding: 0.7rem 1.25rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cohorts-panel__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Liens d'invitation */
+
+.invite-list,
+.member-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.invite {
+  padding: 0.85rem;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.invite__url {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  color: var(--ink);
+  word-break: break-all;
+  margin-bottom: 0.6rem;
+}
+
+.invite__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.invite__state {
+  font-size: 0.78rem;
+  color: var(--ok-text);
+  flex: 1;
+}
+
+.invite__state--dead {
+  color: var(--ink-faint);
+}
+
+.invite__action {
+  padding: 0.3rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.invite__action:hover:not(:disabled) {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.invite__action--danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.invite__action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Membres */
+
+.member {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.member__name {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.member__points {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}

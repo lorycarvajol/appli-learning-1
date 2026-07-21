@@ -441,6 +441,201 @@ lecture d'une leçon de théorie compte désormais comme activité.
   chaque fermeture appelle `mark_seen` : une célébration ne rejoue jamais.
 - Route `/badges`, lien « Trophées » dans le header.
 
+## Comptes, Rôles et Classes
+
+### Invariants en place
+
+- **Le rôle ne vient jamais du client.** `role` est en `read_only` dans
+  `UserSerializer` : pas d'auto-promotion via `PATCH /api/auth/me/`.
+  `RegisterSerializer` n'expose pas le champ. Verrouillé par un test.
+- **Un email = un compte, quelle que soit la casse.** `User.save()` normalise
+  en minuscules, une contrainte `UniqueConstraint(Lower('email'))` tient même
+  face à un `update()` qui court-circuite le modèle, et
+  `UserManager.get_by_natural_key` fait un `__iexact` pour que la connexion
+  reste possible quelle que soit la saisie.
+- **Le profil et le User s'écrivent séparément.** Ne jamais rétablir un signal
+  qui sauve `instance.profile` depuis `post_save` sur User (cf. le commentaire
+  dans `signals.py`) : il écrase les points en mémoire.
+
+## Classes (cohortes) — ✅ Fait
+
+App `apps/cohorts`. Modèles : `Cohort`, `CohortInvite`, plus `Profile.cohort`
+(clé étrangère : **une seule classe active par apprenant**).
+
+### Le verrou de chapitre existe désormais vraiment
+
+⚠️ Avant ce chantier, `ChapterAccess` n'était consulté par **aucune vue
+apprenant** : l'API cours ne filtrait rien, le front ne l'affichait pas. La
+« progression contrôlée par le formateur » était décorative.
+
+Désormais :
+
+- `LessonViewSet.retrieve` renvoie **403** si le chapitre n'est pas débloqué.
+  C'est le verrou réel.
+- Les chapitres verrouillés restent **listés** avec `is_accessible: false` —
+  masquer la suite du parcours priverait l'apprenant de la vue d'ensemble qui
+  lui donne envie d'avancer. C'est l'ouverture qui est bloquée, pas le sommaire.
+- `apps/progression/services.py` centralise la décision
+  (`accessible_chapter_ids`, `can_access_lesson`).
+
+**Après toute mise en service du verrou sur une base existante, lancer
+`python manage.py backfill_chapter_access`** (option `--dry-run` disponible) :
+sans ce rattrapage, les apprenants se retrouvent enfermés hors des chapitres
+qu'ils suivaient déjà.
+
+### Deux régimes de progression
+
+| Situation | Qui ouvre les chapitres |
+|---|---|
+| Apprenant **en classe** | Le formateur, explicitement |
+| Apprenant **autonome** (sans classe) | Rythme libre : le chapitre 1 est ouvert, le N+1 s'ouvre quand le N est entièrement terminé |
+
+**On ne reverrouille jamais.** Un accès obtenu le reste, qu'on rejoigne une
+classe ensuite ou qu'on la quitte. Même logique de monotonie que les badges :
+elle rend les recalculs sûrs et évite de punir celui qui avait avancé seul.
+
+### Cloisonnement formateur
+
+Un formateur ne voit et ne pilote que **ses** classes. `visible_learners()`
+dans `apps/progression/views.py` est le point unique : il borne
+`learners_summary`, `learner_detail`, `recent_activity`, `unlock_chapter`,
+`lock_chapter`, ainsi que les querysets de progression et d'activité. Avant,
+n'importe quel formateur voyait tous les apprenants de la plateforme et
+pouvait débloquer pour n'importe qui.
+
+Les apprenants autonomes ne sont visibles que d'un admin : ils n'ont, par
+définition, pas de formateur référent.
+
+### Invitations
+
+```
+GET  /api/cohorts/join/<token>/           résolution publique
+POST /api/cohorts/join/<token>/register/  crée le compte et rattache
+POST /api/cohorts/join/<token>/attach/    rattache une session existante
+```
+Front : `/rejoindre/:token`, avec les trois cas (visiteur inconnu, déjà
+connecté, compte existant → `?next=` sur la connexion).
+
+Règles non négociables, chacune couverte par un test :
+
+- **Ni `role` ni `cohort` ne viennent du formulaire** : le rôle est forcé à
+  `LEARNER`, la classe est déduite du jeton côté serveur.
+- **Seul un admin peut émettre une invitation `TRAINER`** — sinon le rôle
+  formateur s'auto-réplique.
+- **Révoqué, expiré, épuisé et inexistant sont indistinguables** côté public
+  (`{valid: false}`), pour ne pas confirmer qu'un jeton a existé. Le détail
+  (`invalid_reason`) n'est visible que du formateur.
+- **Jeton stocké en clair**, à l'inverse de celui du mot de passe oublié : le
+  formateur doit pouvoir réafficher son lien pour le recopier. Acceptable car
+  le pouvoir du jeton est minuscule, et expiration + révocation sont
+  obligatoires. Ne pas « uniformiser » avec le hachage sans retirer
+  l'affichage du lien.
+- Throttle `invite` (30/h) sur les routes publiques (énumération).
+
+Supprimer une invitation la **révoque** sans l'effacer : on garde trace de ce
+qui a été diffusé.
+
+### Décisions d'architecture actées
+
+Prises en session du 2026-07-21 :
+
+1. **Classes explicites** (`Cohort`) plutôt que rattachement plat ou
+   mono-formateur. Les requêtes formateur doivent se filtrer dessus —
+   aujourd'hui `learners_summary` renvoie *tous* les apprenants de la
+   plateforme et n'importe quel formateur peut débloquer pour n'importe qui.
+2. **Une seule classe active par apprenant** (clé étrangère, pas de table de
+   liaison) : garde le déblocage de chapitre non ambigu.
+3. **Inscription par lien d'invitation généré**, pas par email envoyé par
+   l'app. Le formateur produit une URL et la diffuse par le canal qu'il veut
+   (Teams, Discord…). Aucune dépendance SMTP en production.
+   - Jeton stocké **en clair** (le formateur doit pouvoir réafficher son lien),
+     avec expiration et révocation obligatoires.
+   - L'endpoint public de résolution du jeton ne renvoie que le nom de la
+     classe et du formateur — jamais la liste des élèves — et doit être limité
+     en débit (énumération).
+   - Ni `role` ni `cohort` ne viennent du formulaire : rôle forcé à `LEARNER`,
+     classe déduite du jeton côté serveur.
+   - Le même mécanisme sert à créer des formateurs, avec une règle stricte :
+     seul un admin peut émettre une invitation `TRAINER`.
+4. **L'inscription autonome reste possible.** Un apprenant sans classe
+   progresse en **rythme libre auto-débloqué** : terminer le chapitre N ouvre
+   le N+1. En classe, c'est le formateur qui donne le tempo. Rejoindre une
+   classe plus tard ne retire jamais un accès déjà obtenu.
+
+### Mot de passe oublié — ✅ Fait
+
+```
+POST /api/auth/password-reset/          demande un lien  (public)
+GET  /api/auth/password-reset/validate/ vérifie un lien  (public)
+POST /api/auth/password-reset/confirm/  définit le mdp   (public)
+```
+Front : `/forgot-password` et `/reset-password/:uid/:token`.
+
+**Jeton sans état** : on utilise `default_token_generator` de Django, signé
+sur le hash du mot de passe et `last_login`. Rien n'est stocké en base, et on
+obtient gratuitement l'usage unique (le hash change) et l'invalidation si
+l'utilisateur se reconnecte entre-temps. C'est le choix inverse de celui prévu
+pour les invitations de classe (stockées en clair, car le formateur doit
+pouvoir réafficher son lien) : ici le lien part une fois par email et n'est
+jamais réaffiché, donc il n'y a rien à voler dans la base.
+
+Trois propriétés à ne pas casser, chacune couverte par un test :
+
+- **Aucun oracle d'énumération** : `POST /password-reset/` répond exactement la
+  même chose que le compte existe, soit inexistant, soit désactivé. Ne jamais
+  « améliorer » l'UX en signalant qu'un email est inconnu.
+- **Révocation des sessions** : `revoke_refresh_tokens` blackliste les refresh
+  tokens après réinitialisation. Sans ça, un compte compromis reste accessible
+  7 jours malgré le changement de mot de passe.
+- **Throttle `password_reset`** (5/h) sur les trois vues publiques : elles sont
+  anonymes et déclenchent des envois de mail. Note : `development.py` désactive
+  tout throttling, la limite ne s'applique donc qu'en production.
+
+Configuration : `PASSWORD_RESET_TIMEOUT` (défaut 3600 s), `FRONTEND_URL`,
+`DEFAULT_FROM_EMAIL`. En dev, l'email s'affiche dans `docker-compose logs
+backend` ; le SMTP de production était déjà câblé dans `production.py`.
+
+L'envoi est **synchrone** : une réinitialisation est rare, et passer par Celery
+rendrait un échec d'envoi invisible. Le throttle borne le risque de blocage
+worker. À revoir si le volume augmente.
+
+### Gardes de rôle côté front — ✅ Fait
+
+`PrivateRoute` accepte une prop `roles` :
+
+```jsx
+<PrivateRoute roles={STAFF_ROLES}>   // TRAINER + ADMIN
+```
+
+Rôles centralisés dans `src/constants/roles.js` (`ROLES`, `STAFF_ROLES`,
+`ROLE_LABELS`) — miroir de `User.Role` côté Django. Le header filtre ses liens
+sur la même liste : un lien vers une page interdite n'est jamais affiché.
+
+**Ces gardes sont un confort d'affichage, pas une sécurité.** Elles évitent
+qu'un apprenant tombe sur une page vide criblée de 403. L'autorité reste
+`IsTrainerOrAdmin` côté API. Ne jamais déplacer une décision d'autorisation
+ici.
+
+`authSlice` expose un drapeau **`initialized`**, passé à `true` dès que la
+question « qui est connecté ? » a reçu une réponse, succès *ou* échec. Sans
+lui, deux bugs : trancher sur le rôle avant chargement du profil renverrait un
+formateur vers `/dashboard` à chaque rafraîchissement, et une panne réseau
+laisserait un écran de chargement infini. Toute nouvelle garde doit attendre
+`initialized` avant de décider.
+
+### Reste à faire (par ordre de valeur)
+
+- [ ] Throttle dédié sur `/api/auth/login/` (le global à 100/h anonyme laisse
+      passer une attaque par dictionnaire).
+- [ ] Désactivation / suppression de compte (RGPD).
+- [ ] Infrastructure de test frontend (Vitest) — rien n'est vérifiable
+      automatiquement côté React aujourd'hui.
+
+Sur le stockage des tokens : rester en `localStorage`. Migrer vers des cookies
+`httpOnly` impliquerait de refaire l'intercepteur axios, CORS et la protection
+CSRF pour un gain réel seulement en cas de XSS par ailleurs. Réduire
+`ACCESS_TOKEN_LIFETIME` couvre l'essentiel du risque pour une ligne.
+
 ## Development Commands
 
 ### Backend (Django)
@@ -492,13 +687,13 @@ npm run dev                         # http://localhost:5173
 npm run build
 npm run preview                     # Preview production build
 
-# Tests
-npm run test                        # Unit tests (Vitest)
-npm run test:coverage               # With coverage
-npm run test:e2e                    # End-to-end tests (Playwright)
-
-# Linting
+# Linting (seule vérification automatisée côté front à ce jour)
 npm run lint
+
+# ⚠️ Il n'existe AUCUNE infrastructure de test frontend : ni Vitest, ni
+# Playwright, ni script `test` dans package.json. Les seuls scripts sont
+# dev / build / preview / lint. Tout changement côté front se vérifie
+# manuellement dans le navigateur.
 ```
 
 ### Infrastructure (Docker)
@@ -734,6 +929,23 @@ When adding new exercise types:
 - Pagination: Default 20 items per page
 - Query params: `?search=`, `?ordering=`, `?chapter=`, `?status=`
 
+### ⚠️ Contrat des services API — incohérent, à connaître
+
+Les modules de `services/api/` ne renvoient **pas tous la même chose** :
+
+| Module | Renvoie |
+|---|---|
+| `authApi`, `coursesApi` | la **réponse axios brute** → faire `.data` |
+| `progressionApi`, `gamificationApi`, `cohortsApi` | les **données déjà déballées** → ne pas refaire `.data` |
+
+Cette incohérence a déjà coûté une page blanche : `trainerSlice` faisait un
+`.data` sur un tableau déjà déballé, obtenait `undefined`, et le rendu plantait
+sur `.length`. Le bug est resté invisible des mois faute de lien vers
+`/trainer` dans le header.
+
+Vérifier le module avant d'écrire un thunk. Uniformiser serait souhaitable,
+mais c'est un changement transverse à faire d'un bloc, pas à moitié.
+
 ### Frontend State Management
 - Redux slices per feature with createAsyncThunk for API calls
 - Loading states: `{ loading: false, error: null, data: null }`
@@ -749,11 +961,19 @@ When adding new exercise types:
 - **Frontend:** Debounce user input (search, auto-save) with custom hooks
 
 ### Testing Strategy
-- **Backend:** pytest-django for models, views, services
-- **Backend:** factory_boy for test fixtures
-- **Backend:** Target 80%+ code coverage
-- **Frontend:** Vitest for component/hook tests
-- **Frontend:** Playwright for E2E critical flows (register → login → complete exercise)
+
+**Backend — en place.** pytest-django. Tests existants :
+`apps/accounts/tests/` et `apps/gamification/tests/`.
+
+⚠️ `pytest.ini` contient `--reuse-db`. **Après toute migration, lancer au moins
+une fois `pytest --create-db`**, sinon les tests tournent contre un schéma
+périmé et peuvent passer à tort (c'est arrivé sur la contrainte d'unicité des
+emails).
+
+**Frontend — inexistant, malgré ce que laissait entendre ce document.** Ni
+Vitest, ni Playwright, ni script `test`. Cible souhaitable (non réalisée) :
+Vitest pour les composants et hooks, Playwright pour les parcours critiques.
+En attendant, toute modification front se vérifie à la main dans le navigateur.
 
 ## Project Phases (from Roadmap)
 

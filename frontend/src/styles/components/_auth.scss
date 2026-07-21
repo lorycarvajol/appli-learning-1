@@ -132,12 +132,70 @@
     font-size: $font-size-sm;
   }
 
+  // Aligné à droite sous le champ mot de passe, là où l'œil le cherche
+  &__forgot {
+    display: block;
+    margin-top: $spacing-sm;
+    text-align: right;
+    color: var(--brand);
+    font-size: $font-size-xs;
+    font-weight: 600;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
   &__submit {
     @include button-primary;
     width: 100%;
     padding: $spacing-md;
     font-size: $font-size-base;
     margin-top: $spacing-sm;
+  }
+}
+
+// Champ mot de passe avec bouton d'affichage (cf. components/ui/PasswordInput)
+.password-field {
+  position: relative;
+
+  &__input {
+    // Réserve la place du bouton pour que le texte ne passe pas dessous
+    padding-right: 3rem;
+  }
+
+  &__toggle {
+    position: absolute;
+    top: 50%;
+    right: $spacing-sm;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: none;
+    border-radius: $border-radius-md;
+    background: transparent;
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color $transition-fast, transform $transition-fast;
+
+    &:hover {
+      background-color: color-mix(in srgb, var(--brand) 10%, transparent);
+    }
+
+    &:active {
+      transform: translateY(-50%) scale(0.9);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--brand);
+      outline-offset: 2px;
+    }
   }
 }
 

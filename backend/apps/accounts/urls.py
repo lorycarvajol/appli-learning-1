@@ -10,6 +10,9 @@ from .views import (
     ProfileView,
     ChangePasswordView,
     LogoutView,
+    PasswordResetRequestView,
+    PasswordResetValidateView,
+    PasswordResetConfirmView,
 )
 
 app_name = 'accounts'
@@ -20,6 +23,19 @@ urlpatterns = [
     path('login/', TokenObtainPairView.as_view(), name='login'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('logout/', LogoutView.as_view(), name='logout'),
+
+    # Mot de passe oublié (public)
+    path('password-reset/', PasswordResetRequestView.as_view(), name='password_reset'),
+    path(
+        'password-reset/validate/',
+        PasswordResetValidateView.as_view(),
+        name='password_reset_validate'
+    ),
+    path(
+        'password-reset/confirm/',
+        PasswordResetConfirmView.as_view(),
+        name='password_reset_confirm'
+    ),
 
     # User & Profile
     path('me/', CurrentUserView.as_view(), name='current_user'),

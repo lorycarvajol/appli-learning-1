@@ -4,6 +4,7 @@ Custom User model with UUID primary key and role-based access.
 """
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.db import models
+from django.db.models.functions import Lower
 import uuid
 
 
@@ -20,6 +21,16 @@ class UserManager(BaseUserManager):
         user.set_password(password)
         user.save(using=self._db)
         return user
+
+    def get_by_natural_key(self, username):
+        """Look up a user by email, case-insensitively.
+
+        Les emails sont stockés en minuscules (cf. `User.save`), mais un
+        apprenant qui tape « Prenom.Nom@ecole.fr » doit pouvoir se connecter.
+        Sans ça, la normalisation à l'écriture rendrait son compte
+        inaccessible depuis son propre clavier.
+        """
+        return self.get(**{f'{self.model.USERNAME_FIELD}__iexact': username})
 
     def create_superuser(self, email, password=None, **extra_fields):
         """Create and save a superuser with the given email and password."""
@@ -39,17 +50,24 @@ class User(AbstractBaseUser, PermissionsMixin):
     """
     Custom User model with email authentication and role-based access.
     """
-    ROLE_CHOICES = [
-        ('LEARNER', 'Apprenant'),
-        ('TRAINER', 'Formateur'),
-        ('ADMIN', 'Administrateur'),
-    ]
+    class Role(models.TextChoices):
+        LEARNER = 'LEARNER', 'Apprenant'
+        TRAINER = 'TRAINER', 'Formateur'
+        ADMIN = 'ADMIN', 'Administrateur'
+
+    # Conservé pour compatibilité : `Role.choices` est la source de vérité.
+    ROLE_CHOICES = Role.choices
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, db_index=True)
     first_name = models.CharField(max_length=150, blank=True)
     last_name = models.CharField(max_length=150, blank=True)
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='LEARNER', db_index=True)
+    role = models.CharField(
+        max_length=20,
+        choices=Role.choices,
+        default=Role.LEARNER,
+        db_index=True
+    )
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -67,6 +85,27 @@ class User(AbstractBaseUser, PermissionsMixin):
         verbose_name = 'User'
         verbose_name_plural = 'Users'
         ordering = ['-date_joined']
+        constraints = [
+            # Garde en base : `save()` normalise déjà, mais un `update()` ou
+            # un `bulk_create` court-circuite le modèle. Sans cette contrainte,
+            # deux comptes pour le même email restent possibles.
+            models.UniqueConstraint(
+                Lower('email'),
+                name='unique_user_email_ci',
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        """Normalise l'email en minuscules avant écriture.
+
+        `BaseUserManager.normalize_email` ne met en minuscules que le domaine :
+        « Loryc@example.com » et « loryc@example.com » créeraient deux comptes
+        distincts, et l'apprenant perdrait sa progression en se connectant
+        « au mauvais ».
+        """
+        if self.email:
+            self.email = self.email.strip().lower()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.email
@@ -98,6 +137,18 @@ class Profile(models.Model):
 
     bio = models.TextField(blank=True)
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+
+    # Une seule classe active par apprenant : le déblocage de chapitre reste
+    # non ambigu, un seul formateur donne le tempo. Vide = apprenant autonome,
+    # qui progresse alors en rythme libre (cf. apps.progression.services).
+    cohort = models.ForeignKey(
+        'cohorts.Cohort',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='members',
+    )
+
     total_points = models.IntegerField(default=0)
     level = models.IntegerField(default=1)
     timezone = models.CharField(max_length=50, default='Europe/Paris')

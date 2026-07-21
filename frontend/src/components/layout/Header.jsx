@@ -3,13 +3,17 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '@/features/auth/authSlice';
 import ThemeToggle from '@/components/ui/ThemeToggle';
+import { ROLE_LABELS, STAFF_ROLES } from '@/constants/roles';
 import './Header.css';
 
-const ROLE_LABELS = {
-  LEARNER: 'Apprenant',
-  TRAINER: 'Formateur',
-  ADMIN: 'Admin',
-};
+// Une entrée sans `roles` est visible par tout le monde.
+const NAV_LINKS = [
+  { path: '/dashboard', label: 'Tableau de bord' },
+  { path: '/chapters', label: 'Chapitres' },
+  { path: '/progression', label: 'Ma progression' },
+  { path: '/badges', label: 'Trophées' },
+  { path: '/trainer', label: 'Espace formateur', roles: STAFF_ROLES },
+];
 
 export default function Header() {
   const navigate = useNavigate();
@@ -54,12 +58,11 @@ export default function Header() {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  const navLinks = [
-    { path: '/dashboard', label: 'Tableau de bord' },
-    { path: '/chapters', label: 'Chapitres' },
-    { path: '/progression', label: 'Ma progression' },
-    { path: '/badges', label: 'Trophées' },
-  ];
+  // Un lien non autorisé n'est pas affiché : inutile de proposer une page
+  // dont la garde de route renverra l'utilisateur.
+  const navLinks = NAV_LINKS.filter(
+    (link) => !link.roles || link.roles.includes(user?.role)
+  );
 
   const initials =
     (user?.first_name?.charAt(0) || user?.email?.charAt(0) || 'U').toUpperCase();

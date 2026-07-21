@@ -14,6 +14,7 @@ from .serializers import (
     UnlockChapterSerializer
 )
 from apps.accounts.models import User
+from apps.accounts.permissions import IsTrainerOrAdmin
 from apps.courses.models import Chapter, Lesson, Quiz
 from apps.gamification.serializers import UserBadgeSerializer
 from apps.gamification.services import (
@@ -72,12 +73,21 @@ def _grade_quiz(quiz, answers):
     return score, passed, details
 
 
-class IsTrainerOrAdmin(IsAuthenticated):
-    """Permission: seuls les trainers et admins peuvent accéder"""
-    def has_permission(self, request, view):
-        if not super().has_permission(request, view):
-            return False
-        return request.user.role in ['TRAINER', 'ADMIN']
+def visible_learners(staff_user):
+    """Apprenants qu'un membre de l'encadrement a le droit de voir.
+
+    Un formateur ne voit que **ses** classes. Avant l'introduction des classes,
+    `learners_summary` renvoyait tous les apprenants de la plateforme à
+    n'importe quel formateur, et `unlock_chapter` autorisait n'importe qui à
+    débloquer pour n'importe qui.
+
+    Les apprenants autonomes (sans classe) ne sont visibles que par un admin :
+    ils n'ont, par définition, pas de formateur référent.
+    """
+    learners = User.objects.filter(role=User.Role.LEARNER)
+    if staff_user.role == User.Role.ADMIN:
+        return learners
+    return learners.filter(profile__cohort__trainer=staff_user)
 
 
 class ChapterAccessViewSet(viewsets.ModelViewSet):
@@ -105,6 +115,12 @@ class ChapterAccessViewSet(viewsets.ModelViewSet):
 
         user_id = serializer.validated_data['user_id']
         chapter_id = serializer.validated_data['chapter_id']
+
+        if not visible_learners(request.user).filter(id=user_id).exists():
+            return Response(
+                {"error": "Cet apprenant n'est pas dans vos classes."},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         # Créer ou mettre à jour l'accès
         chapter_access, created = ChapterAccess.objects.get_or_create(
@@ -145,6 +161,12 @@ class ChapterAccessViewSet(viewsets.ModelViewSet):
         user_id = serializer.validated_data['user_id']
         chapter_id = serializer.validated_data['chapter_id']
 
+        if not visible_learners(request.user).filter(id=user_id).exists():
+            return Response(
+                {"error": "Cet apprenant n'est pas dans vos classes."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         try:
             chapter_access = ChapterAccess.objects.get(
                 user_id=user_id,
@@ -182,10 +204,11 @@ class UserProgressViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
 
         # Les apprenants ne voient que leur propre progression
-        if user.role == 'LEARNER':
+        if user.role == User.Role.LEARNER:
             return qs.filter(user=user)
 
-        # Les trainers/admins peuvent filtrer par utilisateur
+        # L'encadrement est borné à ses classes, y compris via ?user_id=
+        qs = qs.filter(user__in=visible_learners(user))
         user_id = self.request.query_params.get('user_id')
         if user_id:
             qs = qs.filter(user_id=user_id)
@@ -542,10 +565,10 @@ class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):
         qs = super().get_queryset()
 
         # Les apprenants ne voient que leurs propres activités
-        if user.role == 'LEARNER':
+        if user.role == User.Role.LEARNER:
             return qs.filter(user=user)
 
-        # Les trainers/admins peuvent filtrer
+        qs = qs.filter(user__in=visible_learners(user))
         user_id = self.request.query_params.get('user_id')
         if user_id:
             qs = qs.filter(user_id=user_id)
@@ -563,8 +586,8 @@ class TrainerDashboardViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def learners_summary(self, request):
-        """Obtenir le résumé de progression de tous les apprenants"""
-        learners = User.objects.filter(role='LEARNER')
+        """Résumé de progression des apprenants encadrés par l'appelant."""
+        learners = visible_learners(request.user).select_related('profile')
         total_chapters = Chapter.objects.filter(is_published=True).count()
         total_lessons = Lesson.objects.filter(chapter__is_published=True).count()
 
@@ -611,11 +634,11 @@ class TrainerDashboardViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def recent_activity(self, request):
-        """Obtenir l'activité récente de tous les apprenants"""
+        """Activité récente des apprenants encadrés par l'appelant."""
         limit = int(request.query_params.get('limit', 50))
-        activities = ActivityLog.objects.select_related(
-            'user', 'lesson', 'chapter'
-        ).order_by('-created_at')[:limit]
+        activities = ActivityLog.objects.filter(
+            user__in=visible_learners(request.user)
+        ).select_related('user', 'lesson', 'chapter').order_by('-created_at')[:limit]
 
         serializer = ActivityLogSerializer(activities, many=True)
         return Response(serializer.data)
@@ -623,9 +646,10 @@ class TrainerDashboardViewSet(viewsets.ViewSet):
     @action(detail=True, methods=['get'])
     def learner_detail(self, request, pk=None):
         """Obtenir les détails de progression d'un apprenant spécifique"""
-        try:
-            learner = User.objects.get(id=pk, role='LEARNER')
-        except User.DoesNotExist:
+        # Le filtrage par classe est appliqué ici aussi : sans lui, connaître
+        # un identifiant suffirait à contourner le cloisonnement de la liste.
+        learner = visible_learners(request.user).filter(id=pk).first()
+        if learner is None:
             return Response(
                 {"error": "Learner not found"},
                 status=status.HTTP_404_NOT_FOUND

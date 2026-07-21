@@ -69,6 +69,11 @@ const authSlice = createSlice({
   initialState: {
     user: null,
     isAuthenticated: false,
+    // Passe à true dès que la question « qui est connecté ? » a reçu une
+    // réponse, succès *ou* échec. Sans ce drapeau, une garde de rôle ne peut
+    // pas distinguer « profil pas encore chargé » de « chargement échoué »,
+    // et resterait bloquée sur un écran de chargement en cas de panne réseau.
+    initialized: false,
     loading: false,
     error: null,
   },
@@ -104,6 +109,7 @@ const authSlice = createSlice({
       })
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false
+        state.initialized = true
         state.user = action.payload.user
         state.isAuthenticated = true
         state.error = null
@@ -118,11 +124,13 @@ const authSlice = createSlice({
       })
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {
         state.loading = false
+        state.initialized = true
         state.user = action.payload
         state.isAuthenticated = true
       })
       .addCase(fetchCurrentUser.rejected, (state) => {
         state.loading = false
+        state.initialized = true
         state.isAuthenticated = false
         state.user = null
       })
@@ -130,6 +138,7 @@ const authSlice = createSlice({
       .addCase(logoutUser.fulfilled, (state) => {
         state.user = null
         state.isAuthenticated = false
+        state.initialized = true
         state.error = null
       })
   },

@@ -1,13 +1,18 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import progressionApi from '../../services/api/progressionApi';
 
-// Async thunks
+/**
+ * ⚠️ `progressionApi` renvoie **déjà** `response.data`, contrairement à
+ * `coursesApi` et `authApi` qui renvoient la réponse axios brute. Refaire un
+ * `.data` ici donnait `undefined` et vidait tout le state — c'est ce qui
+ * rendait cette page blanche. Ne pas réintroduire le déballage.
+ */
+
 export const fetchLearnersSummary = createAsyncThunk(
   'trainer/fetchLearnersSummary',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await progressionApi.getLearnersSummary();
-      return response.data;
+      return await progressionApi.getLearnersSummary();
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to fetch learners summary');
     }
@@ -18,8 +23,7 @@ export const fetchRecentActivity = createAsyncThunk(
   'trainer/fetchRecentActivity',
   async (limit = 50, { rejectWithValue }) => {
     try {
-      const response = await progressionApi.getRecentActivity(limit);
-      return response.data;
+      return await progressionApi.getRecentActivity(limit);
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to fetch recent activity');
     }
@@ -30,8 +34,7 @@ export const fetchLearnerDetail = createAsyncThunk(
   'trainer/fetchLearnerDetail',
   async (learnerId, { rejectWithValue }) => {
     try {
-      const response = await progressionApi.getLearnerDetail(learnerId);
-      return response.data;
+      return await progressionApi.getLearnerDetail(learnerId);
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to fetch learner details');
     }
@@ -42,8 +45,7 @@ export const unlockChapter = createAsyncThunk(
   'trainer/unlockChapter',
   async ({ userId, chapterId }, { rejectWithValue }) => {
     try {
-      const response = await progressionApi.unlockChapter(userId, chapterId);
-      return response.data;
+      return await progressionApi.unlockChapter(userId, chapterId);
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to unlock chapter');
     }
@@ -54,13 +56,15 @@ export const lockChapter = createAsyncThunk(
   'trainer/lockChapter',
   async ({ userId, chapterId }, { rejectWithValue }) => {
     try {
-      const response = await progressionApi.lockChapter(userId, chapterId);
-      return response.data;
+      return await progressionApi.lockChapter(userId, chapterId);
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to lock chapter');
     }
   }
 );
+
+/** Une liste absente ne doit jamais faire planter le rendu à l'accès `.length`. */
+const asList = (payload) => (Array.isArray(payload) ? payload : []);
 
 const trainerSlice = createSlice({
   name: 'trainer',
@@ -91,7 +95,7 @@ const trainerSlice = createSlice({
       })
       .addCase(fetchLearnersSummary.fulfilled, (state, action) => {
         state.loading = false;
-        state.learnersSummary = action.payload;
+        state.learnersSummary = asList(action.payload);
       })
       .addCase(fetchLearnersSummary.rejected, (state, action) => {
         state.loading = false;
@@ -105,7 +109,7 @@ const trainerSlice = createSlice({
       })
       .addCase(fetchRecentActivity.fulfilled, (state, action) => {
         state.loading = false;
-        state.recentActivity = action.payload;
+        state.recentActivity = asList(action.payload);
       })
       .addCase(fetchRecentActivity.rejected, (state, action) => {
         state.loading = false;

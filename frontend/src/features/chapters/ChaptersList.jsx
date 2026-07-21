@@ -46,37 +46,72 @@ export default function ChaptersList() {
           </div>
         ) : (
           <div className="chapters-grid">
-            {chapters.map((chapter) => (
-              <Link
-                key={chapter.id}
-                to={`/chapters/${chapter.slug}`}
-                className="chapter-card"
-              >
-                <div className="chapter-card__header">
-                  <span className="chapter-card__index">
-                    Ch. {String(chapter.order_index).padStart(2, '0')}
-                  </span>
-                  {chapter.is_published && (
-                    <span className="chapter-card__badge">Publié</span>
+            {chapters.map((chapter) => {
+              // `is_accessible` absent (ancienne réponse en cache) : on
+              // n'invente pas un verrou, on laisse passer — l'API tranchera.
+              const locked = chapter.is_accessible === false
+
+              const body = (
+                <>
+                  <div className="chapter-card__header">
+                    <span className="chapter-card__index">
+                      Ch. {String(chapter.order_index).padStart(2, '0')}
+                    </span>
+                    {locked ? (
+                      <span className="chapter-card__badge chapter-card__badge--locked">
+                        <span aria-hidden="true">🔒</span> Verrouillé
+                      </span>
+                    ) : (
+                      chapter.is_published && (
+                        <span className="chapter-card__badge">Publié</span>
+                      )
+                    )}
+                  </div>
+
+                  <h3 className="chapter-card__title">{chapter.title}</h3>
+
+                  <p className="chapter-card__description">
+                    {chapter.description}
+                  </p>
+
+                  <div className="chapter-card__meta">
+                    <span className="chapter-card__meta-item">
+                      {chapter.estimated_duration} min
+                    </span>
+                    <span className="chapter-card__meta-item">
+                      {chapter.lesson_count || 0} leçons
+                    </span>
+                  </div>
+
+                  {locked && (
+                    <p className="chapter-card__locked-hint">
+                      Terminez le chapitre précédent, ou attendez que votre
+                      formateur l’ouvre.
+                    </p>
                   )}
+                </>
+              )
+
+              // Un chapitre verrouillé reste affiché — il montre la suite du
+              // parcours — mais n'est pas cliquable.
+              return locked ? (
+                <div
+                  key={chapter.id}
+                  className="chapter-card chapter-card--locked"
+                  aria-disabled="true"
+                >
+                  {body}
                 </div>
-
-                <h3 className="chapter-card__title">{chapter.title}</h3>
-
-                <p className="chapter-card__description">
-                  {chapter.description}
-                </p>
-
-                <div className="chapter-card__meta">
-                  <span className="chapter-card__meta-item">
-                    {chapter.estimated_duration} min
-                  </span>
-                  <span className="chapter-card__meta-item">
-                    {chapter.lesson_count || 0} leçons
-                  </span>
-                </div>
-              </Link>
-            ))}
+              ) : (
+                <Link
+                  key={chapter.id}
+                  to={`/chapters/${chapter.slug}`}
+                  className="chapter-card"
+                >
+                  {body}
+                </Link>
+              )
+            })}
           </div>
         )}
       </div>

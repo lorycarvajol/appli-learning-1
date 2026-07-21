@@ -16,6 +16,21 @@ export const authApi = {
   logout: (refreshToken) =>
     apiClient.post('/auth/logout/', { refresh: refreshToken }),
 
+  // Mot de passe oublié (routes publiques)
+  requestPasswordReset: (email) =>
+    apiClient.post('/auth/password-reset/', { email }),
+
+  validateResetLink: (uid, token) =>
+    apiClient.get('/auth/password-reset/validate/', { params: { uid, token } }),
+
+  confirmPasswordReset: (uid, token, newPassword, newPasswordConfirm) =>
+    apiClient.post('/auth/password-reset/confirm/', {
+      uid,
+      token,
+      new_password: newPassword,
+      new_password_confirm: newPasswordConfirm,
+    }),
+
   changePassword: (oldPassword, newPassword, newPasswordConfirm) =>
     apiClient.post('/auth/change-password/', {
       old_password: oldPassword,

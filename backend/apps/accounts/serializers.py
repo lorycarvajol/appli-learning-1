@@ -71,6 +71,45 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Demande de réinitialisation. Ne valide que la forme de l'email.
+
+    On ne vérifie surtout pas que le compte existe : la vue doit répondre à
+    l'identique dans tous les cas, sinon l'endpoint devient un oracle
+    permettant de savoir qui est inscrit sur la plateforme.
+    """
+    email = serializers.EmailField(required=True)
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """Choix du nouveau mot de passe à partir du lien reçu."""
+    uid = serializers.CharField(required=True)
+    token = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, write_only=True)
+    new_password_confirm = serializers.CharField(required=True, write_only=True)
+
+    def validate(self, attrs):
+        from .services import resolve_reset_token
+
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError({
+                "new_password": "Les deux mots de passe ne correspondent pas."
+            })
+
+        user = resolve_reset_token(attrs['uid'], attrs['token'])
+        if user is None:
+            raise serializers.ValidationError({
+                "token": "Ce lien est invalide ou a expiré. Demandez-en un nouveau."
+            })
+
+        # Validation avec l'utilisateur en contexte : permet aussi de refuser
+        # un mot de passe trop proche de l'email ou du nom.
+        validate_password(attrs['new_password'], user)
+
+        attrs['user'] = user
+        return attrs
+
+
 class ChangePasswordSerializer(serializers.Serializer):
     """Serializer for password change."""
     old_password = serializers.CharField(required=True, write_only=True)

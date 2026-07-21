@@ -74,6 +74,34 @@
     background: linear-gradient(90deg, var(--brand), var(--brand-strong));
   }
 
+  // Chapitre verrouillé : visible (il montre la suite du parcours) mais inerte
+  &--locked {
+    cursor: default;
+    opacity: 0.72;
+
+    &::before {
+      background: var(--border-strong);
+    }
+
+    &:hover {
+      transform: none;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .chapter-card__index {
+      color: var(--ink-faint);
+      background-color: var(--surface-2);
+    }
+  }
+
+  &__locked-hint {
+    margin-top: $spacing-md;
+    padding-top: $spacing-md;
+    border-top: 1px dashed var(--border);
+    font-size: $font-size-xs;
+    color: $text-muted;
+  }
+
   &__header {
     display: flex;
     align-items: flex-start;
@@ -139,6 +167,12 @@
     @include badge;
     background-color: var(--ok-soft);
     color: var(--ok-text);
+    white-space: nowrap;
+
+    &--locked {
+      background-color: var(--surface-2);
+      color: var(--ink-faint);
+    }
   }
 }
 

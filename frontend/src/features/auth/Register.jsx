@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, Link } from 'react-router-dom'
 import { register, clearError } from './authSlice'
+import PasswordInput from '@/components/ui/PasswordInput'
 
 function Register() {
   const [formData, setFormData] = useState({
@@ -115,13 +116,11 @@ function Register() {
 
             <div className="auth-form__group">
               <label htmlFor="register-password" className="auth-form__label">Mot de passe</label>
-              <input
+              <PasswordInput
                 id="register-password"
-                type="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className="auth-form__input"
                 placeholder="••••••••"
                 required
                 minLength={8}
@@ -133,13 +132,11 @@ function Register() {
 
             <div className="auth-form__group">
               <label htmlFor="register-password-confirm" className="auth-form__label">Confirmer le mot de passe</label>
-              <input
+              <PasswordInput
                 id="register-password-confirm"
-                type="password"
                 name="password_confirm"
                 value={formData.password_confirm}
                 onChange={handleChange}
-                className="auth-form__input"
                 placeholder="••••••••"
                 required
                 autoComplete="new-password"

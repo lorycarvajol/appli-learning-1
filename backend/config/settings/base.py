@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'apps.progression',
     'apps.validation',
     'apps.gamification',
+    'apps.cohorts',
 ]
 
 MIDDLEWARE = [
@@ -141,13 +142,33 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle'
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/hour',
         'user': '1000/hour',
+        # Endpoints publics de mot de passe oublié : borne les tentatives de
+        # devinette de jeton et l'usage de l'envoi de mail comme nuisance.
+        'password_reset': '5/hour',
+        # Résolution publique de jetons d'invitation : borne l'énumération.
+        'invite': '30/hour',
     }
 }
+
+# Mot de passe oublié
+# Durée de vie du lien. Le jeton étant sans état (signé sur le hash du mot de
+# passe et last_login), il s'invalide aussi dès que le mot de passe change ou
+# que l'utilisateur se reconnecte.
+PASSWORD_RESET_TIMEOUT = config('PASSWORD_RESET_TIMEOUT', default=3600, cast=int)
+
+# Base de l'URL envoyée dans les emails (le front, pas l'API)
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
+
+DEFAULT_FROM_EMAIL = config(
+    'DEFAULT_FROM_EMAIL',
+    default='CodeAcademy <no-reply@codeacademy.local>'
+)
 
 # JWT Settings
 SIMPLE_JWT = {

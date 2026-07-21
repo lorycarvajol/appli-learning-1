@@ -81,3 +81,18 @@ body {
     transform: rotate(360deg);
   }
 }
+
+// Écran d'attente des gardes de route (le temps de résoudre l'identité)
+.route-guard {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: variables.$spacing-md;
+
+  &__text {
+    color: variables.$text-muted;
+    font-size: variables.$font-size-sm;
+  }
+}

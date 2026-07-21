@@ -1,14 +1,26 @@
 import { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { login, clearError } from './authSlice'
+import PasswordInput from '@/components/ui/PasswordInput'
 
 function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { loading, error } = useSelector((state) => state.auth)
+
+  // Destination après connexion. Sert au parcours d'invitation : quelqu'un qui
+  // a déjà un compte doit revenir sur le lien pour être rattaché.
+  // On n'accepte qu'un chemin interne : une URL absolue permettrait de
+  // rediriger vers un site tiers depuis un lien de connexion piégé.
+  const rawNext = searchParams.get('next')
+  const nextPath =
+    rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//')
+      ? rawNext
+      : '/dashboard'
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -17,7 +29,7 @@ function Login() {
     const result = await dispatch(login({ email, password }))
 
     if (login.fulfilled.match(result)) {
-      navigate('/dashboard')
+      navigate(nextPath)
     }
   }
 
@@ -60,16 +72,17 @@ function Login() {
 
             <div className="auth-form__group">
               <label htmlFor="login-password" className="auth-form__label">Mot de passe</label>
-              <input
+              <PasswordInput
                 id="login-password"
-                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="auth-form__input"
                 placeholder="••••••••"
                 required
                 autoComplete="current-password"
               />
+              <Link to="/forgot-password" className="auth-form__forgot">
+                Mot de passe oublié ?
+              </Link>
             </div>
 
             <button
