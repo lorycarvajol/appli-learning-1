@@ -1,4 +1,22 @@
+"""
+Admin Django de la gamification.
+
+Une seule table s'édite ici : `Badge`, le **catalogue** — c'est du contenu, au
+même titre qu'un chapitre, et l'espace React ne le gère pas.
+
+Tout le reste est **acquis** : badges obtenus, écritures de points, séries.
+Ces tables portent l'invariant central de la gamification — `Profile.total_points`
+égale toujours la somme des `PointTransaction`, et un badge ne se gagne qu'une
+fois. Une écriture manuelle ferait décrocher le solde sans laisser de trace, et
+plus rien n'expliquerait ensuite l'écart constaté par
+`services.recompute_profile_points`.
+
+Voies légitimes : `services.award_points`, `sync_user_gamification`, et les
+commandes `seed_badges` / `sync_gamification`.
+"""
 from django.contrib import admin
+
+from apps.administration.admin_readonly import ReadOnlyAdmin
 
 from .models import Badge, PointTransaction, UserBadge, UserStreak
 
@@ -30,24 +48,22 @@ class BadgeAdmin(admin.ModelAdmin):
 
 
 @admin.register(UserBadge)
-class UserBadgeAdmin(admin.ModelAdmin):
+class UserBadgeAdmin(ReadOnlyAdmin):
     list_display = ['user', 'badge', 'earned_at', 'is_seen']
     list_filter = ['badge', 'is_seen']
     search_fields = ['user__email', 'badge__name']
-    readonly_fields = ['earned_at', 'context']
-    autocomplete_fields = ['badge']
 
 
 @admin.register(PointTransaction)
-class PointTransactionAdmin(admin.ModelAdmin):
+class PointTransactionAdmin(ReadOnlyAdmin):
+    """Le grand livre. Il se lit, il ne se corrige pas."""
+
     list_display = ['user', 'amount', 'reason', 'source_key', 'created_at']
     list_filter = ['reason']
     search_fields = ['user__email', 'source_key']
-    readonly_fields = ['created_at']
 
 
 @admin.register(UserStreak)
-class UserStreakAdmin(admin.ModelAdmin):
+class UserStreakAdmin(ReadOnlyAdmin):
     list_display = ['user', 'current_streak', 'longest_streak', 'last_activity_date']
     search_fields = ['user__email']
-    readonly_fields = ['created_at', 'updated_at']

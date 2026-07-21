@@ -6,7 +6,7 @@ Seul un admin voit tout. C'est ce qui manquait jusqu'ici — `learners_summary`
 renvoyait tous les apprenants de la plateforme à n'importe quel formateur.
 """
 from django.db import transaction
-from rest_framework import status, viewsets
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -14,7 +14,9 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.accounts.models import User
-from apps.accounts.permissions import IsTrainerOrAdmin
+from apps.accounts.permissions import IsAdmin, IsTrainerOrAdmin
+from apps.administration.audit import label_for, record
+from apps.administration.models import AuditLog
 from apps.accounts.serializers import UserSerializer
 from apps.courses.models import Chapter
 from apps.progression.services import unlock_chapter_for
@@ -30,6 +32,21 @@ from .serializers import (
 from .services import consume_invite, resolve_usable_invite
 
 
+def _trainer_or_400(trainer_id):
+    """Résout un formateur, en refusant tout compte qui n'en est pas un.
+
+    Sans cette vérification, un admin pourrait confier une classe à un
+    apprenant : il hériterait alors, via `visible_learners`, de la vue sur ses
+    propres camarades.
+    """
+    trainer = User.objects.filter(id=trainer_id, role=User.Role.TRAINER).first()
+    if trainer is None:
+        raise serializers.ValidationError(
+            {'trainer_id': "Ce compte n'existe pas ou n'est pas formateur."}
+        )
+    return trainer
+
+
 class CohortViewSet(viewsets.ModelViewSet):
     """Classes du formateur connecté (toutes, pour un admin)."""
     serializer_class = CohortSerializer
@@ -42,8 +59,56 @@ class CohortViewSet(viewsets.ModelViewSet):
         return qs.filter(trainer=self.request.user)
 
     def perform_create(self, serializer):
-        # Le formateur est déduit de la requête, jamais du corps.
-        serializer.save(trainer=self.request.user)
+        """Crée la classe et lui affecte un formateur.
+
+        Pour un **formateur**, le titulaire est déduit de la requête et jamais
+        du corps : sinon il pourrait créer une classe au nom d'un collègue.
+
+        Pour un **admin**, ce raccourci était un défaut : il devenait formateur
+        de chaque classe qu'il créait, sans aucun moyen d'en désigner un autre.
+        Il peut donc passer un `trainer_id` — c'est précisément son rôle que de
+        répartir les promos entre les formateurs.
+        """
+        cohort = serializer.save(trainer=self._requested_trainer())
+        record(
+            self.request.user, AuditLog.Action.CREATE_COHORT, cohort,
+            changes={'after': {'trainer': label_for(cohort.trainer)}},
+        )
+
+    def _requested_trainer(self):
+        if self.request.user.role != User.Role.ADMIN:
+            return self.request.user
+
+        trainer_id = self.request.data.get('trainer_id')
+        if not trainer_id:
+            # Un admin peut aussi créer une classe orpheline et l'affecter
+            # ensuite ; le pilotage compte déjà les classes sans formateur.
+            return None
+        return _trainer_or_400(trainer_id)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAdmin])
+    def set_trainer(self, request, pk=None):
+        """Affecte (ou retire) le formateur d'une classe. **Admin seulement.**
+
+        Résout le compteur « classes orphelines » du pilotage, qui signalait le
+        problème sans offrir aucun moyen de le corriger. Réservé à l'admin :
+        laisser un formateur se réaffecter une classe casserait le
+        cloisonnement que `get_queryset` met en place.
+        """
+        cohort = self.get_object()
+        trainer_id = request.data.get('trainer_id')
+        trainer = _trainer_or_400(trainer_id) if trainer_id else None
+
+        before = label_for(cohort.trainer)
+        with transaction.atomic():
+            cohort.trainer = trainer
+            cohort.save(update_fields=['trainer', 'updated_at'])
+            record(
+                request.user, AuditLog.Action.ASSIGN_TRAINER, cohort,
+                changes={'before': before, 'after': label_for(trainer)},
+            )
+
+        return Response(CohortSerializer(cohort).data)
 
     @action(detail=True, methods=['get'])
     def members(self, request, pk=None):
@@ -99,6 +164,16 @@ class CohortViewSet(viewsets.ModelViewSet):
                 if newly:
                     opened += 1
 
+            record(
+                request.user, AuditLog.Action.UNLOCK_CHAPTER, chapter,
+                changes={
+                    'after': {
+                        'cohort': cohort.name,
+                        'newly_unlocked': opened,
+                    }
+                },
+            )
+
         return Response({
             'chapter': str(chapter.id),
             'members': learners.count(),
@@ -150,15 +225,31 @@ class CohortInviteViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_403_FORBIDDEN
                 )
 
-        invite = serializer.save(created_by=request.user)
+        with transaction.atomic():
+            invite = serializer.save(created_by=request.user)
+            # Une invitation est un pouvoir diffusable : elle crée des comptes,
+            # et pour un rôle TRAINER elle crée un encadrant. Le jeton lui-même
+            # n'est jamais journalisé — le journal se lit à plusieurs.
+            record(
+                request.user, AuditLog.Action.INVITE_CREATED, invite.cohort,
+                target_label=label_for(invite.cohort) or 'invitation formateur',
+                changes={'after': {'role': invite.role}},
+            )
+
         return Response(
             self.get_serializer(invite).data, status=status.HTTP_201_CREATED
         )
 
     def perform_destroy(self, instance):
         """Révoque au lieu de supprimer : garde une trace du lien diffusé."""
-        instance.is_revoked = True
-        instance.save(update_fields=['is_revoked'])
+        with transaction.atomic():
+            instance.is_revoked = True
+            instance.save(update_fields=['is_revoked'])
+            record(
+                self.request.user, AuditLog.Action.INVITE_REVOKED, instance.cohort,
+                target_label=label_for(instance.cohort) or 'invitation formateur',
+                changes={'after': {'role': instance.role}},
+            )
 
 
 # ---------------------------------------------------------------------------

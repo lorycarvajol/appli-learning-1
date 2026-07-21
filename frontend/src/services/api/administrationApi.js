@@ -56,6 +56,31 @@ const administrationApi = {
     )
     return response.data
   },
+
+  /** Journal d'audit. Lecture seule : aucune méthode d'écriture n'existe. */
+  getAuditLog: async (params = {}) => {
+    const response = await apiService.get('/administration/audit/', { params })
+    return response.data.results ?? response.data
+  },
+
+  getAuditActions: async () => {
+    const response = await apiService.get('/administration/audit/actions/')
+    return response.data
+  },
+
+  /** Affecte (ou retire, avec `null`) le formateur d'une classe. */
+  setCohortTrainer: async (cohortId, trainerId) => {
+    const response = await apiService.post(
+      `/cohorts/cohorts/${cohortId}/set_trainer/`,
+      { trainer_id: trainerId }
+    )
+    return response.data
+  },
+
+  createCohort: async (payload) => {
+    const response = await apiService.post('/cohorts/cohorts/', payload)
+    return response.data
+  },
 }
 
 export default administrationApi

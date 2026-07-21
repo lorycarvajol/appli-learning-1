@@ -314,6 +314,51 @@
   cursor: not-allowed;
 }
 
+/* Courbe de tendance */
+
+.admin-trend {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 120px;
+  padding: 0.5rem 0;
+}
+
+.admin-trend__bar {
+  flex: 1;
+  /* Une journée vide doit rester visible comme un creux, pas disparaître :
+     une barre de hauteur nulle se lirait comme une absence de donnée. */
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(180deg, var(--brand), var(--accent));
+}
+
+.admin-trend__axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+}
+
+/* Formulaire de création */
+
+.admin-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.admin-form .auth-form__input {
+  flex: 1 1 220px;
+  margin: 0;
+}
+
+.admin-audit__changes {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
 @media (max-width: 1024px) {
   .admin-stats {
     grid-template-columns: repeat(2, 1fr);

@@ -7,8 +7,10 @@ import './AdminSpace.css'
 const TABS = [
   { key: 'overview', label: 'Pilotage' },
   { key: 'trainers', label: 'Formateurs' },
+  { key: 'cohorts', label: 'Classes' },
   { key: 'unassigned', label: 'Sans classe' },
   { key: 'accounts', label: 'Comptes' },
+  { key: 'audit', label: 'Journal' },
 ]
 
 const DJANGO_ADMIN_URL = (
@@ -22,6 +24,9 @@ export default function AdminSpace() {
   const [users, setUsers] = useState([])
   const [cohorts, setCohorts] = useState([])
   const [search, setSearch] = useState('')
+  const [auditEntries, setAuditEntries] = useState([])
+  const [auditActions, setAuditActions] = useState([])
+  const [auditFilter, setAuditFilter] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)
@@ -31,16 +36,32 @@ export default function AdminSpace() {
     []
   )
 
+  const loadCohorts = useCallback(
+    () => cohortsApi.listCohorts().then(setCohorts).catch(() => setCohorts([])),
+    []
+  )
+
+  const loadAudit = useCallback(
+    (action) =>
+      administrationApi
+        .getAuditLog(action ? { action } : {})
+        .then(setAuditEntries)
+        .catch(() => setAuditEntries([])),
+    []
+  )
+
   useEffect(() => {
     administrationApi.getOverview().then(setOverview).catch(() => setOverview(null))
     administrationApi.getTrainers().then(setTrainers).catch(() => setTrainers([]))
-    cohortsApi.listCohorts().then(setCohorts).catch(() => setCohorts([]))
-  }, [])
+    administrationApi.getAuditActions().then(setAuditActions).catch(() => setAuditActions([]))
+    loadCohorts()
+  }, [loadCohorts])
 
   useEffect(() => {
     if (tab === 'unassigned') loadUsers({ unassigned: 'true' })
     if (tab === 'accounts') loadUsers(search ? { search } : {})
-  }, [tab, search, loadUsers])
+    if (tab === 'audit') loadAudit(auditFilter)
+  }, [tab, search, auditFilter, loadUsers, loadAudit])
 
   const run = async (action, message) => {
     setBusy(true)
@@ -49,12 +70,23 @@ export default function AdminSpace() {
     try {
       await action()
       setNotice(message)
-      const [freshOverview] = await Promise.all([administrationApi.getOverview()])
+      const freshOverview = await administrationApi.getOverview()
       setOverview(freshOverview)
-      if (tab === 'unassigned') await loadUsers({ unassigned: 'true' })
-      if (tab === 'accounts') await loadUsers(search ? { search } : {})
+      // Toute action d'administration produit une entrée de journal : le
+      // rafraîchir systématiquement rend la traçabilité visible au moment même
+      // où l'on agit, plutôt qu'à la prochaine visite de l'onglet.
+      await Promise.all([
+        loadCohorts(),
+        loadAudit(auditFilter),
+        tab === 'unassigned' ? loadUsers({ unassigned: 'true' }) : null,
+        tab === 'accounts' ? loadUsers(search ? { search } : {}) : null,
+      ])
     } catch (err) {
-      setError(err.response?.data?.detail || 'Action impossible.')
+      setError(
+        err.response?.data?.detail ||
+          err.response?.data?.trainer_id?.[0] ||
+          'Action impossible.'
+      )
     } finally {
       setBusy(false)
     }
@@ -122,6 +154,32 @@ export default function AdminSpace() {
 
         {tab === 'trainers' && <Trainers trainers={trainers} />}
 
+        {tab === 'cohorts' && (
+          <Cohorts
+            cohorts={overview?.per_cohort || []}
+            trainers={trainers}
+            busy={busy}
+            onCreate={(payload) =>
+              run(() => administrationApi.createCohort(payload), 'Classe créée.')
+            }
+            onSetTrainer={(cohortId, trainerId) =>
+              run(
+                () => administrationApi.setCohortTrainer(cohortId, trainerId),
+                'Formateur affecté.'
+              )
+            }
+          />
+        )}
+
+        {tab === 'audit' && (
+          <AuditJournal
+            entries={auditEntries}
+            actions={auditActions}
+            filter={auditFilter}
+            onFilter={setAuditFilter}
+          />
+        )}
+
         {tab === 'unassigned' && (
           <Unassigned
             users={users}
@@ -183,7 +241,22 @@ function Overview({ overview }) {
         <AdminStat value={users.inactive} label="Comptes désactivés" />
         <AdminStat value={content.chapters} label="Chapitres publiés" />
         <AdminStat value={activity.last_7_days} label="Activités (7 j)" />
+        {/* Ces deux chiffres désignent des personnes, pas des volumes : un
+            total d'activités qui monte peut masquer une moitié de promo à
+            l'arrêt. */}
+        <AdminStat
+          value={activity.stalled_learners}
+          label={`Décrochés (${activity.stalled_after_days} j)`}
+          alert={activity.stalled_learners > 0}
+        />
+        <AdminStat
+          value={activity.never_started_learners}
+          label="Jamais démarré"
+          alert={activity.never_started_learners > 0}
+        />
       </div>
+
+      <ActivityTrend activity={activity} />
 
       <section className="admin-card">
         <h2 className="admin-card__title">Avancement par classe</h2>
@@ -226,6 +299,213 @@ function Overview({ overview }) {
       </section>
     </>
   )
+}
+
+function ActivityTrend({ activity }) {
+  const trend = activity?.trend || []
+  if (trend.length === 0) return null
+
+  // Échelle rapportée au jour le plus chargé : une courbe à échelle fixe
+  // paraîtrait plate dès que le volume baisse.
+  const peak = Math.max(...trend.map((day) => day.count), 1)
+  const total = trend.reduce((sum, day) => sum + day.count, 0)
+
+  return (
+    <section className="admin-card">
+      <h2 className="admin-card__title">Activité sur 30 jours</h2>
+      <p className="admin-card__hint">
+        {total} activité(s) enregistrée(s), maximum {peak} sur une journée.
+      </p>
+
+      <div className="admin-trend" role="img"
+        aria-label={`Activité quotidienne sur 30 jours, ${total} au total`}
+      >
+        {trend.map((day) => (
+          <div
+            key={day.date}
+            className="admin-trend__bar"
+            style={{ height: `${Math.round((day.count / peak) * 100)}%` }}
+            title={`${day.date} — ${day.count}`}
+          />
+        ))}
+      </div>
+
+      <div className="admin-trend__axis">
+        <span>{trend[0].date}</span>
+        <span>{trend[trend.length - 1].date}</span>
+      </div>
+    </section>
+  )
+}
+
+function Cohorts({ cohorts, trainers, busy, onCreate, onSetTrainer }) {
+  const [name, setName] = useState('')
+  const [trainerId, setTrainerId] = useState('')
+
+  const submit = (event) => {
+    event.preventDefault()
+    if (!name.trim()) return
+    onCreate({ name: name.trim(), trainer_id: trainerId || null })
+    setName('')
+    setTrainerId('')
+  }
+
+  return (
+    <>
+      <section className="admin-card">
+        <h2 className="admin-card__title">Créer une classe</h2>
+        <p className="admin-card__hint">
+          En tant qu’administrateur, vous désignez le formateur responsable —
+          un formateur, lui, ne peut créer une classe que pour lui-même.
+        </p>
+
+        <form className="admin-form" onSubmit={submit}>
+          <label className="sr-only" htmlFor="cohort-name">Nom de la classe</label>
+          <input
+            id="cohort-name"
+            className="auth-form__input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Nom de la classe…"
+          />
+
+          <label className="sr-only" htmlFor="cohort-trainer">Formateur responsable</label>
+          <select
+            id="cohort-trainer"
+            className="admin-select"
+            value={trainerId}
+            onChange={(e) => setTrainerId(e.target.value)}
+          >
+            <option value="">Sans formateur</option>
+            {trainers.map((trainer) => (
+              <option key={trainer.id} value={trainer.id}>
+                {trainer.full_name || trainer.email}
+              </option>
+            ))}
+          </select>
+
+          <button type="submit" className="admin-action" disabled={busy || !name.trim()}>
+            Créer
+          </button>
+        </form>
+      </section>
+
+      <section className="admin-card">
+        <h2 className="admin-card__title">Affectation des formateurs</h2>
+        {cohorts.length === 0 ? (
+          <p className="admin-empty">Aucune classe pour l’instant.</p>
+        ) : (
+          <ul className="admin-list">
+            {cohorts.map((cohort) => (
+              <li key={cohort.id} className="admin-list__item">
+                <div className="admin-list__main">
+                  <strong>{cohort.name}</strong>
+                  <span className="admin-list__meta">
+                    {cohort.member_count} apprenant(s)
+                    {!cohort.is_active && ' · archivée'}
+                  </span>
+                </div>
+
+                <label className="sr-only" htmlFor={`trainer-${cohort.id}`}>
+                  Formateur de {cohort.name}
+                </label>
+                <select
+                  id={`trainer-${cohort.id}`}
+                  className="admin-select"
+                  value={cohort.trainer_id || ''}
+                  disabled={busy}
+                  onChange={(e) => onSetTrainer(cohort.id, e.target.value || null)}
+                >
+                  <option value="">Sans formateur</option>
+                  {trainers.map((trainer) => (
+                    <option key={trainer.id} value={trainer.id}>
+                      {trainer.full_name || trainer.email}
+                    </option>
+                  ))}
+                </select>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </>
+  )
+}
+
+function AuditJournal({ entries, actions, filter, onFilter }) {
+  return (
+    <section className="admin-card">
+      <h2 className="admin-card__title">Journal d’audit</h2>
+      <p className="admin-card__hint">
+        Trace de chaque action d’administration. Les identités affichées sont
+        celles <strong>figées au moment de l’acte</strong> : c’est ce qui rend
+        une anonymisation vérifiable après coup. Le journal est en lecture
+        seule, y compris pour un administrateur.
+      </p>
+
+      <label className="sr-only" htmlFor="audit-filter">Filtrer par type d’action</label>
+      <select
+        id="audit-filter"
+        className="admin-select admin-card__search"
+        value={filter}
+        onChange={(e) => onFilter(e.target.value)}
+      >
+        <option value="">Toutes les actions</option>
+        {actions.map((item) => (
+          <option key={item.value} value={item.value}>
+            {item.label}
+          </option>
+        ))}
+      </select>
+
+      {entries.length === 0 ? (
+        <p className="admin-empty">Aucune action enregistrée.</p>
+      ) : (
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Auteur</th>
+              <th>Action</th>
+              <th>Cible</th>
+              <th>Détail</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((entry) => (
+              <tr key={entry.id}>
+                <td>{new Date(entry.created_at).toLocaleString('fr-FR')}</td>
+                <td>{entry.actor_label}</td>
+                <td>{entry.action_label}</td>
+                <td>{entry.target_label || '—'}</td>
+                <td className="admin-audit__changes">{describeChanges(entry.changes)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
+  )
+}
+
+/** Rend le couple avant/après lisible sans exposer la structure JSON brute. */
+function describeChanges(changes) {
+  if (!changes || Object.keys(changes).length === 0) return '—'
+
+  const format = (value) => {
+    if (value === null || value === undefined || value === '') return '∅'
+    if (typeof value === 'object') {
+      return Object.entries(value)
+        .map(([key, item]) => `${key} : ${item}`)
+        .join(', ')
+    }
+    return String(value)
+  }
+
+  if ('before' in changes && 'after' in changes) {
+    return `${format(changes.before)} → ${format(changes.after)}`
+  }
+  return format(changes.after ?? changes)
 }
 
 function AdminStat({ value, label, alert }) {

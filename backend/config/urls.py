@@ -5,6 +5,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.utils.html import format_html
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -29,7 +30,18 @@ if settings.DEBUG:
             path('__debug__/', include(debug_toolbar.urls)),
         ]
 
-# Customize admin site
-admin.site.site_header = "Learning Platform Admin"
-admin.site.site_title = "Learning Platform Admin Portal"
-admin.site.index_title = "Welcome to Learning Platform Administration"
+# Personnalisation de l'admin Django.
+#
+# Le titre dit explicitement le partage des rôles : cet espace sert au contenu
+# pédagogique, le pilotage se fait dans l'espace React. Sans ce rappel, un
+# administrateur qui arrive ici cherche à changer un rôle depuis le formulaire
+# `User` — où les champs sont désormais en lecture seule — sans comprendre
+# pourquoi ça ne marche pas.
+admin.site.site_header = "Plateforme d'apprentissage — contenu"
+admin.site.site_title = "Administration du contenu"
+admin.site.index_title = format_html(
+    'Chapitres, leçons, exercices, quiz et badges. '
+    'Le pilotage (comptes, rôles, classes, journal d’audit) se fait dans '
+    '<a href="{}/administration">l’espace Administration</a>.',
+    settings.FRONTEND_URL.rstrip('/'),
+)

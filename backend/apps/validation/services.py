@@ -358,13 +358,8 @@ def validate_exercise_code(exercise, user_code: str) -> Dict[str, Any]:
     # Créer le sandbox
     sandbox = DockerSandbox(language=language)
 
-    # Extraire la liste des tests depuis le champ JSONB
-    # Le champ exercise.tests peut être {'tests': [...]} ou directement [...]
-    tests = exercise.tests
-    if isinstance(tests, dict) and 'tests' in tests:
-        tests = tests['tests']
-
-    # Exécuter la validation
-    result = sandbox.run_code(user_code, tests)
+    # La normalisation des deux formes du champ JSONB vit sur le modèle
+    # (`Exercise.test_cases`), pour que tous les lecteurs voient la même chose.
+    result = sandbox.run_code(user_code, exercise.test_cases)
 
     return result

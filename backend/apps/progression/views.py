@@ -15,6 +15,8 @@ from .serializers import (
 )
 from apps.accounts.models import User
 from apps.accounts.permissions import IsTrainerOrAdmin
+from apps.administration.audit import label_for, record
+from apps.administration.models import AuditLog
 from apps.courses.models import Chapter, Lesson, Quiz
 from apps.gamification.serializers import UserBadgeSerializer
 from apps.gamification.services import (
@@ -147,6 +149,13 @@ class ChapterAccessViewSet(viewsets.ModelViewSet):
             metadata={'unlocked_by': str(request.user.id)}
         )
 
+        # Le journal d'activité dit ce qui est arrivé à l'apprenant ; le
+        # journal d'audit dit qui en a décidé. Les deux sont nécessaires.
+        record(
+            request.user, AuditLog.Action.UNLOCK_CHAPTER, chapter_access.chapter,
+            changes={'after': {'learner': label_for(chapter_access.user)}},
+        )
+
         return Response(
             ChapterAccessSerializer(chapter_access).data,
             status=status.HTTP_200_OK
@@ -174,6 +183,11 @@ class ChapterAccessViewSet(viewsets.ModelViewSet):
             )
             chapter_access.is_unlocked = False
             chapter_access.save()
+
+            record(
+                request.user, AuditLog.Action.LOCK_CHAPTER, chapter_access.chapter,
+                changes={'after': {'learner': label_for(chapter_access.user)}},
+            )
 
             return Response(
                 ChapterAccessSerializer(chapter_access).data,
@@ -591,42 +605,61 @@ class TrainerDashboardViewSet(viewsets.ViewSet):
         total_chapters = Chapter.objects.filter(is_published=True).count()
         total_lessons = Lesson.objects.filter(chapter__is_published=True).count()
 
+        # Cette vue faisait quatre requêtes par apprenant. Pour un formateur
+        # c'est supportable ; pour un **admin**, `visible_learners` renvoie
+        # toute la plateforme — la vue dégénérait donc exactement là où elle
+        # sert le plus. On agrège une fois par métrique, puis on assemble.
+        progress_by_user = {
+            row['user_id']: row
+            for row in UserProgress.objects.filter(user__in=learners)
+            .values('user_id')
+            .annotate(
+                completed=Count('id', filter=Q(
+                    status=UserProgress.ProgressStatus.COMPLETED)),
+                in_progress=Count('id', filter=Q(
+                    status=UserProgress.ProgressStatus.IN_PROGRESS)),
+                total_time=Sum('time_spent'),
+                avg_score=Avg('score', filter=Q(score__isnull=False)),
+            )
+        }
+
+        unlocked_by_user = {
+            row['user_id']: row['total']
+            for row in ChapterAccess.objects.filter(user__in=learners, is_unlocked=True)
+            .values('user_id')
+            .annotate(total=Count('id'))
+        }
+
+        last_activity_by_user = {
+            row['user_id']: row['last_at']
+            for row in ActivityLog.objects.filter(user__in=learners)
+            .values('user_id')
+            .annotate(last_at=Max('created_at'))
+        }
+
+        # Une seule leçon en cours est affichée par apprenant. On parcourt le
+        # lot dans l'ordre de la base et on ne garde que la première vue, ce
+        # qui reproduit le `.first()` d'origine sans requête par apprenant.
+        current_lesson_by_user = {}
+        for progress in UserProgress.objects.filter(
+            user__in=learners, status=UserProgress.ProgressStatus.IN_PROGRESS
+        ).select_related('lesson'):
+            current_lesson_by_user.setdefault(progress.user_id, progress.lesson.title)
+
         summaries = []
         for learner in learners:
-            # Compter les chapitres débloqués
-            unlocked_chapters = ChapterAccess.objects.filter(
-                user=learner,
-                is_unlocked=True
-            ).count()
-
-            # Compter les leçons complétées et en cours
-            progress_stats = UserProgress.objects.filter(user=learner).aggregate(
-                completed=Count('id', filter=Q(status=UserProgress.ProgressStatus.COMPLETED)),
-                in_progress=Count('id', filter=Q(status=UserProgress.ProgressStatus.IN_PROGRESS)),
-                total_time=Sum('time_spent'),
-                avg_score=Avg('score', filter=Q(score__isnull=False))
-            )
-
-            # Dernière activité
-            last_activity = ActivityLog.objects.filter(user=learner).order_by('-created_at').first()
-
-            # Leçon en cours
-            current_progress = UserProgress.objects.filter(
-                user=learner,
-                status=UserProgress.ProgressStatus.IN_PROGRESS
-            ).select_related('lesson').first()
-
+            stats = progress_by_user.get(learner.id, {})
             summaries.append({
                 'user': learner,
                 'total_chapters': total_chapters,
-                'unlocked_chapters': unlocked_chapters,
+                'unlocked_chapters': unlocked_by_user.get(learner.id, 0),
                 'total_lessons': total_lessons,
-                'completed_lessons': progress_stats['completed'] or 0,
-                'in_progress_lessons': progress_stats['in_progress'] or 0,
-                'total_time_spent': progress_stats['total_time'] or 0,
-                'average_score': progress_stats['avg_score'],
-                'last_activity': last_activity.created_at if last_activity else None,
-                'current_lesson': current_progress.lesson.title if current_progress else None
+                'completed_lessons': stats.get('completed') or 0,
+                'in_progress_lessons': stats.get('in_progress') or 0,
+                'total_time_spent': stats.get('total_time') or 0,
+                'average_score': stats.get('avg_score'),
+                'last_activity': last_activity_by_user.get(learner.id),
+                'current_lesson': current_lesson_by_user.get(learner.id),
             })
 
         serializer = LearnerProgressSummarySerializer(summaries, many=True)

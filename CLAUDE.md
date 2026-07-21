@@ -572,13 +572,62 @@ App `apps/administration` (**vues seulement, aucun modèle**), route front
 
 ### Parti pris : hybride, pas de remplacement de l'admin Django
 
-Le CRUD de contenu (chapitres, leçons, exercices, quiz, badges, classes) reste
-dans `/admin/`, qui le fait mieux et gratuitement — recherche, filtres,
-inlines, historique. L'espace React ne couvre que ce que l'admin Django ne sait
-pas faire, et un lien y renvoie explicitement depuis l'en-tête de la page.
+Le CRUD de contenu (chapitres, leçons, exercices, quiz, badges) reste dans
+`/admin/`, qui le fait mieux et gratuitement — recherche, filtres, inlines,
+historique. L'espace React ne couvre que ce que l'admin Django ne sait pas
+faire, et un lien y renvoie explicitement depuis l'en-tête de la page.
 
 **Ne pas reconstruire de CRUD de contenu en React.** Ce serait des semaines de
 travail pour une capacité inférieure.
+
+### L'admin Django a été bridé — et pourquoi ce n'était pas cosmétique
+
+Tant que les deux espaces pouvaient écrire les mêmes tables, l'admin Django
+était une **porte dérobée à côté de la porte blindée** : changer un rôle depuis
+`/admin/` n'écrivait aucune entrée d'`AuditLog`, échappait à la règle du
+« dernier administrateur actif » et ne révoquait aucune session. Supprimer un
+compte y détruisait la progression en cascade au lieu de l'anonymiser. Et
+`Profile.total_points` y était éditable, alors que le solde doit toujours
+égaler la somme des `PointTransaction`.
+
+Le mixin `apps/administration/admin_readonly.ReadOnlyAdmin` applique la règle.
+Son `get_readonly_fields` énumère les champs **du modèle**, pas une liste
+figée : un champ ajouté plus tard ne redevient pas éditable en silence.
+
+| Modèle | Régime | Raison |
+|---|---|---|
+| Chapter, Lesson, Exercise, Quiz, Project, Badge | **CRUD complet** | C'est du contenu — la raison d'être de cet espace |
+| User | Création + mot de passe uniquement | `role`, `is_active`, `is_staff`, `is_superuser` en lecture seule ; suppression interdite |
+| Cohort | Nom, description, archivage | `trainer` en lecture seule (voie auditée : `set_trainer`) ; suppression interdite |
+| Profile, CohortInvite | Lecture seule | Pilotés par React / l'espace formateur |
+| UserProgress, ChapterAccess, ActivityLog | Lecture seule | Données dérivées du parcours |
+| PointTransaction, UserBadge, UserStreak | Lecture seule | Le grand livre se lit, il ne se corrige pas |
+| AuditLog | **Non enregistré** | Rien ne doit pouvoir le réécrire |
+
+On a préféré la **lecture seule au retrait** : répondre à « pourquoi cet
+apprenant a-t-il 340 points ? » demande de pouvoir fouiller la table. C'est le
+pouvoir d'écrire qu'on retire, pas celui d'inspecter.
+
+Ce qui reste sur `User` est exactement ce que React ne sait pas faire : créer
+un compte à la main et définir un mot de passe. `role` reste saisissable **à la
+création** (il faut bien amorcer un compte ; aucun état antérieur n'est écrasé).
+
+Neuf tests verrouillent ce partage dans `apps/administration/tests/test_audit.py`.
+⚠️ Ils interrogent `django.contrib.admin.site._registry` : **enregistrer un
+nouveau modèle sensible sans le brider les fera passer quand même**. Ajouter
+une entrée au tableau ci-dessus et un cas au test paramétré.
+
+### Bug corrigé au passage : `Exercise.total_points`
+
+La propriété itérait `self.tests` directement. Or le champ JSONB est stocké
+sous la forme `{'tests': [...]}` — celle que produit l'admin et que documente
+ce fichier — donc elle parcourait les **clés** du dictionnaire et levait
+`AttributeError`. La liste des exercices de l'admin Django était inaccessible.
+
+La normalisation des deux formes vit désormais sur le modèle
+(`Exercise.test_cases`) ; `apps/validation/services.py` la réutilise au lieu de
+refaire le test dans son coin. **Tout nouveau lecteur du champ doit passer par
+`test_cases`.**
 
 ### `role` et `is_staff` sont désormais synchronisés
 
@@ -612,6 +661,90 @@ Garde-fous dans `services.py`, chacun couvert par un test :
 - **Impossible d'agir sur son propre compte** (rôle, désactivation,
   anonymisation).
 - Désactiver **révoque les refresh tokens** : l'effet doit être immédiat.
+
+Les quatre actions passent par `services.py` — `assign_cohort` y a été remontée
+depuis la vue pour que **toutes** les actions de compte soient auditées au même
+endroit.
+
+### Journal d'audit — ce qui rend le pouvoir redevable
+
+`AuditLog` (`apps/administration/models.py`), consultable sur
+`GET /api/administration/audit/` et sous l'onglet « Journal ».
+
+Avant ce chantier, `set_role`, `set_active`, `anonymize` et `assign_cohort` — dont
+une strictement irréversible — ne laissaient **aucune trace**. L'admin Django
+tient bien un `LogEntry`, mais tout ce qui passe par `/api/administration/` le
+court-circuitait. Impossible de répondre à « qui a anonymisé ce compte ? », ni
+de prouver qu'une demande d'effacement RGPD avait été honorée.
+
+Trois propriétés à ne pas casser, chacune couverte par un test
+(`apps/administration/tests/test_audit.py`) :
+
+- **Les libellés sont dénormalisés** (`actor_label`, `target_label`) en plus des
+  clés étrangères. Ce n'est pas une redondance : la cible d'une anonymisation
+  perd son email par définition, et sans identité figée *au moment de l'acte* le
+  journal dirait « un compte anonyme a été anonymisé ». Pour la même raison
+  `actor` est en `SET_NULL` — un journal qui s'efface avec son auteur ne prouve
+  rien.
+- **Lecture seule, sans exception.** `AuditLogViewSet` est un
+  `ReadOnlyModelViewSet` et le modèle n'est **pas** enregistré dans l'admin
+  Django. Un journal réécrivable par ceux qu'il surveille n'est pas un journal.
+- **Seul ce qui a eu lieu est consigné.** L'écriture est dans la transaction de
+  l'action ; un refus métier (dernier admin, auto-action) ne laisse rien.
+
+Pour auditer une nouvelle action : `from apps.administration.audit import record`.
+Ce module est volontairement séparé de `services.py` pour que `progression` et
+`cohorts` puissent journaliser sans importer le cycle de vie des comptes.
+
+⚠️ Dans `anonymize()`, l'identité est capturée **avant** l'écrasement de
+l'email (`identity_before`). Journalisée après coup, elle enregistrerait
+l'adresse anonymisée.
+
+### Affectation des formateurs
+
+`CohortViewSet.perform_create` forçait `trainer=request.user`. Correct pour un
+formateur — il ne doit pas créer de classe au nom d'un collègue — mais faux
+pour un admin : il devenait formateur de chaque classe qu'il créait, sans aucun
+moyen d'en désigner un autre. Le compteur « classes orphelines » du pilotage
+signalait donc un problème sans offrir de moyen de le corriger.
+
+- Un **admin** peut passer `trainer_id` à la création, et réaffecter ensuite via
+  `POST /api/cohorts/cohorts/<id>/set_trainer/` (**`IsAdmin`**, pas
+  `IsTrainerOrAdmin` : laisser un formateur se réaffecter une classe casserait
+  le cloisonnement de `get_queryset`).
+- Un **formateur** voit son `trainer_id` ignoré, pas honoré.
+- On ne peut confier une classe qu'à un compte de rôle `TRAINER` — sinon un
+  apprenant hériterait, via `visible_learners`, de la vue sur ses camarades.
+
+### Le pilotage voit désormais le temps et les personnes
+
+`AdminOverviewViewSet` expose en plus :
+
+- `activity.trend` — 30 jours d'activité quotidienne. Les jours creux sont
+  réintroduits côté Python : la base ne renvoie que les jours présents, et une
+  courbe à trous se lit comme une courbe qui remonte.
+- `activity.stalled_learners` / `never_started_learners` — les deux seuls
+  chiffres qui désignent des **personnes** plutôt que des volumes. Un total
+  d'activités en hausse peut parfaitement masquer une moitié de promo à l'arrêt.
+
+### N+1 corrigés — ils frappaient l'admin en premier
+
+Trois boucles faisaient des requêtes par élément. Ce n'était pas un détail de
+style : ce sont les vues de l'administrateur, donc les seules qui portent sur
+*toutes* les classes ou *tous* les apprenants à la fois.
+
+| Emplacement | Avant | Après |
+|---|---|---|
+| `AdminOverviewViewSet` (par classe) | 2 requêtes | 2 agrégations globales (`_per_cohort`) |
+| `TrainerSerializer` via `Cohort.member_count` | 1 requête | `annotate(members_total=…)`, `_member_count()` en repli |
+| `TrainerDashboardViewSet.learners_summary` | **4 par apprenant** | 4 agrégations groupées par `user_id` |
+
+Les tests comparent le **nombre de requêtes à deux volumes différents** et
+exigent l'égalité, plutôt que de fixer un plafond chiffré : un plafond se
+contente d'être « assez grand » et laisserait repasser un N+1 modéré.
+
+⚠️ `Cohort.member_count` reste une propriété qui interroge la base à chaque
+appel. Ne pas l'utiliser dans une boucle sans annoter le queryset en amont.
 
 ### RGPD : anonymisation, pas suppression en cascade
 
@@ -1088,6 +1221,7 @@ dans ce document**, pas la couverture de ligne :
 | `features/auth/PrivateRoute.test.jsx` | La garde attend `initialized` avant de trancher sur le rôle (sinon un formateur est éjecté à chaque rafraîchissement) |
 | `features/gamification/gamificationSlice.test.js` | Une célébration ne rejoue jamais, même si `unseen_badges` et `newly_earned` mentionnent le même badge |
 | `features/progression/useTimeTracker.test.jsx` | Onglet caché ou inactif depuis 90 s ⇒ aucun temps crédité (le compteur alimente des badges) |
+| `features/administration/AdminSpace.test.jsx` | L'anonymisation exige une confirmation ; le journal affiche l'identité **figée**, pas l'identité courante |
 
 Écrire les tests **en français**, comme le reste des commentaires du dépôt.
 

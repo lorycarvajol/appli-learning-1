@@ -3,6 +3,20 @@ from rest_framework import serializers
 
 from apps.accounts.models import User
 
+from .models import AuditLog
+
+
+def _member_count(cohort):
+    """Effectif d'une classe, en préférant l'annotation à la propriété.
+
+    `Cohort.member_count` déclenche une requête par appel. La vue annote donc
+    `members_total` en amont ; ce repli garde le sérialiseur utilisable avec un
+    queryset non annoté, sans faire retomber silencieusement dans le N+1 quand
+    l'annotation est là.
+    """
+    annotated = getattr(cohort, 'members_total', None)
+    return annotated if annotated is not None else cohort.member_count
+
 
 class AdminUserSerializer(serializers.ModelSerializer):
     """Vue administrateur d'un compte, avec son rattachement et son état."""
@@ -46,13 +60,31 @@ class TrainerSerializer(serializers.ModelSerializer):
                 'id': str(cohort.id),
                 'name': cohort.name,
                 'is_active': cohort.is_active,
-                'member_count': cohort.member_count,
+                'member_count': _member_count(cohort),
             }
             for cohort in trainer.cohorts.all()
         ]
 
     def get_learner_count(self, trainer):
-        return sum(cohort.member_count for cohort in trainer.cohorts.all())
+        return sum(_member_count(cohort) for cohort in trainer.cohorts.all())
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    """Une ligne de journal, telle qu'elle a été figée.
+
+    On expose `actor_label` et `target_label` — les copies — et non l'identité
+    courante des comptes concernés : après une anonymisation, la relire depuis
+    la base rendrait la trace inutile.
+    """
+    action_label = serializers.CharField(source='get_action_display', read_only=True)
+
+    class Meta:
+        model = AuditLog
+        fields = [
+            'id', 'actor', 'actor_label', 'action', 'action_label',
+            'target_id', 'target_label', 'changes', 'created_at',
+        ]
+        read_only_fields = fields
 
 
 class AssignCohortSerializer(serializers.Serializer):

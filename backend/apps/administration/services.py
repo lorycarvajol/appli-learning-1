@@ -15,6 +15,9 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 
+from .audit import label_for, record
+from .models import AuditLog
+
 ANONYMIZED_DOMAIN = 'anonymized.invalid'
 
 
@@ -51,8 +54,41 @@ def set_role(actor, user, role):
     if user.role == User.Role.ADMIN and role != User.Role.ADMIN:
         _assert_not_last_admin(user)
 
-    user.role = role
-    user.save(update_fields=['role', 'is_staff'])
+    with transaction.atomic():
+        before = user.role
+        user.role = role
+        user.save(update_fields=['role', 'is_staff'])
+        record(
+            actor, AuditLog.Action.SET_ROLE, user,
+            changes={'before': before, 'after': role},
+        )
+    return user
+
+
+def assign_cohort(actor, user, cohort):
+    """Rattache un apprenant à une classe, ou l'en détache si `cohort` est nul.
+
+    Sert surtout à récupérer les apprenants autonomes, qu'aucun formateur ne
+    voit. Conformément à la règle générale de la plateforme, cela ne retire
+    jamais un accès de chapitre déjà obtenu.
+    """
+    if user.role != User.Role.LEARNER:
+        raise AdminActionError("Seul un apprenant peut être rattaché à une classe.")
+
+    profile = getattr(user, 'profile', None)
+    if profile is None:
+        raise AdminActionError("Ce compte n'a pas de profil.")
+
+    with transaction.atomic():
+        before = profile.cohort
+        profile.cohort = cohort
+        profile.save(update_fields=['cohort', 'updated_at'])
+        record(
+            actor, AuditLog.Action.ASSIGN_COHORT, user,
+            changes={'before': label_for(before), 'after': label_for(cohort)},
+        )
+
+    user.refresh_from_db()
     return user
 
 
@@ -68,11 +104,18 @@ def set_active(actor, user, is_active):
     if not is_active and user.role == User.Role.ADMIN:
         _assert_not_last_admin(user)
 
-    user.is_active = is_active
-    user.save(update_fields=['is_active'])
+    with transaction.atomic():
+        before = user.is_active
+        user.is_active = is_active
+        user.save(update_fields=['is_active'])
 
-    if not is_active:
-        _revoke_sessions(user)
+        if not is_active:
+            _revoke_sessions(user)
+
+        record(
+            actor, AuditLog.Action.SET_ACTIVE, user,
+            changes={'before': before, 'after': is_active},
+        )
 
     return user
 
@@ -94,6 +137,11 @@ def anonymize(actor, user):
     if profile is not None and profile.anonymized_at is not None:
         raise AdminActionError("Ce compte est déjà anonymisé.")
 
+    # Figer l'identité **avant** de l'écraser : c'est tout l'intérêt de la
+    # trace. Journalisée après coup, elle enregistrerait l'adresse anonymisée
+    # et ne prouverait plus quelle demande d'effacement a été honorée.
+    identity_before = label_for(user)
+
     with transaction.atomic():
         user.email = f'anonyme-{uuid.uuid4().hex[:12]}@{ANONYMIZED_DOMAIN}'
         user.first_name = ''
@@ -111,6 +159,12 @@ def anonymize(actor, user):
             profile.save()
 
         _revoke_sessions(user)
+
+        record(
+            actor, AuditLog.Action.ANONYMIZE, user,
+            target_label=identity_before,
+            changes={'before': identity_before, 'after': user.email},
+        )
 
     return user
 
