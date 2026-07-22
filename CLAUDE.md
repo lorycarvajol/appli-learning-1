@@ -701,6 +701,18 @@ La normalisation des deux formes vit désormais sur le modèle
 refaire le test dans son coin. **Tout nouveau lecteur du champ doit passer par
 `test_cases`.**
 
+⚠️ **`Quiz` avait exactement le même bug, non corrigé jusqu'ici.**
+`Quiz.total_points` et `question_count` itéraient `self.questions` sur la forme
+`{'questions': [...]}` (celle des commandes `load_section_*`) → `AttributeError`
+à la **sérialisation de toute leçon QUIZ** (les propriétés sont des
+`ReadOnlyField`). Corrigé de la même façon : `Quiz.questions_list` normalise, et
+`QuizSerializer.to_representation` **renvoie toujours une liste** (le front fait
+`Array.isArray(quiz.questions)` — un dictionnaire brut afficherait « aucune
+question »). Le scoring de `apps/progression/views.py` normalisait déjà de son
+côté. Couvert par des tests en **forme enveloppée** dans `apps/courses/tests/`
+(l'ancien test utilisait la forme liste et passait donc à côté). **Même règle :
+tout lecteur des questions passe par `questions_list`.**
+
 ### `role` et `is_staff` sont désormais synchronisés
 
 ⚠️ L'application avait **deux notions d'administrateur** que rien ne reliait :
