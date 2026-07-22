@@ -1043,12 +1043,9 @@ pas par visibilité.
 
 ### Risque réel
 
-1. **`courses` n'a toujours aucun test propre.** Le verrou de chapitre est
-   désormais couvert depuis `apps/progression/tests/`, mais rien ne teste les
-   modèles et sérialiseurs de contenu eux-mêmes — c'est là que vivait le bug
-   `Exercise.total_points`, invisible depuis l'origine.
-*(Le throttle de connexion, longtemps second de cette liste, est fait — voir
-« Connexion : limitation des échecs ».)*
+*Cette liste est vide. Les deux entrées qui s'y trouvaient — le throttle de
+connexion et l'absence de tests de `courses` — sont faites (voir « Connexion :
+limitation des échecs » et « Testing Strategy »).*
 
 ### Dette structurelle
 
@@ -1100,7 +1097,7 @@ request*. Deux jobs indépendants qui échouent séparément.
 | `makemigrations --check --dry-run` | Un modèle modifié sans migration |
 | `migrate` sur base vierge | Une migration qui ne s'applique pas dans l'ordre |
 | `manage.py check` | Erreurs de configuration |
-| `pytest --create-db` | Les 155 tests |
+| `pytest --create-db` | Les 243 tests |
 
 ⚠️ Les deux premières étapes ne sont pas décoratives. `pytest.ini` fixe
 **`--nomigrations`** : le schéma de test est bâti directement depuis les
@@ -1490,9 +1487,24 @@ mais c'est un changement transverse à faire d'un bloc, pas à moitié.
 
 ### Testing Strategy
 
-**Backend — en place.** pytest-django, 216 tests. Couverts : `accounts`,
-`administration`, `cohorts`, `gamification`, `progression`, `validation`.
-**Non couvert : `courses`.**
+**Backend — en place.** pytest-django, 243 tests. Couvre désormais **tous** les
+modules : `accounts`, `administration`, `cohorts`, `courses`, `gamification`,
+`progression`, `validation`.
+
+Les tests de `courses` (`apps/courses/tests/`) verrouillent deux familles
+d'invariants, choisies pour leur coût réel et non pour la couverture de ligne :
+
+- **La normalisation du champ JSONB `tests`** — les deux formes qui coexistent
+  en base (`{'tests': [...]}` et `[...]`), et le filtrage des entrées mal
+  formées. C'est là que vivait le bug `Exercise.total_points`.
+- **Le masquage du contenu sensible côté apprenant** — la solution et les tests
+  d'un exercice, les bonnes réponses d'un quiz, ne sortent jamais de l'API pour
+  un apprenant ; formateurs et admins voient tout. Plus la règle « seul le
+  contenu publié est servi ».
+
+Comme `progression`, ils ont été validés **par sabotage** : `total_points`
+remis à sa forme buguée et le masquage de la solution retiré ont chacun fait
+rougir exactement le test attendu.
 
 Les tests de `progression` (`apps/progression/tests/`) ont été validés **par
 sabotage** : le verrou de chapitre, l'ouverture au rythme libre, le plafond de

@@ -61,7 +61,12 @@
       "Bash(./venv/Scripts/python.exe -m pip install -r /tmp/reqs_noC.txt \"psycopg2-binary>=2.9.10\" \"Pillow>=11.0.0\" -q)",
       "Bash(./venv/Scripts/python.exe -c \"import rest_framework_simplejwt.views; import django, rest_framework, psycopg2, PIL; print\\('OK — imports résolus'\\)\")",
       "Bash(./venv/Scripts/python.exe -c \"import importlib.util as u; mods=['rest_framework_simplejwt','rest_framework_simplejwt.views','rest_framework','django','psycopg2','PIL','corsheaders','django_filters','bleach','celery','channels']; [print\\(\\('OK  ' if u.find_spec\\(m\\) else 'MANQUE '\\)+m\\) for m in mods]\")",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(cp apps/courses/models.py /tmp/models_bak.py)",
+      "Bash(cp apps/courses/serializers.py /tmp/serializers_bak.py)",
+      "Bash(sed -i 's/return sum\\(test.get\\('\"'\"'points'\"'\"', 0\\) for test in self.test_cases\\)/return sum\\(test.get\\('\"'\"'points'\"'\"', 0\\) for test in self.tests\\)/' apps/courses/models.py)",
+      "Bash(cp /tmp/models_bak.py apps/courses/models.py)",
+      "Bash(cp /tmp/serializers_bak.py apps/courses/serializers.py)"
     ]
   }
 }
