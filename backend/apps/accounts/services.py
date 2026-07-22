@@ -94,6 +94,121 @@ def send_password_reset_email(user):
         return False
 
 
+def build_user_export(user):
+    """Rassemble toutes les données personnelles d'un compte (droit à la portabilité).
+
+    Retourne un dictionnaire JSON-sérialisable couvrant le compte, le profil,
+    la progression, le grand livre de points, les badges obtenus, la série de
+    jours et l'historique d'activité. C'est ce que la personne peut emporter si
+    elle quitte la plateforme.
+
+    Les modèles des autres apps sont importés **localement** : `accounts` ne
+    doit pas dépendre au niveau module de `progression` ni de `gamification`
+    (ordre de chargement des apps), et l'export est un chemin froid.
+    """
+    from django.utils import timezone
+
+    profile = getattr(user, 'profile', None)
+
+    def iso(value):
+        return value.isoformat() if value else None
+
+    data = {
+        'export_generated_at': timezone.now().isoformat(),
+        'compte': {
+            'id': str(user.pk),
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'role': user.role,
+            'date_joined': iso(user.date_joined),
+            'last_login': iso(user.last_login),
+        },
+        'profil': None,
+        'progression': [],
+        'points': [],
+        'badges': [],
+        'serie_de_jours': None,
+        'activite': [],
+    }
+
+    if profile is not None:
+        data['profil'] = {
+            'bio': profile.bio,
+            'github_username': profile.github_username,
+            'theme': profile.theme,
+            'timezone': profile.timezone,
+            'avatar_key': profile.avatar_key,
+            'total_points': profile.total_points,
+            'level': profile.level,
+            'classe': profile.cohort.name if profile.cohort else None,
+            'consentement_accepte_le': iso(profile.terms_accepted_at),
+            'cree_le': iso(profile.created_at),
+        }
+
+    # --- Progression -------------------------------------------------------
+    try:
+        from apps.progression.models import ActivityLog, UserProgress
+
+        data['progression'] = [
+            {
+                'lecon': getattr(p.lesson, 'title', None),
+                'statut': p.status,
+                'tentatives': p.attempts,
+                'reussi': p.is_passed,
+                'score': p.score,
+                'temps_passe_secondes': p.time_spent,
+                'termine_le': iso(p.completed_at),
+            }
+            for p in UserProgress.objects.filter(user=user).select_related('lesson')
+        ]
+        data['activite'] = [
+            {
+                'type': a.activity_type,
+                'lecon': getattr(a.lesson, 'title', None),
+                'chapitre': getattr(a.chapter, 'title', None),
+                'date': iso(a.created_at),
+            }
+            for a in ActivityLog.objects.filter(user=user)
+            .select_related('lesson', 'chapter')
+        ]
+    except Exception:  # pragma: no cover - l'app peut être absente en test isolé
+        logger.exception("Export : progression indisponible")
+
+    # --- Gamification ------------------------------------------------------
+    try:
+        from apps.gamification.models import PointTransaction, UserBadge, UserStreak
+
+        data['points'] = [
+            {
+                'montant': t.amount,
+                'raison': t.reason,
+                'source': t.source_key,
+                'date': iso(t.created_at),
+            }
+            for t in PointTransaction.objects.filter(user=user)
+        ]
+        data['badges'] = [
+            {
+                'badge': b.badge.name,
+                'code': b.badge.code,
+                'obtenu_le': iso(b.earned_at),
+            }
+            for b in UserBadge.objects.filter(user=user).select_related('badge')
+        ]
+        streak = UserStreak.objects.filter(user=user).first()
+        if streak is not None:
+            data['serie_de_jours'] = {
+                'serie_actuelle': streak.current_streak,
+                'meilleure_serie': streak.longest_streak,
+                'derniere_activite': iso(streak.last_activity_date),
+            }
+    except Exception:  # pragma: no cover
+        logger.exception("Export : gamification indisponible")
+
+    return data
+
+
 def revoke_refresh_tokens(user):
     """Blackliste tous les refresh tokens en cours de l'utilisateur.
 

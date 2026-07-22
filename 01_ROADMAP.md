@@ -18,23 +18,47 @@ Plateforme interactive d'apprentissage de la programmation web avec système de 
 
 | Phase | État | Commentaire |
 |---|---|---|
-| 1 — Fondations | ✅ | Complète, avec 112 tests backend |
+| 1 — Fondations | ✅ | Complète |
 | 2 — Temps réel | 🟡 | Interfaces faites, **WebSockets inexistants** |
 | 3 — Gamification | ✅ | Badges, points, validation de code |
 | 4 — Projets & social | ❌ | Modèle `Project` seul ; ni soumission, ni forum |
-| 5 — Production | 🟡 | Sécurité avancée ; ni CI/CD, ni déploiement |
+| 5 — Production | 🟡 | Sécurité et CI faites ; **déploiement à faire** |
 
 **Hors roadmap initiale, livré depuis :** classes (cohortes) avec liens
-d'invitation, espace d'administration, réinitialisation de mot de passe,
-gardes de rôle côté front, conformité RGPD (anonymisation).
+d'invitation, espace d'administration avec journal d'audit, réinitialisation de
+mot de passe, gardes de rôle côté front, conformité RGPD (anonymisation),
+profil personnalisable (avatars, thème rattaché au compte).
 
-**Les trois manques les plus structurants**, par ordre de valeur :
+### Filet de sécurité : 254 tests, exécutés automatiquement
 
-1. **Aucune infrastructure de test frontend** — ni Vitest, ni Playwright. Tout
-   le React se vérifie à la main.
-2. **Aucun WebSocket** — la sauvegarde automatique et le suivi « temps réel »
-   annoncés reposent en réalité sur du HTTP par intervalles.
-3. **Aucune CI/CD** — rien n'exécute les 112 tests automatiquement.
+| Périmètre | Tests | Remarque |
+|---|---|---|
+| `accounts` | 52 | comptes, mot de passe, profil, limitation des connexions |
+| `administration` | 53 | journal d'audit, garde-fous, bridage de l'admin Django |
+| `progression` | 33 | verrou de chapitre, quiz, temps — validés par sabotage |
+| `cohorts` | 30 | classes, invitations, cloisonnement |
+| `gamification` | 29 | badges, points, anti-double-validation |
+| `validation` | 20 | isolement du bac à sable (+ 7 tests Docker réels, hors CI) |
+| **Backend** | **217** | pytest-django — 216 passants, 1 ignoré (contrôle réservé à la production) |
+| **Frontend** | **37** | Vitest + Testing Library, jsdom |
+| ESLint | — | zéro erreur **et zéro avertissement**, porte de CI |
+
+**`courses` est la dernière app backend sans test propre.**
+
+### Les trois manques les plus structurants
+
+Par ordre de valeur, révisés après les chantiers de juillet :
+
+1. **Aucun WebSocket** — la sauvegarde automatique et le suivi « temps réel »
+   annoncés reposent en réalité sur du HTTP par intervalles. Rien n'en dépend
+   aujourd'hui : c'est une brique prévue, jamais posée.
+2. **Rien n'est déployé** — la CI construit et teste, mais ne livre nulle part.
+   Aucun environnement de production n'existe.
+3. **Phase 4 entière non commencée** — ni soumission de projets, ni forum.
+   C'est le dernier gros bloc fonctionnel manquant.
+
+*(Les deux premiers manques de la version précédente de cette liste — tests
+frontend et CI/CD — sont faits.)*
 
 ---
 
@@ -211,12 +235,20 @@ idempotent.
 - Feedback instantané
 
 **Livrables :**
-- ✅ Engine de validation code (sandbox Docker isolé, réseau coupé)
+- ✅ Engine de validation code (sandbox Docker isolé, réseau coupé) —
+  **couvert par 27 tests depuis le 2026-07-21**, dont 20 simulés qui vérifient
+  les arguments de lancement du conteneur (plus strict que d'en regarder
+  tourner un) et 7 réels
 - ✅ Correction QCM **côté serveur** avec explications — les bonnes réponses ne
-  sont jamais envoyées au client avant soumission
+  sont jamais envoyées au client avant soumission. Un test vérifie qu'un score
+  envoyé par le client est ignoré
 - ✅ Système de hints progressifs
 - ✅ Celery tasks pour corrections lourdes (queue `validation` dédiée)
 - ❌ Notifications en temps réel — dépend du sprint 2.1
+
+⚠️ Le worker `celery` est le **seul** service à monter `/var/run/docker.sock` :
+c'est lui qui pilote le bac à sable. Les tests réels ne tournent donc que là
+(`docker-compose exec celery pytest -m docker`), et jamais en CI.
 
 **User Stories concernées :** US-022, US-023, US-024
 
@@ -269,10 +301,13 @@ idempotent.
 - Sécurité renforcée
 
 **Livrables :**
-- 🟡 Optimisation N+1 — `select_related`/`prefetch_related` appliqués aux
-  chemins chauds ; pas d'audit systématique
-- 🟡 `CACHES` Redis configuré, mais **aucune vue ne l'utilise**
-- ✅ Rate limiting API (global, plus scopes `password_reset` et `invite`)
+- ✅ Optimisation N+1 sur les vues d'administration (pilotage, formateurs,
+  résumé des apprenants) — verrouillée par des tests qui **comparent le nombre
+  de requêtes à deux volumes** et exigent l'égalité, plutôt qu'un plafond
+  chiffré qu'un N+1 modéré traverserait
+  🟡 Pas d'audit systématique sur le reste
+- 🟡 `CACHES` Redis configuré ; utilisé par le throttling, par aucune vue
+- ✅ Rate limiting API (global, scopes `password_reset`, `invite`, `login`)
   ⚠️ `development.py` désactive tout throttling : les limites ne s'appliquent
   qu'en production
 - ✅ Validation entrées renforcée (serializers DRF partout)
@@ -286,6 +321,15 @@ idempotent.
   désactivation de compte)
 - ✅ Anti-énumération sur le mot de passe oublié et les liens d'invitation
 - ✅ Anonymisation RGPD
+- ✅ **Journal d'audit** des actions d'administration, en lecture seule
+- ✅ **Admin Django bridé** — il pouvait changer un rôle ou supprimer un compte
+  en contournant les garde-fous et le journal
+- ✅ **Limitation des échecs de connexion**, comptés par compte visé et non par
+  IP : une classe entière partage le NAT de son établissement
+- ✅ **Bac à sable de code testé** — l'isolement du conteneur (réseau coupé,
+  aucun montage, ressources plafonnées) est désormais verrouillé par 27 tests.
+  La liste noire de motifs a été **retirée** : elle rejetait du code d'élève
+  légitime tout en laissant passer les vrais contournements
 
 **Technical Stories :** TS-001, TS-002, TS-003
 
@@ -300,8 +344,20 @@ idempotent.
 **Livrables :**
 - 🟡 Docker Compose — fonctionnel en développement ; pas de variante
   production dédiée
-- ❌ CI/CD GitHub Actions — **aucun `.github/workflows/`**, rien n'exécute
-  les 112 tests automatiquement
+- ✅ **Intégration continue** (`.github/workflows/ci.yml`) sur `main` et sur
+  chaque *pull request*, en deux jobs indépendants :
+  - **backend** — PostgreSQL et Redis en services, puis
+    `makemigrations --check` → `migrate` sur base vierge → `manage.py check`
+    → `pytest --create-db`
+  - **frontend** — `npm ci` → `lint` → `test` → `build`
+
+  ⚠️ Les deux premières étapes backend ne sont pas décoratives : `pytest.ini`
+  fixe `--nomigrations`, donc la suite peut passer au vert alors qu'il manque
+  une migration. La CI est le seul endroit où ce décalage se voit.
+
+  ⚠️ Le `build` frontend attrape les **chemins dont la casse ne correspond
+  pas** — invisibles sur Windows, fatals sur le runner Linux.
+- ❌ **Livraison continue** — la CI teste, elle ne déploie rien
 - ❌ Déploiement Railway/Render
 - ❌ Documentation API (Swagger) — ni `drf-spectacular` ni `drf-yasg` installé
 - 🟡 Documentation — `CLAUDE.md` tient lieu de référence technique ; pas de
@@ -314,8 +370,8 @@ idempotent.
 ## 📊 MÉTRIQUES DE SUCCÈS
 
 ### Phase 1
-- [x] Tests d'authentification — 28 tests (comptes, mot de passe oublié,
-      réglages de sécurité)
+- [x] Tests d'authentification — **52 tests** (comptes, mot de passe oublié,
+      profil, limitation des connexions, réglages de sécurité)
 - [x] Admin Django opérationnel — 3 chapitres publiés à ce jour
 - [ ] API REST documentée — aucun Swagger installé
 
@@ -339,8 +395,13 @@ idempotent.
 - [ ] Documentation complète
 
 ### Métriques ajoutées
-- [x] **112 tests backend** passants
-- [ ] **0 test frontend** — aucune infrastructure (ni Vitest, ni Playwright)
+- [x] **216 tests backend** passants sur 217 (+ 7 tests Docker réels, hors CI)
+- [x] **37 tests frontend** (Vitest + Testing Library)
+- [x] **ESLint à zéro** — erreurs *et* avertissements, en porte de CI
+- [x] **CI verte** sur `main` et sur chaque *pull request*
+- [ ] `courses` — dernière app backend sans test propre
+- [ ] Tests bout-en-bout (Playwright) — les parcours complets se vérifient
+      encore à la main
 
 ---
 
@@ -357,17 +418,36 @@ idempotent.
 
 ### Prochaines étapes recommandées
 
-Par valeur décroissante, indépendamment du découpage en phases d'origine :
+Par valeur décroissante, indépendamment du découpage en phases d'origine.
+Révisé le 2026-07-21 : les deux premières entrées de la liste précédente
+(tests frontend, CI) sont faites.
 
-1. **Infrastructure de test frontend (Vitest)** — rien n'est vérifiable
-   automatiquement côté React. Chaque modification se teste à la main, et
-   deux bugs de page blanche sont déjà passés inaperçus faute de filet.
-2. **CI/CD** — 112 tests existent mais rien ne les exécute. Le coût est faible
-   et le bénéfice immédiat.
-3. **WebSockets** — dernier élément du MVP. Débloque aussi les notifications
-   temps réel et la vue d'activité du formateur.
-4. **Soumission de projets** — le modèle `Project` attend depuis le début.
+1. **Déploiement** — c'est ce qui manque pour que tout le reste serve à
+   quelqu'un. La CI construit déjà les deux moitiés du projet ; il reste à
+   choisir un hébergeur, écrire la variante production du Compose et brancher
+   la livraison. Le garde-fou `SECRET_KEY` est prêt à refuser un démarrage mal
+   configuré.
+2. **Soumission de projets** — le modèle `Project` attend depuis le début, sans
+   rien pour rendre ni corriger. C'est le chaînon manquant entre « suivre des
+   leçons » et « être évalué », donc la fonctionnalité qui donne un but au
+   parcours.
+3. **WebSockets** — dernier élément du MVP d'origine. À relativiser : la
+   sauvegarde et le suivi fonctionnent en HTTP, et rien n'est cassé. Le gain
+   réel est le confort, pas une capacité nouvelle.
+4. **Tests de `courses`** — dernière app backend sans test propre. C'est là que
+   vivait `Exercise.total_points`, cassé depuis l'origine et découvert par
+   hasard.
 5. **Forum** — le plus gros chantier, le moins critique.
+
+**Dette technique à traiter en chemin** (aucune n'est bloquante) :
+
+- Le contrat des services API est incohérent — certains modules rendent la
+  réponse axios brute, d'autres les données déballées. A déjà coûté une page
+  blanche. Écrire un test de contrat par module **avant** d'uniformiser.
+- Aucun découpage de bundle : `App.jsx` importe tout statiquement, ~535 kB d'un
+  bloc. `React.lazy` par route est mécanique.
+- Le conteneur du bac à sable s'exécute en `root` ; `user='nobody'` serait un
+  durcissement peu coûteux, à valider sur les quatre langages.
 
 ### Should Have
 - Gamification complète
@@ -421,17 +501,20 @@ Par valeur décroissante, indépendamment du découpage en phases d'origine :
 |--------|--------|-------------|--------|
 | Performance WebSocket à grande échelle | Élevé | Moyen | ⏸️ Sans objet : aucun WebSocket implémenté |
 | Correction automatique complexe | Moyen | Élevé | ✅ Maîtrisé — sandbox Docker + Celery |
-| Sécurité éditeur de code | Élevé | Moyen | ✅ Maîtrisé — conteneur isolé, réseau coupé, limites CPU/RAM |
+| Sécurité éditeur de code | Élevé | Moyen | ✅ Maîtrisé — conteneur isolé (réseau coupé, aucun montage, limites CPU/RAM), vérifié par 27 tests |
 | Complexité gamification | Faible | Faible | ✅ Maîtrisé — invariants garantis en base |
 
 ### Risques identifiés en cours de route
 
 | Risque | Impact | Statut |
 |--------|--------|--------|
-| **Documentation affirmant des fonctionnalités inexistantes** | Élevé | 🟡 Corrigé ici et dans `CLAUDE.md`, mais c'est un risque récurrent : vérifier contre le code, pas contre les documents |
-| Absence totale de tests frontend | Élevé | ❌ Ouvert — deux pages blanches déjà passées en production locale |
-| Absence de CI/CD | Moyen | ❌ Ouvert — les tests ne protègent que si on les lance |
-| Fonctionnalités « décoratives » (code présent, jamais appelé) | Élevé | 🟡 Trois cas trouvés et corrigés (`ChapterAccess`, `time_spent`, tableau de bord formateur). En chercher d'autres avant de bâtir dessus |
+| **Documentation affirmant des fonctionnalités inexistantes** | Élevé | 🟡 Trois cas corrigés (tests frontend, WebSockets, découpage de bundle). Risque **récurrent** : vérifier contre le code, jamais contre les documents |
+| Absence totale de tests frontend | Élevé | ✅ Fermé — Vitest, 37 tests |
+| Absence de CI/CD | Moyen | 🟡 CI faite ; **CD toujours absente** |
+| Fonctionnalités « décoratives » (code présent, jamais appelé) | Élevé | 🟡 Cinq cas trouvés et corrigés (`ChapterAccess`, `time_spent`, tableau de bord formateur, `ProfileView` jamais appelée, `change-password` jamais branchée). En chercher d'autres avant de bâtir dessus |
+| **Garde-fous contournables par un autre chemin** | Élevé | 🟡 Deux cas fermés : l'admin Django écrivait rôles et points sans passer par les services ni le journal ; le bac à sable n'avait aucun test. Se demander systématiquement : *quelle autre porte ouvre sur cette table ?* |
+| **Sécurité qui gêne l'usage sans protéger** | Moyen | ✅ Un cas trouvé et retiré : la liste noire de motifs du bac à sable rejetait du code d'élève légitime et laissait passer les vrais contournements. Mesurer avant de garder |
+| **Tests verts sur du code cassé** | Élevé | 🟡 Traité par sabotage volontaire sur `progression`. À refaire pour toute suite critique : un test jamais vu rouge ne prouve rien |
 
 ---
 
@@ -441,3 +524,4 @@ Par valeur décroissante, indépendamment du découpage en phases d'origine :
 |---------|------|--------|-------------|
 | 1.0 | 2025-12-12 | Équipe | Version initiale |
 | 2.0 | 2026-07-21 | Équipe | **Remise à plat des statuts.** Tous les livrables étaient marqués ✅ sans vérification, y compris des sprints entiers jamais commencés (WebSockets, projets, forum). Statuts revérifiés contre le code, ajout des livrables hors périmètre initial (classes, administration, sécurité), et des écarts volontaires (leaderboard, M2M). |
+| 2.1 | 2026-07-21 | Équipe | **Filet de sécurité posé.** Vitest (37 tests), CI GitHub Actions, ESLint ramené à zéro, couverture de `progression` (33 tests, validés par sabotage) et du bac à sable (27 tests). Sécurité : journal d'audit, admin Django bridé, limitation des échecs de connexion, retrait de la liste noire du bac à sable. Priorités réordonnées : le déploiement passe en tête, les WebSockets reculent — rien n'en dépend. |

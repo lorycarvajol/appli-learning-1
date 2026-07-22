@@ -244,6 +244,7 @@ def test_accepter_une_invitation_cree_le_compte_et_rattache(invite, cohort):
         {
             'email': 'nouveau@example.com', 'password': TEST_PASSWORD,
             'password_confirm': TEST_PASSWORD, 'first_name': 'Nouveau',
+            'accept_terms': True,
         },
         format='json',
     )
@@ -265,6 +266,7 @@ def test_le_role_ne_peut_pas_etre_force_par_le_formulaire(invite):
         {
             'email': 'malin@example.com', 'password': TEST_PASSWORD,
             'password_confirm': TEST_PASSWORD, 'role': 'ADMIN', 'is_staff': True,
+            'accept_terms': True,
         },
         format='json',
     )
@@ -282,6 +284,7 @@ def test_la_classe_ne_peut_pas_etre_forcee_par_le_formulaire(invite, cohort, tra
         {
             'email': 'malin@example.com', 'password': TEST_PASSWORD,
             'password_confirm': TEST_PASSWORD, 'cohort': str(autre.id),
+            'accept_terms': True,
         },
         format='json',
     )
@@ -305,7 +308,7 @@ def test_une_adresse_deja_inscrite_est_orientee_vers_la_connexion(invite, learne
         f'/api/cohorts/join/{invite.token}/register/',
         {
             'email': learner.email, 'password': TEST_PASSWORD,
-            'password_confirm': TEST_PASSWORD,
+            'password_confirm': TEST_PASSWORD, 'accept_terms': True,
         },
         format='json',
     )
@@ -323,7 +326,7 @@ def test_le_nombre_dusages_est_respecte(invite, solo_learner):
     response = APIClient().post(
         f'/api/cohorts/join/{invite.token}/register/',
         {'email': 'trop-tard@example.com', 'password': TEST_PASSWORD,
-         'password_confirm': TEST_PASSWORD},
+         'password_confirm': TEST_PASSWORD, 'accept_terms': True},
         format='json',
     )
 
@@ -350,7 +353,7 @@ def test_un_admin_peut_inviter_un_formateur(admin):
     APIClient().post(
         f'/api/cohorts/join/{token}/register/',
         {'email': 'futur@example.com', 'password': TEST_PASSWORD,
-         'password_confirm': TEST_PASSWORD},
+         'password_confirm': TEST_PASSWORD, 'accept_terms': True},
         format='json',
     )
 

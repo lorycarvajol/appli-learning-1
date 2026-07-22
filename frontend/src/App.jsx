@@ -6,6 +6,9 @@ import Register from './features/auth/Register'
 import ForgotPassword from './features/auth/ForgotPassword'
 import ResetPassword from './features/auth/ResetPassword'
 import JoinCohort from './features/cohorts/JoinCohort'
+import PrivacyPolicy from './features/legal/PrivacyPolicy'
+import LegalNotice from './features/legal/LegalNotice'
+import Terms from './features/legal/Terms'
 import Dashboard from './features/dashboard/Dashboard'
 import PrivateRoute from './features/auth/PrivateRoute'
 import Layout from './components/layout/Layout'
@@ -45,6 +48,11 @@ function App() {
       <Route path="/reset-password/:uid/:token" element={<ResetPassword />} />
       {/* Lien d'invitation : public, il doit fonctionner sans session */}
       <Route path="/rejoindre/:token" element={<JoinCohort />} />
+
+      {/* Pages légales : publiques, accessibles avant toute inscription */}
+      <Route path="/confidentialite" element={<PrivacyPolicy />} />
+      <Route path="/mentions-legales" element={<LegalNotice />} />
+      <Route path="/cgu" element={<Terms />} />
 
       {/* Protected routes - with layout */}
       <Route

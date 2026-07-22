@@ -160,6 +160,55 @@
   cursor: not-allowed;
 }
 
+/* Variantes de bouton pour la section « Mes données » (RGPD) */
+
+.profile__submit--ghost {
+  background: transparent;
+  color: var(--brand);
+  border: 1px solid var(--border-strong);
+}
+
+.profile__submit--ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.profile__submit--danger {
+  background: var(--danger);
+}
+
+.profile__submit--danger:hover:not(:disabled) {
+  background: var(--danger);
+  filter: brightness(0.92);
+}
+
+.profile__data-actions {
+  margin-top: 0.5rem;
+}
+
+/* Zone dangereuse : suppression de compte, nettement séparée du reste. */
+.profile__danger {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--danger-soft);
+}
+
+.profile__danger-title {
+  font-size: 1rem;
+  color: var(--danger);
+  margin: 0 0 0.4rem;
+}
+
+.profile__danger-form {
+  margin-top: 1rem;
+  max-width: 360px;
+}
+
+.profile__danger-buttons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 /* Récapitulatif */
 
 .profile__stats {

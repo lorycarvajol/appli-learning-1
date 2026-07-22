@@ -27,6 +27,7 @@ export default function JoinCohort() {
   const [invite, setInvite] = useState(null)
   const [form, setForm] = useState({
     email: '', password: '', password_confirm: '', first_name: '', last_name: '',
+    accept_terms: false,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -51,7 +52,11 @@ export default function JoinCohort() {
   }, [token])
 
   const handleChange = (e) =>
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
+    setForm((prev) => ({
+      ...prev,
+      [e.target.name]:
+        e.target.type === 'checkbox' ? e.target.checked : e.target.value,
+    }))
 
   const readError = (err) => {
     const detail = err.response?.data
@@ -201,7 +206,29 @@ export default function JoinCohort() {
             />
           </div>
 
-          <button type="submit" disabled={loading} className="auth-form__submit">
+          <div className="auth-form__consent">
+            <input
+              id="join-accept-terms" name="accept_terms" type="checkbox"
+              checked={form.accept_terms} onChange={handleChange} required
+            />
+            <label htmlFor="join-accept-terms">
+              J’accepte la{' '}
+              <Link to="/confidentialite" target="_blank" rel="noreferrer">
+                politique de confidentialité
+              </Link>{' '}
+              et les{' '}
+              <Link to="/cgu" target="_blank" rel="noreferrer">
+                conditions d’utilisation
+              </Link>
+              .
+            </label>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading || !form.accept_terms}
+            className="auth-form__submit"
+          >
             {loading ? 'Création du compte...' : 'Rejoindre la classe'}
           </button>
         </form>

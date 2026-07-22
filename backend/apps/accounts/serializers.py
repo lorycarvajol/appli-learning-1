@@ -103,10 +103,19 @@ class RegisterSerializer(serializers.ModelSerializer):
         required=True,
         style={'input_type': 'password'}
     )
+    # Consentement RGPD : l'inscription vaut acceptation explicite de la
+    # politique de confidentialité et des CGU. `write_only` (rien à renvoyer),
+    # obligatoire, et `True` refusé s'il n'est pas coché — sans quoi la case
+    # serait cosmétique. La date d'acceptation est figée dans le profil pour
+    # servir de preuve.
+    accept_terms = serializers.BooleanField(write_only=True, required=True)
 
     class Meta:
         model = User
-        fields = ['email', 'password', 'password_confirm', 'first_name', 'last_name']
+        fields = [
+            'email', 'password', 'password_confirm',
+            'first_name', 'last_name', 'accept_terms',
+        ]
 
     def validate(self, attrs):
         """Validate that passwords match."""
@@ -116,9 +125,20 @@ class RegisterSerializer(serializers.ModelSerializer):
             })
         return attrs
 
+    def validate_accept_terms(self, value):
+        if value is not True:
+            raise serializers.ValidationError(
+                "Vous devez accepter la politique de confidentialité et les "
+                "conditions d'utilisation pour créer un compte."
+            )
+        return value
+
     def create(self, validated_data):
         """Create user with validated data."""
+        from django.utils import timezone
+
         validated_data.pop('password_confirm')
+        validated_data.pop('accept_terms')
 
         user = User.objects.create_user(
             email=validated_data['email'],
@@ -126,6 +146,13 @@ class RegisterSerializer(serializers.ModelSerializer):
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', ''),
         )
+
+        # Le profil est créé par signal `post_save`. On y horodate le
+        # consentement sans réenregistrer le User (cf. signals.py).
+        profile = getattr(user, 'profile', None)
+        if profile is not None:
+            profile.terms_accepted_at = timezone.now()
+            profile.save(update_fields=['terms_accepted_at', 'updated_at'])
 
         return user
 

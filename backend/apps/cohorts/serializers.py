@@ -86,6 +86,17 @@ class InviteAcceptSerializer(serializers.Serializer):
     password_confirm = serializers.CharField(required=True, write_only=True)
     first_name = serializers.CharField(required=False, allow_blank=True, default='')
     last_name = serializers.CharField(required=False, allow_blank=True, default='')
+    # Consentement RGPD, exigé pour toute création de compte, y compris par
+    # invitation (cf. RegisterSerializer côté accounts).
+    accept_terms = serializers.BooleanField(required=True)
+
+    def validate_accept_terms(self, value):
+        if value is not True:
+            raise serializers.ValidationError(
+                "Vous devez accepter la politique de confidentialité et les "
+                "conditions d'utilisation pour créer un compte."
+            )
+        return value
 
     def validate_email(self, value):
         email = value.strip().lower()
@@ -104,7 +115,10 @@ class InviteAcceptSerializer(serializers.Serializer):
         return attrs
 
     def create(self, validated_data):
+        from django.utils import timezone
+
         validated_data.pop('password_confirm')
+        validated_data.pop('accept_terms')
         password = validated_data.pop('password')
 
         user = User(
@@ -117,4 +131,11 @@ class InviteAcceptSerializer(serializers.Serializer):
         validate_password(password, user)
         user.set_password(password)
         user.save()
+
+        # Horodatage du consentement (le profil est créé par signal).
+        profile = getattr(user, 'profile', None)
+        if profile is not None:
+            profile.terms_accepted_at = timezone.now()
+            profile.save(update_fields=['terms_accepted_at', 'updated_at'])
+
         return user

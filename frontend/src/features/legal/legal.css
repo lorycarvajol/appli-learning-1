@@ -1,0 +1,121 @@
+/* Pages légales publiques (confidentialité, mentions, CGU).
+   Accessibles sans session : styles autonomes, mais alignés sur les tokens de
+   thème globaux (_theme.scss) pour rester cohérents en clair comme en sombre. */
+
+.legal-page {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+.legal-container {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.legal-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--brand);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+}
+
+.legal-back:hover {
+  text-decoration: underline;
+}
+
+.legal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  padding: 2.5rem;
+}
+
+.legal-card h1 {
+  font-size: 1.9rem;
+  line-height: 1.2;
+  margin: 0 0 0.4rem;
+}
+
+.legal-updated {
+  color: var(--ink-faint);
+  font-size: 0.9rem;
+  margin: 0 0 2rem;
+}
+
+.legal-card h2 {
+  font-size: 1.25rem;
+  margin: 2rem 0 0.6rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.legal-card h2:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.legal-card h3 {
+  font-size: 1.05rem;
+  margin: 1.4rem 0 0.4rem;
+}
+
+.legal-card p,
+.legal-card li {
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+
+.legal-card ul {
+  padding-left: 1.25rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.legal-card li {
+  margin-bottom: 0.35rem;
+}
+
+.legal-card a {
+  color: var(--brand);
+}
+
+.legal-card strong {
+  color: var(--ink);
+}
+
+/* Champ à compléter par l'exploitant (identité société, hébergeur, DPO…). */
+.legal-todo {
+  display: inline-block;
+  background: var(--warn-soft);
+  color: var(--warn-text);
+  border: 1px dashed var(--warn-text);
+  border-radius: 6px;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.legal-footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 2rem;
+  font-size: 0.9rem;
+}
+
+.legal-footer-nav a {
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.legal-footer-nav a:hover {
+  color: var(--brand);
+  text-decoration: underline;
+}

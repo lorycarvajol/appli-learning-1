@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { changePassword, updateProfile } from '@/features/auth/authSlice'
+import { changePassword, updateProfile, logoutUser } from '@/features/auth/authSlice'
 import { fetchGamificationSummary } from '@/features/gamification/gamificationSlice'
+import { authApi } from '@/services/api/authApi'
 import Avatar from '@/components/ui/Avatar'
 import PasswordInput from '@/components/ui/PasswordInput'
 import { ROLE_LABELS } from '@/constants/roles'
@@ -165,6 +166,8 @@ export default function ProfilePage() {
         </form>
 
         <PasswordCard />
+
+        <DataCard />
       </div>
     </div>
   )
@@ -298,6 +301,140 @@ function PasswordCard() {
         {state.busy ? 'Modification…' : 'Changer le mot de passe'}
       </button>
     </form>
+  )
+}
+
+/**
+ * Section RGPD : exporter ses données (portabilité) et supprimer son compte
+ * (droit à l'effacement en self-service).
+ *
+ * La suppression est irréversible : on exige donc le mot de passe *et* une
+ * confirmation explicite avant d'appeler l'API, sur le même principe que
+ * l'anonymisation côté administration.
+ */
+function DataCard() {
+  const dispatch = useDispatch()
+  const [exporting, setExporting] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const [password, setPassword] = useState('')
+  const [state, setState] = useState({ busy: false, error: null, notice: null })
+
+  const exportData = async () => {
+    setExporting(true)
+    setState((s) => ({ ...s, error: null }))
+    try {
+      const response = await authApi.exportMyData()
+      // Téléchargement côté client : on transforme le JSON en fichier local.
+      const blob = new Blob([JSON.stringify(response.data, null, 2)], {
+        type: 'application/json',
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'mes-donnees-codeacademy.json'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      setState((s) => ({ ...s, error: 'Export impossible pour le moment.' }))
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const deleteAccount = async (event) => {
+    event.preventDefault()
+    setState({ busy: true, error: null, notice: null })
+    try {
+      await authApi.deleteMyAccount(password)
+      // Compte anonymisé et sessions révoquées côté serveur : on purge la
+      // session locale et on renvoie vers la connexion. `window.location`
+      // (comme l'intercepteur axios) plutôt que `useNavigate` : un rechargement
+      // complet garantit qu'aucun état résiduel du compte supprimé ne subsiste.
+      await dispatch(logoutUser())
+      window.location.href = '/login'
+    } catch (error) {
+      const payload = error.response?.data
+      setState({
+        busy: false,
+        error: firstError(payload) || 'Suppression impossible.',
+        notice: null,
+      })
+    }
+  }
+
+  return (
+    <section className="profile__card">
+      <h2 className="profile__card-title">Mes données</h2>
+      <p className="profile__hint">
+        Conformément au RGPD, vous pouvez emporter vos données ou supprimer
+        votre compte à tout moment.
+      </p>
+
+      {state.error && (
+        <div className="auth-alert auth-alert--error" role="alert">{state.error}</div>
+      )}
+
+      <div className="profile__data-actions">
+        <button
+          type="button"
+          className="profile__submit profile__submit--ghost"
+          onClick={exportData}
+          disabled={exporting}
+        >
+          {exporting ? 'Préparation…' : 'Exporter mes données (JSON)'}
+        </button>
+      </div>
+
+      <div className="profile__danger">
+        <h3 className="profile__danger-title">Supprimer mon compte</h3>
+        <p className="profile__hint">
+          Cette action est <strong>irréversible</strong>. Vos données
+          personnelles (identité, profil) seront effacées. Votre progression est
+          conservée de façon anonyme pour ne pas fausser les statistiques des
+          classes.
+        </p>
+
+        {!confirming ? (
+          <button
+            type="button"
+            className="profile__submit profile__submit--danger"
+            onClick={() => setConfirming(true)}
+          >
+            Supprimer mon compte
+          </button>
+        ) : (
+          <form onSubmit={deleteAccount} className="profile__danger-form">
+            <Field label="Confirmez avec votre mot de passe" id="delete_password">
+              <PasswordInput
+                id="delete_password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+            </Field>
+            <div className="profile__danger-buttons">
+              <button
+                type="button"
+                className="profile__submit profile__submit--ghost"
+                onClick={() => { setConfirming(false); setPassword('') }}
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                className="profile__submit profile__submit--danger"
+                disabled={state.busy || !password}
+              >
+                {state.busy ? 'Suppression…' : 'Supprimer définitivement'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </section>
   )
 }
 

@@ -12,6 +12,10 @@ function Register() {
     first_name: '',
     last_name: '',
   })
+  // Consentement RGPD, distinct du reste du formulaire : c'est un acte
+  // d'acceptation, pas une donnée de compte. Envoyé au serveur, qui refuse
+  // l'inscription et horodate l'acceptation.
+  const [acceptTerms, setAcceptTerms] = useState(false)
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { loading, error } = useSelector((state) => state.auth)
@@ -27,7 +31,7 @@ function Register() {
     e.preventDefault()
     dispatch(clearError())
 
-    const result = await dispatch(register(formData))
+    const result = await dispatch(register({ ...formData, accept_terms: acceptTerms }))
 
     if (register.fulfilled.match(result)) {
       navigate('/dashboard')
@@ -143,9 +147,30 @@ function Register() {
               />
             </div>
 
+            <div className="auth-form__consent">
+              <input
+                id="register-accept-terms"
+                type="checkbox"
+                checked={acceptTerms}
+                onChange={(e) => setAcceptTerms(e.target.checked)}
+                required
+              />
+              <label htmlFor="register-accept-terms">
+                J’accepte la{' '}
+                <Link to="/confidentialite" target="_blank" rel="noreferrer">
+                  politique de confidentialité
+                </Link>{' '}
+                et les{' '}
+                <Link to="/cgu" target="_blank" rel="noreferrer">
+                  conditions d’utilisation
+                </Link>
+                .
+              </label>
+            </div>
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !acceptTerms}
               className="auth-form__submit"
             >
               {loading ? 'Inscription en cours...' : 'S\'inscrire'}

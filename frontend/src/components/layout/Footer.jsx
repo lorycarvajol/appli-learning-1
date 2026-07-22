@@ -10,6 +10,12 @@ export default function Footer() {
     { label: 'Ma progression', path: '/progression' },
   ];
 
+  const legalLinks = [
+    { label: 'Confidentialité', path: '/confidentialite' },
+    { label: 'Mentions légales', path: '/mentions-legales' },
+    { label: 'CGU', path: '/cgu' },
+  ];
+
   return (
     <footer className="footer">
       <div className="footer__container">
@@ -26,6 +32,14 @@ export default function Footer() {
 
         <nav className="footer__links" aria-label="Liens du pied de page">
           {links.map((link) => (
+            <Link key={link.path} to={link.path} className="footer__link">
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+
+        <nav className="footer__links" aria-label="Liens légaux">
+          {legalLinks.map((link) => (
             <Link key={link.path} to={link.path} className="footer__link">
               {link.label}
             </Link>

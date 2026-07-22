@@ -197,6 +197,7 @@ def test_inscription_puis_connexion_avec_une_autre_casse():
             'password_confirm': TEST_PASSWORD,
             'first_name': 'Nouvel',
             'last_name': 'Eleve',
+            'accept_terms': True,
         },
         format='json',
     )

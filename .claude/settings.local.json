@@ -53,7 +53,15 @@
       "Bash(node --input-type=module -e \"import\\('vitest/node'\\).then\\(\\(\\)=>console.log\\('OK'\\)\\).catch\\(e=>console.log\\('FAIL',e.message\\)\\)\")",
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\loryc\\\\OneDrive\\\\Desktop\\\\appli learning\\\\frontend\\\\node_modules\\\\vitest\" -Recurse -File -Force | Where-Object { $_.Attributes -match 'Offline' -or $_.Attributes -match 'ReparsePoint' } | Select-Object -First 10 FullName, Attributes)",
       "Bash(node --import \"file:///C:/Users/loryc/AppData/Local/Temp/claude/C--Users-loryc-OneDrive-Desktop-appli-learning/85bdbaa6-02a5-4c12-84af-9a7348850f21/scratchpad/trace-read.mjs\" ./node_modules/vitest/vitest.mjs run)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(py -3.13 -m venv venv)",
+      "Bash(./venv/Scripts/python.exe -m pip install --upgrade pip -q)",
+      "Bash(./venv/Scripts/python.exe -m pip install -r requirements/base.txt -q)",
+      "Bash(./venv/Scripts/python.exe -m pip install -r /tmp/reqs_noPg.txt \"psycopg2-binary>=2.9.10\" -q)",
+      "Bash(./venv/Scripts/python.exe -m pip install -r /tmp/reqs_noC.txt \"psycopg2-binary>=2.9.10\" \"Pillow>=11.0.0\" -q)",
+      "Bash(./venv/Scripts/python.exe -c \"import rest_framework_simplejwt.views; import django, rest_framework, psycopg2, PIL; print\\('OK — imports résolus'\\)\")",
+      "Bash(./venv/Scripts/python.exe -c \"import importlib.util as u; mods=['rest_framework_simplejwt','rest_framework_simplejwt.views','rest_framework','django','psycopg2','PIL','corsheaders','django_filters','bleach','celery','channels']; [print\\(\\('OK  ' if u.find_spec\\(m\\) else 'MANQUE '\\)+m\\) for m in mods]\")",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }

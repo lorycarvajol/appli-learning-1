@@ -48,4 +48,11 @@ export const authApi = {
       new_password: newPassword,
       new_password_confirm: newPasswordConfirm,
     }),
+
+  // RGPD (routes authentifiées, agissent sur le compte courant)
+  exportMyData: () =>
+    apiClient.get('/auth/export/'),
+
+  deleteMyAccount: (password) =>
+    apiClient.post('/auth/delete-account/', { password }),
 }

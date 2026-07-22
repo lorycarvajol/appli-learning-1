@@ -194,6 +194,12 @@ class Profile(models.Model):
         blank=True,
         help_text="Date d'exercice du droit à l'effacement (RGPD)."
     )
+    terms_accepted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Date d'acceptation de la politique de confidentialité et "
+                  "des CGU à l'inscription. Preuve du consentement (RGPD)."
+    )
     timezone = models.CharField(max_length=50, default='Europe/Paris')
     github_username = models.CharField(max_length=100, blank=True)
 

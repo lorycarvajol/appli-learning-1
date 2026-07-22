@@ -963,6 +963,79 @@ refaire l'intercepteur axios, CORS et la protection CSRF pour un gain réel
 seulement en cas de XSS par ailleurs. Réduire `ACCESS_TOKEN_LIFETIME` couvre
 l'essentiel du risque pour une ligne.
 
+## Conformité RGPD côté apprenant — ✅ Fait
+
+Avant ce chantier, le RGPD n'existait que **côté administrateur**
+(anonymisation par un admin, journal d'audit). L'apprenant lui-même ne pouvait
+ni consentir explicitement, ni emporter ses données, ni supprimer son compte.
+Trois briques ajoutées, chacune couverte par un test
+(`apps/accounts/tests/test_rgpd.py`) :
+
+### Consentement à l'inscription
+
+`RegisterSerializer` **et** `InviteAcceptSerializer` (inscription par
+invitation) exigent désormais `accept_terms=True`. La case n'est pas
+cosmétique : elle est validée côté serveur (refus sinon), et
+`Profile.terms_accepted_at` fige la date d'acceptation comme preuve. Les deux
+chemins de création de compte le font — **toute nouvelle voie d'inscription
+doit horodater le consentement de la même façon** (via le profil créé par
+signal, jamais en réenregistrant le User, cf. `signals.py`).
+
+Front : case obligatoire dans `Register.jsx` et `JoinCohort.jsx`, avec liens
+vers les pages légales ; le bouton reste désactivé tant qu'elle n'est pas
+cochée.
+
+### Portabilité — export des données
+
+`GET /api/auth/export/` (authentifié) renvoie un JSON de **toutes** les données
+personnelles : compte, profil, progression, grand livre de points, badges,
+série de jours, activité. Réservé au compte courant — aucun paramètre ne
+permet de viser un tiers (un test le vérifie). Construit par
+`accounts.services.build_user_export`, qui importe les modèles de
+`progression`/`gamification` **localement** (pas de dépendance au niveau
+module, chemin froid). Front : bouton dans `/profil` → « Mes données », qui
+télécharge le fichier via un `Blob` côté client.
+
+### Effacement en self-service
+
+`POST /api/auth/delete-account/` (authentifié, exige le mot de passe courant)
+déclenche l'anonymisation du compte **par l'apprenant lui-même**. Point clé :
+la logique d'effacement **n'a pas été dupliquée**. `administration/services.py`
+a été refactoré — le cœur `_erase_identity(user)` est partagé entre
+`anonymize(actor, user)` (par un admin) et `self_delete_account(user)`
+(self-service). Différences assumées :
+
+- `self_delete_account` **n'a pas** le garde-fou « pas sur soi-même » (il
+  n'aurait aucun sens), mais **garde** celui du dernier administrateur actif :
+  un admin isolé doit d'abord promouvoir un remplaçant.
+- La trace d'audit utilise une action distincte
+  (`AuditLog.Action.ACCOUNT_DELETED`) et nomme l'utilisateur comme acteur *et*
+  cible — c'est bien lui qui a demandé son effacement. Le libellé fige
+  l'identité **avant** écrasement (même piège que `anonymize`).
+
+Même parti que côté admin : **anonymisation, pas suppression en cascade** — la
+progression est conservée sous une forme non ré-identifiante pour ne pas
+fausser les statistiques des classes.
+
+Front : section « zone dangereuse » dans `/profil`, confirmation par mot de
+passe, puis `window.location.href = '/login'` (rechargement complet, comme
+l'intercepteur axios) pour ne laisser aucun état résiduel.
+
+### Pages légales et cookies
+
+Trois pages **publiques** (avant toute session) : `/confidentialite`,
+`/mentions-legales`, `/cgu` (`features/legal/`). Elles portent des marqueurs
+`[À COMPLÉTER : …]` (composant `Todo`) pour l'identité de l'exploitant,
+l'hébergeur et le DPO — informations que seul l'exploitant connaît. Liens en
+pied de page (`Footer.jsx`) et dans les formulaires d'inscription.
+
+⚠️ **Pas de bannière de consentement cookies, et c'est délibéré.** L'app ne
+pose **aucun traceur** : l'auth passe par `localStorage`, les seuls cookies
+(`session`, `csrf`) sont strictement nécessaires — donc dispensés de
+consentement au sens CNIL. La politique de confidentialité l'explique dans une
+notice. **Le jour où un analytics ou un traceur tiers est introduit, une vraie
+bannière (accepter/refuser, blocante) devient obligatoire.**
+
 ## Reste à faire — audit du 2026-07-21
 
 Inventaire vérifié dans le code, pas recopié du roadmap. Classé par risque,

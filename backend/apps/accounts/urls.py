@@ -11,6 +11,8 @@ from .views import (
     CurrentUserView,
     ProfileView,
     ChangePasswordView,
+    DataExportView,
+    DeleteAccountView,
     LogoutView,
     PasswordResetRequestView,
     PasswordResetValidateView,
@@ -44,4 +46,8 @@ urlpatterns = [
     path('profile/', ProfileView.as_view(), name='profile'),
     path('avatars/', AvatarCatalogView.as_view(), name='avatar_catalog'),
     path('change-password/', ChangePasswordView.as_view(), name='change_password'),
+
+    # RGPD : portabilité et droit à l'effacement en self-service
+    path('export/', DataExportView.as_view(), name='data_export'),
+    path('delete-account/', DeleteAccountView.as_view(), name='delete_account'),
 ]

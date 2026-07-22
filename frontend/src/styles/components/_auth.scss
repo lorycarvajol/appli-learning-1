@@ -199,6 +199,31 @@
   }
 }
 
+// Consentement RGPD à l'inscription : case + libellé avec liens légaux.
+.auth-form__consent {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-sm;
+  margin: $spacing-md 0;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+
+  input[type='checkbox'] {
+    margin-top: 0.2rem;
+    width: 1.05rem;
+    height: 1.05rem;
+    flex-shrink: 0;
+    accent-color: var(--brand);
+    cursor: pointer;
+  }
+
+  a {
+    color: var(--brand);
+    text-decoration: underline;
+  }
+}
+
 .auth-footer {
   text-align: center;
   margin-top: $spacing-xl;

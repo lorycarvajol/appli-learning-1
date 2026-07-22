@@ -48,6 +48,7 @@ class AuditLog(models.Model):
         SET_ROLE = 'SET_ROLE', 'Changement de rôle'
         SET_ACTIVE = 'SET_ACTIVE', 'Activation / désactivation'
         ANONYMIZE = 'ANONYMIZE', 'Anonymisation (RGPD)'
+        ACCOUNT_DELETED = 'ACCOUNT_DELETED', 'Suppression de compte (self-service RGPD)'
         ASSIGN_COHORT = 'ASSIGN_COHORT', 'Rattachement à une classe'
         UNLOCK_CHAPTER = 'UNLOCK_CHAPTER', 'Déblocage de chapitre'
         LOCK_CHAPTER = 'LOCK_CHAPTER', 'Reverrouillage de chapitre'

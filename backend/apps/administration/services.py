@@ -120,13 +120,40 @@ def set_active(actor, user, is_active):
     return user
 
 
-def anonymize(actor, user):
-    """Exerce le droit à l'effacement. **Irréversible.**
+def _erase_identity(user):
+    """Écrase les données personnelles d'un compte, en place.
+
+    Cœur partagé entre l'anonymisation par un administrateur (`anonymize`) et
+    la suppression que l'apprenant déclenche lui-même (`self_delete_account`) :
+    les deux effacent exactement les mêmes champs et révoquent les sessions.
+    La seule différence est l'auteur et la trace d'audit, laissés à l'appelant.
 
     Ce qui disparaît : email, nom, prénom, bio, avatar, pseudo GitHub, mot de
     passe. Ce qui reste : progression, points, badges, activité — désormais
     rattachés à un compte anonyme, donc inexploitables pour ré-identifier.
     """
+    profile = getattr(user, 'profile', None)
+
+    user.email = f'anonyme-{uuid.uuid4().hex[:12]}@{ANONYMIZED_DOMAIN}'
+    user.first_name = ''
+    user.last_name = ''
+    user.is_active = False
+    user.set_unusable_password()
+    user.save()
+
+    if profile is not None:
+        profile.bio = ''
+        profile.github_username = ''
+        profile.avatar = None
+        profile.cohort = None
+        profile.anonymized_at = timezone.now()
+        profile.save()
+
+    _revoke_sessions(user)
+
+
+def anonymize(actor, user):
+    """Exerce le droit à l'effacement pour le compte d'un tiers. **Irréversible.**"""
     if user.pk == actor.pk:
         raise AdminActionError("Vous ne pouvez pas anonymiser votre propre compte.")
 
@@ -143,25 +170,42 @@ def anonymize(actor, user):
     identity_before = label_for(user)
 
     with transaction.atomic():
-        user.email = f'anonyme-{uuid.uuid4().hex[:12]}@{ANONYMIZED_DOMAIN}'
-        user.first_name = ''
-        user.last_name = ''
-        user.is_active = False
-        user.set_unusable_password()
-        user.save()
-
-        if profile is not None:
-            profile.bio = ''
-            profile.github_username = ''
-            profile.avatar = None
-            profile.cohort = None
-            profile.anonymized_at = timezone.now()
-            profile.save()
-
-        _revoke_sessions(user)
-
+        _erase_identity(user)
         record(
             actor, AuditLog.Action.ANONYMIZE, user,
+            target_label=identity_before,
+            changes={'before': identity_before, 'after': user.email},
+        )
+
+    return user
+
+
+def self_delete_account(user):
+    """Suppression de compte déclenchée par l'apprenant lui-même (RGPD). **Irréversible.**
+
+    Même effacement que `anonymize`, mais l'auteur *est* la cible — d'où
+    l'absence du garde-fou « pas sur soi-même » qui n'aurait aucun sens ici.
+    Le garde-fou du **dernier administrateur actif** reste, lui, en vigueur :
+    un admin isolé ne doit pas pouvoir rendre la plateforme impilotable d'un
+    clic ; il lui faut d'abord promouvoir un remplaçant.
+
+    La trace nomme l'utilisateur comme acteur **et** comme cible : c'est bien
+    lui qui a demandé et obtenu son effacement, et le journal doit pouvoir le
+    prouver.
+    """
+    profile = getattr(user, 'profile', None)
+    if profile is not None and profile.anonymized_at is not None:
+        raise AdminActionError("Ce compte est déjà anonymisé.")
+
+    if user.role == User.Role.ADMIN:
+        _assert_not_last_admin(user)
+
+    identity_before = label_for(user)
+
+    with transaction.atomic():
+        _erase_identity(user)
+        record(
+            user, AuditLog.Action.ACCOUNT_DELETED, user,
             target_label=identity_before,
             changes={'before': identity_before, 'after': user.email},
         )

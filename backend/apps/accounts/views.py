@@ -21,6 +21,7 @@ from .serializers import (
     PasswordResetConfirmSerializer,
 )
 from .services import (
+    build_user_export,
     resolve_reset_token,
     revoke_refresh_tokens,
     send_password_reset_email,
@@ -246,6 +247,64 @@ class PasswordResetConfirmView(APIView):
         return Response(
             {'message': 'Mot de passe réinitialisé. Vous pouvez vous connecter.'},
             status=status.HTTP_200_OK
+        )
+
+
+class DataExportView(APIView):
+    """
+    Export de toutes les données personnelles du compte courant (RGPD, portabilité).
+    GET /api/auth/export/
+
+    Renvoie un JSON téléchargeable. Réservé au compte lui-même : chacun exporte
+    ses propres données, jamais celles d'un tiers.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        data = build_user_export(request.user)
+        response = Response(data)
+        # En-tête de téléchargement : le navigateur propose d'enregistrer le
+        # fichier plutôt que de l'afficher.
+        response['Content-Disposition'] = (
+            'attachment; filename="mes-donnees-codeacademy.json"'
+        )
+        return response
+
+
+class DeleteAccountView(APIView):
+    """
+    Suppression (anonymisation) du compte courant, à l'initiative de l'apprenant.
+    POST /api/auth/delete-account/
+
+    Droit à l'effacement en self-service. **Irréversible.** On exige le mot de
+    passe courant : sans lui, un poste laissé ouvert suffirait à détruire un
+    compte. La logique d'effacement et sa trace d'audit vivent dans
+    `apps.administration.services` (chemin unique et audité).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from apps.administration.services import AdminActionError, self_delete_account
+
+        password = request.data.get('password', '')
+        if not request.user.check_password(password):
+            return Response(
+                {'password': ["Mot de passe incorrect."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            self_delete_account(request.user)
+        except AdminActionError as exc:
+            return Response(
+                {'detail': str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {'message': 'Votre compte a été supprimé. Vos données personnelles '
+                        'ont été effacées.'},
+            status=status.HTTP_200_OK,
         )
 
 
