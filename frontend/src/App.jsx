@@ -1,28 +1,35 @@
-import { useEffect } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import Login from './features/auth/Login'
-import Register from './features/auth/Register'
-import ForgotPassword from './features/auth/ForgotPassword'
-import ResetPassword from './features/auth/ResetPassword'
-import JoinCohort from './features/cohorts/JoinCohort'
-import PrivacyPolicy from './features/legal/PrivacyPolicy'
-import LegalNotice from './features/legal/LegalNotice'
-import Terms from './features/legal/Terms'
-import Dashboard from './features/dashboard/Dashboard'
+// Structurels : chargés d'emblée, présents sur (presque) chaque route.
 import PrivateRoute from './features/auth/PrivateRoute'
 import Layout from './components/layout/Layout'
-import ChaptersList from './features/chapters/ChaptersList'
-import ChapterDetail from './features/chapters/ChapterDetail'
-import LessonView from './features/chapters/LessonView'
-import TrainerDashboard from './features/trainer/TrainerDashboard'
-import ProgressionPage from './features/progression/ProgressionPage'
-import BadgesPage from './features/gamification/BadgesPage'
-import ProfilePage from './features/profile/ProfilePage'
+import PageLoader from './components/ui/PageLoader'
 import useThemePreferenceSync from './features/profile/useThemePreferenceSync'
 import { fetchCurrentUser } from './features/auth/authSlice'
-import AdminSpace from './features/administration/AdminSpace'
 import { ROLES, STAFF_ROLES } from './constants/roles'
+
+// Pages chargées à la demande : chaque route devient un morceau séparé, sorti
+// du bundle d'entrée. Gain principal : l'éditeur Monaco (via LessonView →
+// ExerciseInterface) ne pèse plus sur le premier chargement — il est de plus
+// isolé dans LessonView pour ne se charger qu'à l'ouverture d'un exercice.
+const Login = lazy(() => import('./features/auth/Login'))
+const Register = lazy(() => import('./features/auth/Register'))
+const ForgotPassword = lazy(() => import('./features/auth/ForgotPassword'))
+const ResetPassword = lazy(() => import('./features/auth/ResetPassword'))
+const JoinCohort = lazy(() => import('./features/cohorts/JoinCohort'))
+const PrivacyPolicy = lazy(() => import('./features/legal/PrivacyPolicy'))
+const LegalNotice = lazy(() => import('./features/legal/LegalNotice'))
+const Terms = lazy(() => import('./features/legal/Terms'))
+const Dashboard = lazy(() => import('./features/dashboard/Dashboard'))
+const ChaptersList = lazy(() => import('./features/chapters/ChaptersList'))
+const ChapterDetail = lazy(() => import('./features/chapters/ChapterDetail'))
+const LessonView = lazy(() => import('./features/chapters/LessonView'))
+const TrainerDashboard = lazy(() => import('./features/trainer/TrainerDashboard'))
+const ProgressionPage = lazy(() => import('./features/progression/ProgressionPage'))
+const BadgesPage = lazy(() => import('./features/gamification/BadgesPage'))
+const ProfilePage = lazy(() => import('./features/profile/ProfilePage'))
+const AdminSpace = lazy(() => import('./features/administration/AdminSpace'))
 
 function App() {
   const dispatch = useDispatch()
@@ -40,7 +47,8 @@ function App() {
   }, [dispatch, user])
 
   return (
-    <Routes>
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
       {/* Public routes - without layout */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -146,7 +154,8 @@ function App() {
         }
       />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+      </Routes>
+    </Suspense>
   )
 }
 

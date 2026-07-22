@@ -40,8 +40,10 @@ function renderPage(user = USER) {
 }
 
 beforeEach(() => {
-  authApi.updateProfile.mockResolvedValue({ data: USER })
-  authApi.changePassword.mockResolvedValue({ data: {} })
+  // Contrat uniforme : les services renvoient les données déjà déballées,
+  // pas la réponse axios (cf. services/api/contract.test.js).
+  authApi.updateProfile.mockResolvedValue(USER)
+  authApi.changePassword.mockResolvedValue({})
 })
 
 describe('ProfilePage', () => {

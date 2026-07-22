@@ -1069,12 +1069,10 @@ limitation des échecs » et « Testing Strategy »).*
 
 ### Dette structurelle
 
-4. **Contrat incohérent des services API** — `authApi` et `coursesApi` rendent
-   la réponse axios brute, les autres les données déballées (cf. la section
-   dédiée). A déjà coûté une page blanche. Uniformiser demande un test de
-   contrat par module d'abord, puis un changement d'un seul bloc.
-5. **Aucun découpage de bundle** — `App.jsx` importe tout statiquement, ~535 kB
-   d'un tenant. `React.lazy` par route est mécanique.
+*(Deux entrées de cette liste sont faites : le contrat incohérent des services
+API — voir « Contrat des services API — uniforme » — et le découpage de bundle
+— voir « Découpage de bundle » ci-dessous.)*
+
 6. **`Profile.avatar` (ImageField) est mort** — conservé pour d'éventuels
    téléversements historiques, jamais alimenté. À supprimer si l'on confirme
    qu'aucune base n'en contient.
@@ -1270,9 +1268,34 @@ React app organized by features in `frontend/src/features/`:
   `useThemePreferenceSync` (thème rattaché au compte)
 - Tailwind CSS **et** SCSS par feature — les deux coexistent
 
-⚠️ Trois éléments listés ici auparavant n'existent pas : `wsService.js`,
-`useAutosave` / `useWebSocket`, et le découpage par `React.lazy`. `App.jsx`
-importe tout statiquement, d'où un bundle de ~535 kB en un seul morceau.
+⚠️ Deux éléments listés ici auparavant n'existent toujours pas : `wsService.js`
+et `useAutosave` / `useWebSocket` (cf. « WebSocket — RIEN N'EXISTE »). Le
+découpage par `React.lazy`, lui, **est fait** — voir ci-dessous.
+
+### Découpage de bundle (`React.lazy`) — ✅ Fait
+
+`App.jsx` chargeait tout statiquement : un bundle d'entrée d'un seul tenant
+(~549 kB / 168 kB gzip). Chaque page de route est désormais un `lazy(() =>
+import(...))`, et `<Routes>` est enveloppé d'un `<Suspense>` unique dont le
+repli est `components/ui/PageLoader` (réutilise `.route-guard` +
+`.loading-spinner`, comme la garde de route — pas de troisième style d'attente).
+
+Résultat : **bundle d'entrée ramené à ~261 kB / 87 kB gzip** (−52 %), chaque
+route sortie dans son propre morceau, chargé à la demande. Le seuil d'alerte
+Vite des 500 kB n'est plus franchi.
+
+Restent **structurels et donc chargés d'emblée** : `PrivateRoute`, `Layout`,
+`PageLoader`, le hook `useThemePreferenceSync`, les constantes de rôles.
+
+⚠️ **Double découpage pour Monaco.** L'éditeur (`@monaco-editor/react`, la plus
+lourde dépendance) est tiré par `LessonView → ExerciseInterface`. `ExerciseInterface`
+est donc **lui-même** en `lazy` *à l'intérieur* de `LessonView` (avec son propre
+`Suspense`) : ouvrir une leçon de théorie ou un quiz ne télécharge pas Monaco —
+seule une leçon de type EXERCICE le fait. Ne pas réintroduire un import statique
+d'`ExerciseInterface` dans `LessonView`, cela réunirait les deux morceaux.
+
+Toute nouvelle page doit suivre le même moule : `lazy()` dans `App.jsx`, jamais
+un import statique de page.
 
 ### Database Schema
 
@@ -1476,22 +1499,24 @@ When adding new exercise types:
 - Pagination: Default 20 items per page
 - Query params: `?search=`, `?ordering=`, `?chapter=`, `?status=`
 
-### ⚠️ Contrat des services API — incohérent, à connaître
+### Contrat des services API — uniforme (données déballées)
 
-Les modules de `services/api/` ne renvoient **pas tous la même chose** :
+**Tous** les modules de `services/api/` renvoient les **données déjà déballées**
+(`response.data`), jamais la réponse axios brute. Un thunk écrit donc
+`return await xApi.methode()`, jamais `.data` par-dessus.
 
-| Module | Renvoie |
-|---|---|
-| `authApi`, `coursesApi` | la **réponse axios brute** → faire `.data` |
-| `progressionApi`, `gamificationApi`, `cohortsApi` | les **données déjà déballées** → ne pas refaire `.data` |
+⚠️ **Une exception de forme** : quand on a besoin d'autre chose que le corps —
+`validationApi.getTaskResult` lit `response.status` (202 = tâche en cours) — la
+méthode consomme la réponse en interne mais renvoie quand même une valeur
+**déjà façonnée** (`{done, result}`), pas la réponse brute. Le contrat « ce qui
+sort est de la donnée, pas une enveloppe axios » tient donc partout.
 
-Cette incohérence a déjà coûté une page blanche : `trainerSlice` faisait un
-`.data` sur un tableau déjà déballé, obtenait `undefined`, et le rendu plantait
-sur `.length`. Le bug est resté invisible des mois faute de lien vers
-`/trainer` dans le header.
-
-Vérifier le module avant d'écrire un thunk. Uniformiser serait souhaitable,
-mais c'est un changement transverse à faire d'un bloc, pas à moitié.
+Historique : `authApi` et `coursesApi` renvoyaient autrefois la réponse brute,
+les autres non. Un `.data` de trop (ou de moins) donnait `undefined` — c'est ce
+qui a vidé le state de `trainerSlice` et rendu `/trainer` blanc pendant des
+mois. Uniformisé d'un bloc, avec un test de contrat par module
+(`services/api/contract.test.js`) qui rougirait au moindre retour vers la
+réponse brute.
 
 ### Frontend State Management
 - Redux slices per feature with createAsyncThunk for API calls

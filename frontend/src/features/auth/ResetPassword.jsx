@@ -29,10 +29,10 @@ export default function ResetPassword() {
 
     authApi
       .validateResetLink(uid, token)
-      .then((response) => {
+      .then((data) => {
         if (cancelled) return
-        setLinkValid(response.data.valid)
-        setAccountEmail(response.data.email || '')
+        setLinkValid(data.valid)
+        setAccountEmail(data.email || '')
       })
       .catch(() => {
         if (!cancelled) setLinkValid(false)

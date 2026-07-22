@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
@@ -13,9 +13,14 @@ import {
 } from '../progression/progressionSlice';
 import useTimeTracker from '../progression/useTimeTracker';
 import { badgesEarned } from '@/features/gamification/gamificationSlice';
-import ExerciseInterface from '@/features/exercises/ExerciseInterface';
 import QuizInterface from '@/features/quizzes/QuizInterface';
 import MarkdownImage from '@/components/ui/MarkdownImage';
+import PageLoader from '@/components/ui/PageLoader';
+
+// L'éditeur Monaco embarqué par `ExerciseInterface` est de loin la plus lourde
+// dépendance de l'app. Chargé à la demande, il ne pèse que sur les leçons de
+// type EXERCICE — la théorie et les quiz ne le téléchargent jamais.
+const ExerciseInterface = lazy(() => import('@/features/exercises/ExerciseInterface'));
 
 export default function LessonView() {
   const { slug } = useParams();
@@ -194,16 +199,18 @@ export default function LessonView() {
 
           {/* Exercise */}
           {currentLesson.lesson_type === 'EXERCISE' && currentLesson.exercise && (
-            <ExerciseInterface
-              key={currentLesson.id}
-              exercise={currentLesson.exercise}
-              onSubmit={(code, result) => {
-                // Auto-mark as completed if all tests pass
-                if (result.success && !isCompleted) {
-                  dispatch(markLessonCompleted(currentLesson.id));
-                }
-              }}
-            />
+            <Suspense fallback={<PageLoader />}>
+              <ExerciseInterface
+                key={currentLesson.id}
+                exercise={currentLesson.exercise}
+                onSubmit={(code, result) => {
+                  // Auto-mark as completed if all tests pass
+                  if (result.success && !isCompleted) {
+                    dispatch(markLessonCompleted(currentLesson.id));
+                  }
+                }}
+              />
+            </Suspense>
           )}
 
           {/* Quiz */}

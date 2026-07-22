@@ -20,8 +20,8 @@ export default function ForgotPassword() {
     setError(null)
 
     try {
-      const response = await authApi.requestPasswordReset(email)
-      setSent(response.data.message)
+      const data = await authApi.requestPasswordReset(email)
+      setSent(data.message)
     } catch (err) {
       const detail = err.response?.data
       setError(

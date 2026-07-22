@@ -94,7 +94,7 @@ export default function ProgressionPage() {
       chapters.map((chapter) =>
         coursesApi
           .getChapter(chapter.slug)
-          .then((res) => [chapter.id, res.data.lessons || []])
+          .then((data) => [chapter.id, data.lessons || []])
       )
     ).then((entries) => {
       if (!cancelled) setChapterLessons(Object.fromEntries(entries));

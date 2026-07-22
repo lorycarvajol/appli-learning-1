@@ -323,9 +323,9 @@ function DataCard() {
     setExporting(true)
     setState((s) => ({ ...s, error: null }))
     try {
-      const response = await authApi.exportMyData()
+      const data = await authApi.exportMyData()
       // Téléchargement côté client : on transforme le JSON en fichier local.
-      const blob = new Blob([JSON.stringify(response.data, null, 2)], {
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
         type: 'application/json',
       })
       const url = URL.createObjectURL(blob)

@@ -1,58 +1,65 @@
 import apiClient from './apiService'
 
+/**
+ * Service d'authentification et de compte.
+ *
+ * Contrat uniforme avec les autres services : **chaque méthode renvoie les
+ * données déjà déballées** (`response.data`), jamais la réponse axios brute.
+ * Ne pas refaire `.data` dans les appelants. Verrouillé par `contract.test.js`.
+ */
 export const authApi = {
-  login: (email, password) =>
-    apiClient.post('/auth/login/', { email, password }),
+  login: async (email, password) =>
+    (await apiClient.post('/auth/login/', { email, password })).data,
 
-  register: (userData) =>
-    apiClient.post('/auth/register/', userData),
+  register: async (userData) =>
+    (await apiClient.post('/auth/register/', userData)).data,
 
-  getCurrentUser: () =>
-    apiClient.get('/auth/me/'),
+  getCurrentUser: async () =>
+    (await apiClient.get('/auth/me/')).data,
 
   /**
    * Met à jour le compte et, si `payload.profile` est fourni, le profil.
    * L'écriture est imbriquée pour rester atomique : un formulaire de profil
    * qui réussirait à moitié laisserait l'utilisateur devant un état incohérent.
    */
-  updateProfile: (payload) =>
-    apiClient.patch('/auth/me/', payload),
+  updateProfile: async (payload) =>
+    (await apiClient.patch('/auth/me/', payload)).data,
 
-  getAvatarCatalog: () =>
-    apiClient.get('/auth/avatars/'),
+  getAvatarCatalog: async () =>
+    (await apiClient.get('/auth/avatars/')).data,
 
-  refreshToken: (refreshToken) =>
-    apiClient.post('/auth/token/refresh/', { refresh: refreshToken }),
+  refreshToken: async (refreshToken) =>
+    (await apiClient.post('/auth/token/refresh/', { refresh: refreshToken })).data,
 
-  logout: (refreshToken) =>
-    apiClient.post('/auth/logout/', { refresh: refreshToken }),
+  logout: async (refreshToken) =>
+    (await apiClient.post('/auth/logout/', { refresh: refreshToken })).data,
 
   // Mot de passe oublié (routes publiques)
-  requestPasswordReset: (email) =>
-    apiClient.post('/auth/password-reset/', { email }),
+  requestPasswordReset: async (email) =>
+    (await apiClient.post('/auth/password-reset/', { email })).data,
 
-  validateResetLink: (uid, token) =>
-    apiClient.get('/auth/password-reset/validate/', { params: { uid, token } }),
+  validateResetLink: async (uid, token) =>
+    (await apiClient.get('/auth/password-reset/validate/', { params: { uid, token } })).data,
 
-  confirmPasswordReset: (uid, token, newPassword, newPasswordConfirm) =>
-    apiClient.post('/auth/password-reset/confirm/', {
+  confirmPasswordReset: async (uid, token, newPassword, newPasswordConfirm) =>
+    (await apiClient.post('/auth/password-reset/confirm/', {
       uid,
       token,
       new_password: newPassword,
       new_password_confirm: newPasswordConfirm,
-    }),
+    })).data,
 
-  changePassword: (oldPassword, newPassword, newPasswordConfirm) =>
-    apiClient.post('/auth/change-password/', {
+  changePassword: async (oldPassword, newPassword, newPasswordConfirm) =>
+    (await apiClient.post('/auth/change-password/', {
       old_password: oldPassword,
       new_password: newPassword,
       new_password_confirm: newPasswordConfirm,
-    }),
+    })).data,
 
   // RGPD (routes authentifiées, agissent sur le compte courant)
-  exportMyData: () =>
-    apiClient.get('/auth/export/'),
+  exportMyData: async () =>
+    (await apiClient.get('/auth/export/')).data,
 
-  deleteMyAccount: (password) =>
-    apiClient.post('/auth/delete-account/', { password }),
+  deleteMyAccount: async (password) =>
+    (await apiClient.post('/auth/delete-account/', { password })).data,
 }

@@ -6,8 +6,7 @@ export const fetchChapters = createAsyncThunk(
   'chapters/fetchChapters',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await coursesApi.getChapters();
-      return response.data;
+      return await coursesApi.getChapters();
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to fetch chapters');
     }
@@ -18,8 +17,7 @@ export const fetchChapterDetails = createAsyncThunk(
   'chapters/fetchChapterDetails',
   async (slug, { rejectWithValue }) => {
     try {
-      const response = await coursesApi.getChapter(slug);
-      return response.data;
+      return await coursesApi.getChapter(slug);
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to fetch chapter details');
     }
@@ -30,8 +28,7 @@ export const fetchLesson = createAsyncThunk(
   'chapters/fetchLesson',
   async (slug, { rejectWithValue }) => {
     try {
-      const response = await coursesApi.getLesson(slug);
-      return response.data;
+      return await coursesApi.getLesson(slug);
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to fetch lesson');
     }

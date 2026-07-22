@@ -6,11 +6,11 @@ export const login = createAsyncThunk(
   'auth/login',
   async ({ email, password }, { rejectWithValue }) => {
     try {
-      const response = await authApi.login(email, password)
-      const { access, refresh } = response.data
+      const data = await authApi.login(email, password)
+      const { access, refresh } = data
       localStorage.setItem('accessToken', access)
       localStorage.setItem('refreshToken', refresh)
-      return response.data
+      return data
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Login failed')
     }
@@ -21,13 +21,13 @@ export const register = createAsyncThunk(
   'auth/register',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await authApi.register(userData)
-      const { tokens } = response.data
+      const data = await authApi.register(userData)
+      const { tokens } = data
       if (tokens) {
         localStorage.setItem('accessToken', tokens.access)
         localStorage.setItem('refreshToken', tokens.refresh)
       }
-      return response.data
+      return data
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Registration failed')
     }
@@ -38,8 +38,7 @@ export const fetchCurrentUser = createAsyncThunk(
   'auth/fetchCurrentUser',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await authApi.getCurrentUser()
-      return response.data
+      return await authApi.getCurrentUser()
     } catch (error) {
       return rejectWithValue(error.response?.data)
     }
@@ -57,8 +56,7 @@ export const updateProfile = createAsyncThunk(
   'auth/updateProfile',
   async (payload, { rejectWithValue }) => {
     try {
-      const response = await authApi.updateProfile(payload)
-      return response.data
+      return await authApi.updateProfile(payload)
     } catch (error) {
       return rejectWithValue(error.response?.data)
     }
@@ -69,10 +67,9 @@ export const changePassword = createAsyncThunk(
   'auth/changePassword',
   async ({ oldPassword, newPassword, newPasswordConfirm }, { rejectWithValue }) => {
     try {
-      const response = await authApi.changePassword(
+      return await authApi.changePassword(
         oldPassword, newPassword, newPasswordConfirm
       )
-      return response.data
     } catch (error) {
       return rejectWithValue(error.response?.data)
     }

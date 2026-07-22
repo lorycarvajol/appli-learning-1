@@ -2,10 +2,10 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import progressionApi from '../../services/api/progressionApi';
 
 /**
- * ⚠️ `progressionApi` renvoie **déjà** `response.data`, contrairement à
- * `coursesApi` et `authApi` qui renvoient la réponse axios brute. Refaire un
- * `.data` ici donnait `undefined` et vidait tout le state — c'est ce qui
- * rendait cette page blanche. Ne pas réintroduire le déballage.
+ * Tous les services API renvoient désormais les données déjà déballées
+ * (`response.data`) — contrat uniforme verrouillé par
+ * `services/api/contract.test.js`. Ne pas refaire `.data` ici : c'est ce
+ * déballage en trop qui donnait `undefined` et rendait la page blanche.
  */
 
 export const fetchLearnersSummary = createAsyncThunk(

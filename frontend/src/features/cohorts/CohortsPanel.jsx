@@ -37,10 +37,9 @@ export default function CohortsPanel() {
 
   useEffect(() => {
     refresh()
-    // `coursesApi` renvoie la réponse axios brute, pas les données.
     coursesApi
       .getChapters()
-      .then(({ data }) => setChapters(data.results ?? data))
+      .then((data) => setChapters(data.results ?? data))
       .catch(() => setChapters([]))
   }, [refresh])
 
