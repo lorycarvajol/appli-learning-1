@@ -12,7 +12,17 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ThemeProvider>
       <Provider store={store}>
-        <BrowserRouter>
+        {/*
+          Opt-in explicite au comportement React Router v7 : tait les
+          avertissements de migration et aligne dès maintenant le routeur sur
+          la prochaine majeure. `v7_startTransition` s'accorde bien avec le
+          `Suspense` des routes chargées à la demande (transitions non
+          bloquantes) ; `v7_relativeSplatPath` fige la résolution des routes
+          relatives sous un splat.
+        */}
+        <BrowserRouter
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
           <App />
         </BrowserRouter>
       </Provider>

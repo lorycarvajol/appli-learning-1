@@ -4,12 +4,22 @@ import { authApi } from '../../services/api/authApi'
 // Async thunks
 export const login = createAsyncThunk(
   'auth/login',
-  async ({ email, password }, { rejectWithValue }) => {
+  async ({ email, password }, { dispatch, rejectWithValue }) => {
     try {
       const data = await authApi.login(email, password)
       const { access, refresh } = data
       localStorage.setItem('accessToken', access)
       localStorage.setItem('refreshToken', refresh)
+
+      // ⚠️ Indispensable : l'endpoint /login ne renvoie que les jetons, jamais
+      // le profil. Sans charger `user` ici, la garde de route (`PrivateRoute`)
+      // reste bloquée à l'infini sur son écran de chargement — elle attend
+      // `initialized`, que seul `fetchCurrentUser` positionne. Auparavant, seul
+      // un rafraîchissement (qui redéclenche `fetchCurrentUser` au montage de
+      // `App`) sortait de l'impasse : c'était le bug « connexion qui charge sans
+      // fin ». On enchaîne donc explicitement, et on attend la résolution avant
+      // de laisser la page rediriger.
+      await dispatch(fetchCurrentUser())
       return data
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Login failed')

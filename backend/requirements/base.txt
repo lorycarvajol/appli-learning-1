@@ -25,7 +25,6 @@ django-cors-headers==4.3.1
 # Utilities
 python-decouple==3.8
 django-filter==23.5
-Pillow==10.2.0
 bleach==6.1.0
 markdown==3.5.2
 

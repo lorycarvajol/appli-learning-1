@@ -151,12 +151,11 @@ class Profile(models.Model):
 
     bio = models.TextField(blank=True)
 
-    # Conservé pour ne pas perdre les données d'éventuels téléversements
-    # historiques, mais **non alimenté** : le choix d'avatar se fait par
-    # catalogue (`avatar_key`). Voir `apps/accounts/avatars.py` pour le
-    # raisonnement — modération, formats, stockage.
-    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
-
+    # Le choix d'avatar se fait par **catalogue** (`avatar_key`), rendu en SVG
+    # côté client — voir `apps/accounts/avatars.py` pour le raisonnement
+    # (modération, formats, stockage). Il n'y a volontairement pas de
+    # téléversement d'image : un ancien `ImageField avatar`, jamais alimenté, a
+    # été supprimé après vérification qu'aucune base ne le renseignait.
     avatar_key = models.CharField(
         max_length=40,
         blank=True,

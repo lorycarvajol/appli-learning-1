@@ -23,11 +23,11 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = [
-            'bio', 'avatar', 'avatar_key', 'theme', 'total_points', 'level',
+            'bio', 'avatar_key', 'theme', 'total_points', 'level',
             'timezone', 'github_username', 'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'avatar', 'total_points', 'level', 'created_at', 'updated_at'
+            'total_points', 'level', 'created_at', 'updated_at'
         ]
 
     def validate_avatar_key(self, value):

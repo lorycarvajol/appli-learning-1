@@ -150,8 +150,14 @@ export const selectSummary = (state) => state.gamification.summary;
 export const selectBadges = (state) => state.gamification.badges;
 export const selectBadgeStats = (state) => state.gamification.badgeStats;
 export const selectBadgesLoading = (state) => state.gamification.badgesLoading;
+
+// Référence stable partagée pour le cas « pas d'objectifs » : un `|| []` créait
+// un nouveau tableau à chaque appel du sélecteur, ce que react-redux signale
+// comme une source de rerenders inutiles (le tableau du store, lui, est déjà
+// une référence stable tant que `summary` ne change pas).
+const EMPTY_OBJECTIVES = [];
 export const selectNextObjectives = (state) =>
-  state.gamification.summary?.next_objectives || [];
+  state.gamification.summary?.next_objectives || EMPTY_OBJECTIVES;
 export const selectStreak = (state) => state.gamification.summary?.streak || null;
 export const selectLevel = (state) => state.gamification.summary?.level || null;
 export const selectPendingReveal = (state) => state.gamification.revealQueue[0] || null;

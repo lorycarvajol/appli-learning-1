@@ -473,10 +473,14 @@ progression en lecture seule.
 
 ### Avatars : catalogue, pas téléversement
 
-`Profile.avatar` (un `ImageField`) reste dans le modèle mais **n'est pas
-alimenté**. Le choix se fait par `Profile.avatar_key`, une clé
-`<motif>-<palette>` prise dans une liste close (`apps/accounts/avatars.py`,
-6 × 6 = 36 combinaisons), et le rendu se fait en SVG côté client.
+Le choix d'avatar se fait par `Profile.avatar_key`, une clé `<motif>-<palette>`
+prise dans une liste close (`apps/accounts/avatars.py`, 6 × 6 = 36
+combinaisons), et le rendu se fait en SVG côté client. **Aucun téléversement
+d'image** : un ancien champ `Profile.avatar` (`ImageField`) jamais alimenté a
+été supprimé (migration `0007`) après vérification qu'aucune base ne le
+renseignait. Il n'y a **plus aucun `ImageField` dans le projet**, et `Pillow` —
+sa seule raison d'être — a été retiré de `requirements/base.txt`. Ne pas le
+réintroduire sans réintroduire d'abord un vrai besoin d'image serveur.
 
 Le raisonnement, à ne pas défaire à la légère : sur une plateforme scolaire
 sans outil de modération, un téléversement libre signifie que n'importe quelle
@@ -956,6 +960,23 @@ formateur vers `/dashboard` à chaque rafraîchissement, et une panne réseau
 laisserait un écran de chargement infini. Toute nouvelle garde doit attendre
 `initialized` avant de décider.
 
+⚠️ **Qui positionne `initialized` (et `user`) — piège de la connexion.**
+`initialized` et `user` ne sont peuplés que par `fetchCurrentUser`,
+`register.fulfilled` ou `logoutUser.fulfilled`. **`login.fulfilled` ne les
+touche pas** : l'endpoint `/login` (SimpleJWT) ne renvoie que les jetons, pas le
+profil. Le thunk `login` **doit donc enchaîner `dispatch(fetchCurrentUser())`
+et l'attendre** avant de rendre la main. Sans cela, `PrivateRoute` reste bloqué
+à l'infini sur `hasToken && !initialized`, et seul un rafraîchissement (qui
+redéclenche `fetchCurrentUser` au montage de `App`) débloque — c'était le bug
+« connexion qui charge sans fin » : la session s'ouvrait bien (jetons stockés),
+mais l'écran restait en chargement jusqu'au reload.
+
+⚠️ **Corollaire pour les tests E2E** : asserter seulement l'URL `/dashboard`
+**ne suffit pas** — pendant ce bug, l'URL passait à `/dashboard` un instant
+avant de rebondir, et une assertion d'URL pouvait donc passer à tort. Vérifier
+un élément de l'en-tête authentifié (`.header__user-button`, rendu par `Layout`
+seulement quand `user` est chargé) — voir `e2e/helpers.expectAuthenticatedDashboard`.
+
 ### Décision actée : stockage des jetons
 
 Rester en `localStorage`. Migrer vers des cookies `httpOnly` impliquerait de
@@ -1069,13 +1090,11 @@ limitation des échecs » et « Testing Strategy »).*
 
 ### Dette structurelle
 
-*(Deux entrées de cette liste sont faites : le contrat incohérent des services
-API — voir « Contrat des services API — uniforme » — et le découpage de bundle
-— voir « Découpage de bundle » ci-dessous.)*
-
-6. **`Profile.avatar` (ImageField) est mort** — conservé pour d'éventuels
-   téléversements historiques, jamais alimenté. À supprimer si l'on confirme
-   qu'aucune base n'en contient.
+*Cette liste est vide. Ses trois entrées sont faites : le contrat incohérent
+des services API (voir « Contrat des services API — uniforme »), le découpage
+de bundle (voir « Découpage de bundle »), et le champ mort `Profile.avatar`,
+supprimé après vérification qu'aucune base ne le renseignait (migration `0007` ;
+voir « Avatars : catalogue, pas téléversement »).*
 
 ### Fonctionnalités jamais commencées
 

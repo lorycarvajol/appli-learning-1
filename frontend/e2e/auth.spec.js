@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test'
-import { registerNewUser, login, openUserMenu, DEFAULT_PASSWORD } from './helpers'
+import {
+  registerNewUser,
+  login,
+  openUserMenu,
+  expectAuthenticatedDashboard,
+  DEFAULT_PASSWORD,
+} from './helpers'
 
 test.describe('Authentification', () => {
   test('le consentement RGPD est obligatoire à l’inscription', async ({ page }) => {
@@ -22,7 +28,15 @@ test.describe('Authentification', () => {
 
   test('inscription puis arrivée sur le tableau de bord', async ({ page }) => {
     await registerNewUser(page)
-    await expect(page).toHaveURL(/\/dashboard/)
+    await expectAuthenticatedDashboard(page)
+  })
+
+  test('connexion à un compte existant mène à un tableau de bord fonctionnel', async ({ page }) => {
+    // Reproduit le scénario réel du bug : une connexion « à froid », sans
+    // inscription préalable dans la même session. `alice` est créée par
+    // `python manage.py create_demo_users` (cf. e2e/README.md).
+    await login(page, 'alice@test.com', 'learner123')
+    await expectAuthenticatedDashboard(page)
   })
 
   test('déconnexion puis reconnexion', async ({ page }) => {
@@ -32,7 +46,7 @@ test.describe('Authentification', () => {
     await expect(page).toHaveURL(/\/login/)
 
     await login(page, email, password)
-    await expect(page).toHaveURL(/\/dashboard/)
+    await expectAuthenticatedDashboard(page)
   })
 
   test('un mauvais mot de passe ne connecte pas', async ({ page }) => {

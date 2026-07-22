@@ -144,7 +144,9 @@ def _erase_identity(user):
     if profile is not None:
         profile.bio = ''
         profile.github_username = ''
-        profile.avatar = None
+        # L'avatar effectif est le choix de catalogue (`avatar_key`) ; le vider
+        # fait retomber le compte sur des initiales génériques.
+        profile.avatar_key = ''
         profile.cohort = None
         profile.anonymized_at = timezone.now()
         profile.save()

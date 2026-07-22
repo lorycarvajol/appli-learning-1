@@ -32,7 +32,7 @@ export async function registerNewUser(page, { password = DEFAULT_PASSWORD } = {}
   await page.getByLabel(/politique de confidentialité/i).check()
 
   await page.getByRole('button', { name: /s’inscrire|s'inscrire/i }).click()
-  await expect(page).toHaveURL(/\/dashboard/)
+  await expectAuthenticatedDashboard(page)
 
   return { email, password }
 }
@@ -43,6 +43,21 @@ export async function login(page, email, password = DEFAULT_PASSWORD) {
   await page.getByLabel('Email').fill(email)
   await page.getByLabel('Mot de passe', { exact: true }).fill(password)
   await page.getByRole('button', { name: /se connecter/i }).click()
+}
+
+/**
+ * Vérifie qu'on est bien **sur un tableau de bord fonctionnel**, pas seulement
+ * que l'URL contient `/dashboard`.
+ *
+ * La distinction est cruciale : lors du bug « connexion qui charge sans fin »,
+ * l'URL passait à `/dashboard` un court instant avant de rebondir ou de rester
+ * bloquée sur l'écran de chargement de la garde de route. Attendre un élément
+ * de l'en-tête authentifié (le menu utilisateur, rendu seulement par `Layout`
+ * quand `user` est chargé) prouve que la page a réellement abouti.
+ */
+export async function expectAuthenticatedDashboard(page) {
+  await expect(page).toHaveURL(/\/dashboard/)
+  await expect(page.locator('.header__user-button')).toBeVisible()
 }
 
 /** Ouvre le menu utilisateur (en-tête) et clique une entrée par son nom. */
