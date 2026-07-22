@@ -9,6 +9,18 @@ const apiClient = axios.create({
   },
 })
 
+// Routes où un 401 signifie « identifiants refusés », pas « jeton expiré ».
+// Sur celles-ci, il ne faut ni tenter un rafraîchissement, ni rediriger : c'est
+// une réponse métier que l'appelant doit recevoir pour l'afficher (mauvais mot
+// de passe, compte inconnu…). Sans cette exception, un login raté était traité
+// comme une session expirée : l'intercepteur rechargeait `/login`, ce qui
+// effaçait le message d'erreur avant même qu'il s'affiche.
+const AUTH_ENDPOINTS = ['/auth/login/', '/auth/token/refresh/', '/auth/register/']
+
+export function isAuthEndpoint(url = '') {
+  return AUTH_ENDPOINTS.some((path) => url.includes(path))
+}
+
 // Request interceptor - add token to requests
 apiClient.interceptors.request.use(
   (config) => {
@@ -27,7 +39,11 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isAuthEndpoint(originalRequest.url)
+    ) {
       originalRequest._retry = true
 
       try {

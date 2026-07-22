@@ -66,7 +66,10 @@
       "Bash(cp apps/courses/serializers.py /tmp/serializers_bak.py)",
       "Bash(sed -i 's/return sum\\(test.get\\('\"'\"'points'\"'\"', 0\\) for test in self.test_cases\\)/return sum\\(test.get\\('\"'\"'points'\"'\"', 0\\) for test in self.tests\\)/' apps/courses/models.py)",
       "Bash(cp /tmp/models_bak.py apps/courses/models.py)",
-      "Bash(cp /tmp/serializers_bak.py apps/courses/serializers.py)"
+      "Bash(cp /tmp/serializers_bak.py apps/courses/serializers.py)",
+      "Bash(node -e \"console.log\\(Object.keys\\(require\\('./frontend/package.json'\\).scripts\\).join\\(', '\\)\\)\")",
+      "Bash(xargs -n1 basename)",
+      "Bash(npx playwright *)"
     ]
   }
 }

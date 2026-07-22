@@ -963,6 +963,26 @@ refaire l'intercepteur axios, CORS et la protection CSRF pour un gain réel
 seulement en cas de XSS par ailleurs. Réduire `ACCESS_TOKEN_LIFETIME` couvre
 l'essentiel du risque pour une ligne.
 
+### L'intercepteur axios distingue identifiants refusés et session expirée
+
+`services/api/apiService.js` rafraîchit le jeton et rejoue la requête sur un
+401 — comportement correct pour un jeton d'accès expiré. Mais il l'appliquait à
+**tous** les 401, y compris celui d'un `POST /auth/login/` avec un mauvais mot
+de passe. Déconnecté, il n'y a pas de refresh token : l'intercepteur basculait
+alors sur `window.location.href = '/login'`, un **rechargement complet qui
+effaçait le message d'erreur Redux** avant tout affichage. Symptôme : se
+tromper de mot de passe faisait « clignoter » la page sans rien expliquer.
+
+La correction est une liste d'exceptions (`isAuthEndpoint`) : sur `/auth/login/`,
+`/auth/token/refresh/` et `/auth/register/`, un 401 est une **réponse métier**
+(« identifiants refusés »), pas un signal d'expiration — l'intercepteur laisse
+donc l'erreur remonter à l'appelant. Verrouillé à deux niveaux :
+`apiService.test.js` (le prédicat, en CI) et deux tests Playwright de login raté
+qui exigent l'affichage du `role="alert"`.
+
+⚠️ Toute nouvelle route où un 401 est une réponse normale (et non « votre
+session a expiré ») doit être ajoutée à `AUTH_ENDPOINTS`.
+
 ## Conformité RGPD côté apprenant — ✅ Fait
 
 Avant ce chantier, le RGPD n'existait que **côté administrateur**
@@ -1186,8 +1206,10 @@ npm run test:watch  # mode veille
 npx vitest run src/features/auth   # un dossier
 npx vitest run -t "file de révélation"  # un test par son nom
 
-# ⚠️ Toujours pas de tests bout-en-bout (Playwright) : les parcours complets
-# se vérifient encore à la main dans le navigateur.
+# Tests bout-en-bout (Playwright) — tranche mince, en local (cf. frontend/e2e/)
+npm run e2e          # toute la suite, headless (stack docker-compose requise)
+npm run e2e:ui       # mode interactif
+npx playwright test e2e/auth.spec.js   # un fichier
 ```
 
 ### Infrastructure (Docker)
@@ -1566,8 +1588,36 @@ Conventions utiles :
   réducteur constant plutôt que le vrai store : le test décrit un état, il n'a
   pas à rejouer les thunks pour y arriver.
 
-**Cible non atteinte :** Playwright pour les parcours critiques (inscription
-par invitation, déblocage de chapitre, soumission d'exercice).
+**Tests bout-en-bout (Playwright) — tranche mince en place** (`frontend/e2e/`,
+12 tests). Ils pilotent un vrai navigateur (Chromium) contre la **stack
+complète en marche** — la stack n'est pas démarrée par Playwright, on suppose
+`docker-compose up` déjà lancé (cf. `frontend/e2e/README.md`).
+
+Périmètre **volontairement restreint** aux parcours qui ne dépendent pas du bac
+à sable : consentement RGPD bloquant à l'inscription, inscription → tableau de
+bord, déconnexion/reconnexion, accès refusé sur mauvais mot de passe, pages
+légales publiques, navigation chapitre → leçon, et le trio RGPD (profil expose
+export + suppression, l'export télécharge un JSON, la suppression déconnecte et
+empêche la reconnexion).
+
+Conventions, chacune apprise en écrivant la suite :
+
+- **Comptes jetables à email unique** (`e2e/helpers.uniqueEmail`) : la suite est
+  ré-exécutable sans purger la base, et la suppression de compte ne touche
+  jamais un compte partagé.
+- **Un login raté affiche un message.** C'est la régression corrigée par
+  l'exception d'auth de l'intercepteur (voir « L'intercepteur axios distingue
+  identifiants refusés et session expirée » ci-dessous) : les deux tests de
+  login raté (mauvais mot de passe, compte supprimé) asservissent désormais la
+  présence du `role="alert"` — ils rougiraient si l'intercepteur se remettait à
+  recharger `/login` sur un 401 d'auth.
+- **`navigation.spec.js` dépend de `load_demo_content`** (`--force` en
+  non-interactif) ; les autres non.
+
+⚠️ **La CI ne lance pas encore l'E2E** — choix assumé (stabiliser en local
+d'abord). Le jour venu : un job qui monte la stack, amorce, puis lance
+Playwright headless. **Reporté à part** (comme les tests backend `-m docker`) :
+la soumission d'exercice, qui exige le sandbox celery/docker.sock.
 
 ⚠️ **Piège Windows/OneDrive.** Juste après un `npm install`, `npm test` peut
 échouer sur `Error: UNKNOWN: unknown error, read` (errno -4094) : OneDrive

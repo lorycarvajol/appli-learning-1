@@ -33,6 +33,14 @@ yarn-error.log*
 dist/
 build/
 
+# Playwright (tests bout-en-bout) — artefacts locaux, jamais versionnés
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
+frontend/.playwright/
+/test-results/
+/playwright-report/
+
 # IDEs
 .vscode/
 .idea/
