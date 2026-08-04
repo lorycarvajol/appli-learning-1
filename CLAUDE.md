@@ -176,7 +176,8 @@ docker-compose exec backend python manage.py createsuperuser
   - `ChapterAccess`: Contrôle d'accès aux chapitres
   - `ActivityLog`: Historique des activités
 - [ ] API endpoints pour marquer leçons comme complétées
-- [ ] Frontend: Bouton "Marquer comme terminé" fonctionnel
+- [x] Frontend: validation d'une leçon — **automatique**, pas de bouton
+      (voir « Validation d'une leçon — constatée, plus déclarée »)
 - [ ] Affichage de la progression dans ChaptersList
 
 #### Phase 2: Validation de Code
@@ -594,6 +595,47 @@ lecture d'une leçon de théorie compte désormais comme activité.
   consomme la file `revealQueue` du store. La file est dédupliquée par id et
   chaque fermeture appelle `mark_seen` : une célébration ne rejoue jamais.
 - Route `/badges`, lien « Trophées » dans le header.
+
+## Validation d'une leçon — constatée, plus déclarée
+
+Il n'y a **plus de bouton « Marquer comme terminé »**. Demander à l'apprenant
+de déclarer une progression que l'application peut observer était contre-
+intuitif : la leçon était lue, mais restait « en cours » tant qu'on n'avait pas
+pensé à cliquer.
+
+| Type de leçon | Condition de validation |
+|---|---|
+| **THEORY** | Le bas du contenu reste visible 3 secondes (`useScrollCompletion`) |
+| **EXERCISE** | Tous les tests passent (déjà le cas — `onSubmit` d'`ExerciseInterface`) |
+| **QUIZ** | Score requis atteint (déjà le cas — `submit_quiz`, côté serveur) |
+
+### Trois décisions, chacune couverte par un test
+
+- **Le défilement ne valide que la théorie.** `LessonView` ne monte le hook et
+  ne rend le repère que pour `THEORY`. Un exercice ou un quiz validé en faisant
+  défiler la page distribuerait ses points sans le travail —
+  `POST /progress/mark_completed/` crédite les points **sans vérifier** qu'un
+  exercice a été résolu ni qu'un quiz a été réussi. Le bouton retiré était donc
+  aussi une porte dérobée. ⚠️ Cette vérification manque toujours côté serveur :
+  aujourd'hui c'est le front qui n'appelle plus la route pour ces types-là, pas
+  l'API qui la refuse.
+- **Un repère observé, pas un calcul de défilement.** Un élément vide en fin de
+  contenu confié à un `IntersectionObserver` répond exactement à la question
+  posée, sans écouteur `scroll` global à amortir, et suit les changements de
+  mise en page — les illustrations qui finissent de charger rallongent la page
+  après coup.
+- **Le délai de 3 secondes n'est pas cosmétique.** Une leçon courte tient
+  entièrement à l'écran : son repère est visible dès l'ouverture, et valider
+  aussitôt marquerait la leçon terminée avant qu'elle soit lue. Quitter le bas
+  avant la fin du délai annule le compte à rebours.
+
+Sans `IntersectionObserver` (très vieux navigateur, jsdom sans polyfill), le
+hook **s'abstient** : mieux vaut ne rien valider que valider à tort.
+
+Le bouton est remplacé par une région `role="status"` nommée « Statut de la
+leçon » qui dit ce qui reste à faire. ⚠️ Le nom accessible n'est pas décoratif :
+`PageLoader` porte lui aussi `role="status"`, et sans lui les requêtes de test
+trouvent deux régions.
 
 ## Comptes, Rôles et Classes
 
@@ -1782,6 +1824,8 @@ dans ce document**, pas la couverture de ligne :
 | `features/auth/PrivateRoute.test.jsx` | La garde attend `initialized` avant de trancher sur le rôle (sinon un formateur est éjecté à chaque rafraîchissement) |
 | `features/gamification/gamificationSlice.test.js` | Une célébration ne rejoue jamais, même si `unseen_badges` et `newly_earned` mentionnent le même badge |
 | `features/progression/useTimeTracker.test.jsx` | Onglet caché ou inactif depuis 90 s ⇒ aucun temps crédité (le compteur alimente des badges) |
+| `features/progression/useScrollCompletion.test.jsx` | Le bas doit rester visible 3 s ; quitter avant annule ; une seule validation par montage |
+| `features/chapters/LessonView.test.jsx` | Le repère de fin n'existe que sur la théorie — jamais sur un exercice ni un quiz |
 | `features/administration/AdminSpace.test.jsx` | L'anonymisation exige une confirmation ; le journal affiche l'identité **figée**, pas l'identité courante |
 | `features/profile/avatars.test.js` | Chaque clé du catalogue sait se dessiner ; une clé inconnue retombe sur les initiales |
 | `features/profile/ProfilePage.test.jsx` | Le formulaire n'envoie ni `role` ni les points ; les erreurs DRF imbriquées restent lisibles |

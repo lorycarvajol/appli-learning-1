@@ -465,12 +465,6 @@
       }
     }
 
-    &--complete {
-      @include button-secondary;
-      flex: 0 0 auto;
-      align-self: center;
-    }
-
     &--prev,
     &--next {
       display: flex;
@@ -524,13 +518,41 @@
     &__side {
       flex: 1 1 100%;
     }
-
-    &__button--complete {
-      order: -1;
-      width: 100%;
-      justify-content: center;
-    }
   }
+}
+
+// === ÉTAT DE COMPLÉTION ===
+// Remplace l'ancien bouton « Marquer comme terminé » : la leçon n'est plus
+// déclarée par l'apprenant mais constatée par l'application, donc ce n'est
+// plus une commande mais un compte rendu.
+
+.lesson-status {
+  flex: 0 0 auto;
+  align-self: center;
+  margin: 0;
+  padding: $spacing-sm $spacing-md;
+  border-radius: $border-radius-md;
+  font-size: $font-size-sm;
+  color: $text-muted;
+  text-align: center;
+
+  &--done {
+    background-color: $easy-bg;
+    color: $easy-text;
+    font-weight: $font-weight-medium;
+  }
+
+  @media (max-width: $breakpoint-md) {
+    order: -1;
+    width: 100%;
+  }
+}
+
+// Repère de fin de lecture. Sans hauteur, un élément vide peut ne jamais
+// croiser la fenêtre selon la mise en page ; quelques pixels garantissent que
+// l'IntersectionObserver a de quoi observer.
+.lesson-content__end {
+  height: 1px;
 }
 
 // === ÉTATS CHARGEMENT/ERREUR ===
