@@ -803,6 +803,71 @@ Règles non négociables, chacune couverte par un test :
 Supprimer une invitation la **révoque** sans l'effacer : on garde trace de ce
 qui a été diffusé.
 
+## Comptes de démonstration — jamais en production
+
+`create_demo_users` crée un formateur et trois apprenants dont les mots de
+passe (`trainer123`, `learner123`) sont écrits dans le dépôt et repris dans
+plusieurs fichiers de documentation. Rien n'empêchait de lancer cette commande
+sur une instance réelle : recopier la ligne d'amorçage de
+`frontend/e2e/README.md` sur le serveur suffisait à ouvrir, à quiconque lit le
+dépôt, un compte formateur — qui voit la progression de ses apprenants,
+débloque des chapitres et consulte sa classe.
+
+La commande **refuse maintenant de s'exécuter** quand
+`settings.ENVIRONMENT == 'production'`, et oriente vers `createsuperuser`.
+
+⚠️ Le contrôle porte sur `ENVIRONMENT`, **pas sur `DEBUG`** : le lanceur de
+tests de Django force `DEBUG = False`, ce qui aurait rendu le comportement
+intestable, alors qu'`ENVIRONMENT` est la variable qui sélectionne réellement
+les réglages de production (`config/settings/__init__.py`).
+
+`purge_test_accounts` fait le ménage sur une base existante : il recense par
+défaut, ne supprime qu'avec `--apply`. Deux règles :
+
+- **Suppression, pas anonymisation** — l'inverse du choix fait pour un
+  apprenant réel. L'anonymisation préserve des statistiques de classe qui ont
+  un sens ; ici les comptes ne désignent personne et leur progression est du
+  bruit qui fausserait les taux de complétion.
+- **Jamais un administrateur**, même à adresse de test (`trainer@test.com` a
+  été promu ADMIN à la main en développement). Le supprimer alors qu'il serait
+  le seul rendrait l'instance impilotable — même logique que le garde-fou
+  « dernier administrateur actif ».
+
+Une adresse en `e2e-` que le motif ne reconnaît pas est **signalée et
+conservée** : l'écarter en silence serait le pire des deux mondes.
+
+## Sauvegardes
+
+`scripts/backup_db.sh` (dump + rotation) et `scripts/restore_db.sh`
+(restauration, avec confirmation par saisie du nom de la base).
+
+**Seule la base PostgreSQL est sauvegardée**, et c'est un choix : les
+illustrations sont versionnées dans le dépôt, le contenu pédagogique vit dans
+le code (`load_course_content` le reconstruit à l'identique), Redis ne porte
+que du cache et une file Celery. Ce qui n'existe qu'en base — comptes,
+progression, grand livre de points, badges, classes, journal d'audit — est
+exactement le périmètre du dump.
+
+Deux garde-fous contre la **fausse sauvegarde**, celle qui existe mais ne
+restaure rien :
+
+- écriture sous `.partiel` puis renommage — un fichier au nom définitif est un
+  fichier complet ; sans cela une coupure laisse une archive tronquée qui
+  *ressemble* à une sauvegarde ;
+- échec si le dump fait moins de 10 Ko — signature d'une base vide ou d'une
+  authentification refusée en silence.
+
+⚠️ `pg_dump --clean --if-exists` et `psql -v ON_ERROR_STOP=1` ne sont pas
+décoratifs : sans le premier, la restauration sur une base peuplée échoue sur
+les objets existants et la laisse à moitié écrasée ; sans le second, `psql`
+poursuit après une erreur et **signale un succès** sur une base partiellement
+restaurée.
+
+Le cycle a été rejoué en conditions réelles (sauvegarde, restauration dans une
+base jetable, comparaison table par table : zéro écart). À refaire après tout
+changement de schéma important — une sauvegarde jamais restaurée n'est pas une
+sauvegarde.
+
 ## SECRET_KEY — garde-fou de production
 
 `base.py` définit une valeur de repli publique (`INSECURE_DEV_SECRET_KEY`) pour
@@ -1153,7 +1218,19 @@ worker. À revoir si le volume augmente.
 ```
 
 Rôles centralisés dans `src/constants/roles.js` (`ROLES`, `STAFF_ROLES`,
-`ROLE_LABELS`) — miroir de `User.Role` côté Django. Le header filtre ses liens
+`ROLE_LABELS`) — miroir de `User.Role` côté Django.
+
+Même principe pour les **types d'activité** : `src/constants/activity.js`
+(`ACTIVITY_TYPES`, `ACTIVITY_META`, `describeActivity`) est le miroir de
+`ActivityLog.ActivityType`. Le tableau était auparavant recopié dans trois
+écrans, et les trois avaient divergé — `ProgressionPage` ignorait
+`LESSON_STARTED` et affichait la clé brute sans icône, tandis que
+`LearnerDetail` et `RecentActivity` fabriquaient leur libellé avec
+`activity_type.replace('_', ' ').toLowerCase()`, soit « lesson started » en
+anglais dans une interface française. `describeActivity` garantit qu'aucune
+clé technique n'atteint l'écran, y compris pour un type inconnu.
+⚠️ Ajouter une valeur à `ActivityType` côté Django impose d'ajouter une entrée
+ici ; un test compare les deux listes. Le header filtre ses liens
 sur la même liste : un lien vers une page interdite n'est jamais affiché.
 
 **Ces gardes sont un confort d'affichage, pas une sécurité.** Elles évitent
@@ -1634,6 +1711,32 @@ rattraper l'erreur. Ne pas ajouter de `volumes=`, ne pas retirer
 `user=` n'est passé). Ajouter `user='nobody'` serait peu coûteux, mais c'est un
 changement de comportement à valider sur les quatre langages.
 
+### Le drapeau `CODE_EXECUTION_ENABLED`
+
+Le bac à sable exige que le worker Celery pilote le démon Docker, donc que
+`/var/run/docker.sock` lui soit monté. Sur une machine dédiée le risque reste
+circonscrit ; sur un **hôte mutualisé** (le VPS héberge d'autres projets),
+qui contrôle ce worker contrôle le démon, donc l'hôte, donc *tous* les projets.
+
+`settings.CODE_EXECUTION_ENABLED` (défaut `True`, mis à `False` par
+`docker-compose.prod.yml`) permet d'ouvrir sans cette exposition. Il a **deux**
+effets, et le second est celui qu'on oublie :
+
+1. `validation.views.submit_exercise_code` renvoie **503** avec un message
+   explicite, *avant* toute mise en file — sinon la tâche partirait vers un
+   worker sans démon Docker et échouerait en `DockerException`, que l'apprenant
+   lirait comme un bug de son propre code.
+2. `progression.services._required_lessons` **retire les leçons d'exercice**
+   des conditions d'ouverture du chapitre suivant. Sans cela, un exercice
+   devenu insoumettable resterait éternellement inachevé : le chapitre 1
+   comptant 8 exercices sur 18 leçons, **plus aucun apprenant au rythme libre
+   n'atteindrait le chapitre 2**, et rien ne l'aurait signalé.
+
+Quatre tests verrouillent les deux effets, dans les deux positions du drapeau
+(`apps/validation/tests/test_execution_disabled.py`). Ni le contenu ni la
+publication ne sont modifiés : remettre le drapeau à `True` rétablit la règle
+d'origine, et les exercices déjà terminés le restent.
+
 **Authentication:**
 - JWT tokens: 1-hour access token, 7-day refresh token with rotation
 - Token blacklist after refresh (requires `rest_framework_simplejwt.token_blacklist` in INSTALLED_APPS)
@@ -1826,6 +1929,7 @@ dans ce document**, pas la couverture de ligne :
 | `features/progression/useTimeTracker.test.jsx` | Onglet caché ou inactif depuis 90 s ⇒ aucun temps crédité (le compteur alimente des badges) |
 | `features/progression/useScrollCompletion.test.jsx` | Le bas doit rester visible 3 s ; quitter avant annule ; une seule validation par montage |
 | `features/chapters/LessonView.test.jsx` | Le repère de fin n'existe que sur la théorie — jamais sur un exercice ni un quiz |
+| `constants/activity.test.js` | La table des types d'activité couvre tous ceux du backend ; aucune clé technique n'atteint l'écran |
 | `features/administration/AdminSpace.test.jsx` | L'anonymisation exige une confirmation ; le journal affiche l'identité **figée**, pas l'identité courante |
 | `features/profile/avatars.test.js` | Chaque clé du catalogue sait se dessiner ; une clé inconnue retombe sur les initiales |
 | `features/profile/ProfilePage.test.jsx` | Le formulaire n'envoie ni `role` ni les points ; les erreurs DRF imbriquées restent lisibles |
@@ -1926,6 +2030,12 @@ python manage.py migrate
 All detailed documentation is in the root directory:
 
 - **01_ROADMAP.md** - 12-week project roadmap with sprints and deliverables
+- **06_ROADMAP_DEPLOIEMENT.md** - Mise en production sur VPS OVH. ⚠️ Contient
+  la confrontation de `guide-hebergement-ovh.md` (étape 6.3) au code réel :
+  quatre de ses hypothèses sont fausses pour ce dépôt, et il passe sous silence
+  le fait que **`/media/` n'est servi par personne en production**
+  (`config/urls.py:22` le conditionne à `DEBUG`), donc que les 31 illustrations
+  des cours renvoient 404. À lire avant tout déploiement.
 - **02_USER_STORY_MAPPING.md** - User stories for all 3 personas with acceptance criteria
 - **03_DIAGRAMMES_UML.md** - UML diagrams (use cases, class, sequence, deployment)
 - **04_ARCHITECTURE_TECHNIQUE.md** - Complete technical architecture with code examples

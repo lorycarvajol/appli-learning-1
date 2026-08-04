@@ -187,6 +187,27 @@ DEFAULT_FROM_EMAIL = config(
     default='CodeAcademy <no-reply@codeacademy.local>'
 )
 
+# ---------------------------------------------------------------------------
+# Exécution du code d'apprenant
+# ---------------------------------------------------------------------------
+#
+# Le bac à sable exige que le worker Celery pilote le démon Docker, donc que
+# `/var/run/docker.sock` lui soit monté. Sur une machine dédiée, le risque est
+# circonscrit au projet. Sur un **hôte mutualisé**, qui contrôle ce worker
+# contrôle le démon, donc l'hôte, donc *tous* les projets qui y vivent — et
+# depuis le retrait de la liste noire de motifs, le conteneur est le seul
+# rempart (cf. « Security Considerations » dans CLAUDE.md).
+#
+# Ce drapeau permet d'ouvrir la plateforme sans cette exposition : la théorie
+# et les quiz fonctionnent, la soumission de code est refusée proprement.
+# Le remettre à `True` suppose d'avoir d'abord isolé l'exécution (démon
+# séparé, Sysbox, Podman sans privilèges…).
+#
+# ⚠️ Il ne suffit pas de refuser les soumissions : sans le second effet décrit
+# dans `apps/progression/services.py`, les leçons d'exercice deviendraient
+# indéfiniment inachevables et bloqueraient la progression au rythme libre.
+CODE_EXECUTION_ENABLED = config('CODE_EXECUTION_ENABLED', default=True, cast=bool)
+
 # JWT Settings
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),

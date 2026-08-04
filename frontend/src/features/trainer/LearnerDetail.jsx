@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import PropTypes from 'prop-types';
 import { fetchLearnerDetail, unlockChapter, lockChapter, fetchLearnersSummary } from './trainerSlice';
+import { describeActivity } from '@/constants/activity';
 
 const LearnerDetail = ({ learnerId }) => {
   const dispatch = useDispatch();
@@ -134,30 +135,23 @@ const LearnerDetail = ({ learnerId }) => {
           <div className="mt-6">
             <h3 className="font-semibold mb-3">Activité Récente</h3>
             <div className="space-y-2">
-              {selectedLearner.recent_activities.slice(0, 5).map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-start space-x-3 text-sm p-2 bg-gray-50 rounded"
-                >
-                  <span className="text-gray-500">
-                    {activity.activity_type === 'LESSON_STARTED' && '▶️'}
-                    {activity.activity_type === 'LESSON_COMPLETED' && '✅'}
-                    {activity.activity_type === 'EXERCISE_SUBMITTED' && '💻'}
-                    {activity.activity_type === 'QUIZ_COMPLETED' && '📝'}
-                    {activity.activity_type === 'CHAPTER_UNLOCKED' && '🔓'}
-                    {activity.activity_type === 'BADGE_EARNED' && '🏆'}
-                  </span>
-                  <div className="flex-1">
-                    <p className="text-gray-900">
-                      {activity.activity_type.replace('_', ' ').toLowerCase()}
-                      {activity.lesson_title && `: ${activity.lesson_title}`}
-                    </p>
-                    <p className="text-gray-500 text-xs">
-                      {new Date(activity.created_at).toLocaleString('fr-FR')}
-                    </p>
+              {selectedLearner.recent_activities.slice(0, 5).map((activity) => {
+                const { icon, label } = describeActivity(activity);
+                return (
+                  <div
+                    key={activity.id}
+                    className="flex items-start space-x-3 text-sm p-2 bg-gray-50 rounded"
+                  >
+                    <span className="text-gray-500">{icon}</span>
+                    <div className="flex-1">
+                      <p className="text-gray-900">{label}</p>
+                      <p className="text-gray-500 text-xs">
+                        {new Date(activity.created_at).toLocaleString('fr-FR')}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

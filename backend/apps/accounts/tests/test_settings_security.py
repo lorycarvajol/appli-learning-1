@@ -33,3 +33,69 @@ def test_la_cle_de_repli_reste_reconnaissable():
     from config.settings.base import INSECURE_DEV_SECRET_KEY
 
     assert INSECURE_DEV_SECRET_KEY.startswith('django-insecure-')
+
+
+# ---------------------------------------------------------------------------
+# Limitation de débit
+# ---------------------------------------------------------------------------
+#
+# `development.py` **vide entièrement** `DEFAULT_THROTTLE_CLASSES` et
+# `DEFAULT_THROTTLE_RATES` — c'est voulu, un plafond gêne le développement.
+# Le risque est qu'on l'oublie : une production dont les débits seraient vides
+# démarre, sert des requêtes, et laisse essayer cent mots de passe par heure
+# sur un compte sans que rien ne le signale.
+
+#: Débits sans lesquels une protection décrite dans CLAUDE.md n'existe plus.
+DEBITS_ATTENDUS = ('anon', 'user', 'login', 'password_reset', 'invite')
+
+
+def _reglages_de_base_intacts():
+    """Charge `base.py` dans un espace de noms neuf.
+
+    ⚠️ On ne peut **pas** écrire `from config.settings.base import
+    REST_FRAMEWORK` : `development.py` fait `from .base import *` puis
+    `REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {}`, ce qui mute le
+    dictionnaire **en place** — c'est le même objet en mémoire. L'import
+    rendrait donc la version déjà vidée, et le test passerait au vert sur une
+    base.py devenue vide.
+
+    C'est le même piège d'aliasing que celui documenté pour `SIMPLE_JWT`, qui
+    copie `SECRET_KEY` à l'import : un réglage composé n'est pas un réglage
+    déclaré.
+    """
+    import importlib.util
+    from pathlib import Path
+
+    chemin = Path(__file__).resolve().parents[3] / 'config' / 'settings' / 'base.py'
+    spec = importlib.util.spec_from_file_location('_base_intacte', chemin)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_les_debits_sont_declares_dans_les_reglages_de_base():
+    """La déclaration vit dans `base.py` et doit y rester complète."""
+    REST_FRAMEWORK = _reglages_de_base_intacts().REST_FRAMEWORK
+
+    rates = REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']
+    manquants = [nom for nom in DEBITS_ATTENDUS if not rates.get(nom)]
+    assert not manquants, (
+        f"Débits absents de base.py : {manquants}. Chacun correspond à une "
+        f"protection documentée (connexion, mot de passe oublié, invitations)."
+    )
+    assert REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'], (
+        "Sans classe de throttle, les débits déclarés ne s'appliquent à rien."
+    )
+
+
+@pytest.mark.skipif(settings.DEBUG, reason="Contrôle réservé à la production")
+def test_le_throttling_est_actif_hors_developpement():
+    """En production, les débits doivent avoir survécu à la composition.
+
+    `production.py` hérite de `base.py` sans les vider — mais rien ne
+    l'imposait jusqu'ici.
+    """
+    rates = settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']
+    assert settings.REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES']
+    for nom in DEBITS_ATTENDUS:
+        assert rates.get(nom), f"Débit « {nom} » absent en production."

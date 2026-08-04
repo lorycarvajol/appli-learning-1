@@ -23,6 +23,15 @@ parcours réels, bout à bout.
    docker-compose exec backend python manage.py load_course_content
    ```
 
+   ⚠️ `create_demo_users` crée des comptes dont les mots de passe sont écrits
+   dans le dépôt. La commande **refuse de s'exécuter** si
+   `ENVIRONMENT=production` — ne pas chercher à contourner ce refus sur un
+   serveur : le premier administrateur d'une instance réelle se crée avec
+   `createsuperuser`.
+
+   La suite laisse derrière elle un compte jetable par test. Pour nettoyer :
+   `python manage.py purge_test_accounts` (puis `--apply`).
+
    `load_course_content` charge tout le parcours. Pour n'amorcer que ce dont
    `navigation.spec.js` a besoin : `--section 1`.
 

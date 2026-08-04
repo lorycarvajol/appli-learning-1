@@ -1,0 +1,168 @@
+# Pile de production — VPS mutualisé, derrière un Traefik déjà en place.
+#
+# Usage :
+#   cp .env.production.example .env
+#   $EDITOR .env
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# Ce qui diffère du `docker-compose.yml` de développement, et pourquoi
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# 1. **Aucun port publié.** La compose de développement publie 80, 5432, 6379,
+#    8000, 8001 et 5173. Le 80 entrerait en collision frontale avec le Traefik
+#    qui sert déjà l'autre projet ; les autres exposeraient PostgreSQL et Redis
+#    sur l'hôte. Ici, seul Traefik atteint les services, par le réseau `proxy`.
+#
+# 2. **Deux réseaux.** `proxy` (externe, celui de Traefik) ne porte que les deux
+#    services exposés. `internal` porte les données et n'est joignable par aucun
+#    autre projet du VPS.
+#
+# 3. **`daphne` supprimé.** Il servait un `URLRouter` vide : aucun consumer
+#    WebSocket n'existe (`config/asgi.py`). Le garder consommait 72 Mo pour
+#    répondre à personne. À réintroduire le jour où le temps réel existe.
+#
+# 4. **Pas de `/var/run/docker.sock` sur le worker Celery.** C'est le point de
+#    sécurité qui change tout sur un hôte mutualisé : qui contrôle ce worker
+#    contrôle le démon Docker, donc l'hôte, donc *tous* les projets. La
+#    validation de code est donc désactivée (`CODE_EXECUTION_ENABLED=False`) et
+#    l'API la refuse proprement.
+#
+# 5. **Étages `production`**, sources non montées, pas de `--reload`.
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    restart: unless-stopped
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers ${WEB_CONCURRENCY:-4}"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      # ⚠️ Priorité **supérieure** à celle du front : les deux routeurs
+      # répondent au même hôte, et Traefik départage par priorité, pas par
+      # ordre de déclaration. Sans cela, `/api/...` pourrait tomber sur la SPA
+      # et renvoyer l'index.html à la place du JSON.
+      - "traefik.http.routers.learning-api.rule=Host(`${DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/static`))"
+      - "traefik.http.routers.learning-api.priority=100"
+      - "traefik.http.routers.learning-api.entrypoints=websecure"
+      - "traefik.http.routers.learning-api.tls.certresolver=${CERT_RESOLVER:-myresolver}"
+      - "traefik.http.services.learning-api.loadbalancer.server.port=8000"
+
+  celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    restart: unless-stopped
+    command: celery -A config worker -l info -Q default
+    env_file: .env
+    # ⚠️ Ni `volumes:` ni `/var/run/docker.sock` — voir le point 4 en tête de
+    # fichier. La queue `validation` n'est volontairement pas consommée : rien
+    # ne doit y être mis tant que `CODE_EXECUTION_ENABLED=False`, et une tâche
+    # qui y arriverait resterait en attente plutôt que d'échouer bruyamment.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    restart: unless-stopped
+    command: celery -A config beat -l info
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        # Figée dans le bundle à la construction — cf. le commentaire du
+        # Dockerfile. Changer cette valeur impose de reconstruire l'image.
+        VITE_API_URL: https://${DOMAIN}/api
+    restart: unless-stopped
+    volumes:
+      # Illustrations des cours, servies par nginx (cf. frontend/nginx.conf).
+      # En lecture seule : ce sont des fichiers versionnés, rien ne doit y
+      # écrire à l'exécution.
+      - ./backend/media:/usr/share/nginx/media:ro
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.learning-web.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.learning-web.priority=1"
+      - "traefik.http.routers.learning-web.entrypoints=websecure"
+      - "traefik.http.routers.learning-web.tls.certresolver=${CERT_RESOLVER:-myresolver}"
+      - "traefik.http.services.learning-web.loadbalancer.server.port=80"
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  # Créé par la pile Traefik existante : `docker network create proxy`.
+  proxy:
+    external: true
+  internal:
+    driver: bridge

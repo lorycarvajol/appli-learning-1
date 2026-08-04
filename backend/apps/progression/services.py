@@ -14,6 +14,7 @@ Règle transverse : **on ne reverrouille jamais**. Un accès obtenu le reste,
 qu'on rejoigne une classe ensuite ou qu'on quitte la sienne. C'est la même
 logique de monotonie que pour les badges — elle rend les recalculs sûrs.
 """
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -33,8 +34,28 @@ def has_staff_role(user):
     return bool(user) and getattr(user, 'role', None) in STAFF_ROLES
 
 
+def _required_lessons(chapter):
+    """Leçons dont l'achèvement conditionne l'ouverture du chapitre suivant.
+
+    ⚠️ Les leçons d'exercice sont **exclues quand l'exécution de code est
+    désactivée** (`settings.CODE_EXECUTION_ENABLED`, cf. le commentaire dans
+    `config/settings/base.py`). Sans cette exclusion, un exercice qu'on ne peut
+    plus soumettre reste éternellement inachevé : le chapitre 1 comptant 8
+    exercices sur 18 leçons, plus aucun apprenant au rythme libre n'atteindrait
+    le chapitre 2. Le verrou de progression se refermerait sur tout le monde
+    sans que rien ne l'annonce.
+
+    On n'y touche ni au contenu ni à la publication : le drapeau remis à `True`
+    rétablit la règle d'origine, et les exercices déjà terminés le restent.
+    """
+    lessons = [l for l in chapter.lessons.all() if l.is_published]
+    if not settings.CODE_EXECUTION_ENABLED:
+        lessons = [l for l in lessons if l.lesson_type != 'EXERCISE']
+    return lessons
+
+
 def _completed_chapter_ids(user, chapters):
-    """Chapitres dont *toutes* les leçons publiées sont terminées."""
+    """Chapitres dont *toutes* les leçons requises sont terminées."""
     completed_lesson_ids = set(
         UserProgress.objects.filter(
             user=user, status=UserProgress.ProgressStatus.COMPLETED
@@ -43,7 +64,7 @@ def _completed_chapter_ids(user, chapters):
 
     done = set()
     for chapter in chapters:
-        lesson_ids = [l.id for l in chapter.lessons.all() if l.is_published]
+        lesson_ids = [l.id for l in _required_lessons(chapter)]
         if lesson_ids and all(lid in completed_lesson_ids for lid in lesson_ids):
             done.add(chapter.id)
     return done

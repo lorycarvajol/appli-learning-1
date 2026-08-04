@@ -22,7 +22,7 @@ Plateforme interactive d'apprentissage de la programmation web avec système de 
 | 2 — Temps réel | 🟡 | Interfaces faites, **WebSockets inexistants** |
 | 3 — Gamification | ✅ | Badges, points, validation de code |
 | 4 — Projets & social | ❌ | Modèle `Project` seul ; ni soumission, ni forum |
-| 5 — Production | 🟡 | Sécurité et CI faites ; **déploiement à faire** |
+| 5 — Production | 🟡 | Sécurité et CI faites ; **déploiement à faire** — voir [`06_ROADMAP_DEPLOIEMENT.md`](06_ROADMAP_DEPLOIEMENT.md) |
 
 **Hors roadmap initiale, livré depuis :** classes (cohortes) avec liens
 d'invitation, espace d'administration avec journal d'audit, réinitialisation de
@@ -393,6 +393,10 @@ c'est lui qui pilote le bac à sable. Les tests réels ne tournent donc que là
 - [ ] Temps de réponse API < 300ms (p95) — jamais mesuré
 - [ ] Uptime 99.5% — pas de déploiement
 - [ ] Documentation complète
+
+> 📄 Le détail du chantier de mise en ligne (VPS OVH, Traefik, et les points où
+> `guide-hebergement-ovh.md` se trompe sur ce dépôt) vit dans
+> [`06_ROADMAP_DEPLOIEMENT.md`](06_ROADMAP_DEPLOIEMENT.md).
 
 ### Métriques ajoutées
 - [x] **216 tests backend** passants sur 217 (+ 7 tests Docker réels, hors CI)
