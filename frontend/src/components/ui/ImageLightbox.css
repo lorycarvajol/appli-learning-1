@@ -1,16 +1,41 @@
+/*
+ * Visionneuse plein écran des illustrations de cours.
+ *
+ * ⚠️ Le piège corrigé ici : la règle ne portait que `max-width` / `max-height`,
+ * sans `width`. Or ces deux propriétés ne savent que **réduire** une image —
+ * jamais l'agrandir. L'illustration s'affichait donc à sa taille intrinsèque
+ * (560 à 1050 px selon les figures), soit à peine plus qu'en page, et pas du
+ * tout plus pour les plus petites. « Agrandir » ne montrait rien de plus.
+ *
+ * L'image occupe désormais toute la place disponible (`flex: 1` + `width: 100%`),
+ * `object-fit: contain` préservant le rapport d'aspect. Les éléments de chrome
+ * (fermeture, aide) sont sortis du flux et fixés à la fenêtre : tant qu'ils
+ * étaient empilés dans le conteneur, ils prélevaient de la hauteur sur l'image.
+ */
+
 .image-lightbox {
+  /* Marges de la zone réservée à l'image. Déclarées ici en variables parce que
+     l'image s'en sert pour calculer sa propre taille : les changer d'un seul
+     côté désaccorderait le calcul. En haut, 4.25rem dégagent le bouton de
+     fermeture (48 px posés à `top: 1rem`) ; en bas, 6rem logent la légende et
+     la ligne d'aide, toutes deux hors flux. */
+  --marge-haut: 4.25rem;
+  --marge-bas: 6rem;
+  --marge-cote: 1.5rem;
+
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background-color: rgba(0, 0, 0, 0.95);
   z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: var(--marge-haut) var(--marge-cote) var(--marge-bas);
   animation: fadeIn 0.2s ease-out;
+
+  /* Le curseur dit ce que fait un clic ici : refermer. Combiné à la bordure de
+     l'image, il rend la zone d'action lisible sans l'expliquer. */
+  cursor: zoom-out;
 }
 
 @keyframes fadeIn {
@@ -24,18 +49,21 @@
 
 .image-lightbox__container {
   position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  justify-content: center;
+  gap: 0.625rem;
 }
 
 .image-lightbox__close {
-  position: absolute;
-  top: -3rem;
-  right: 0;
+  /* Fixé à la fenêtre, et non posé au-dessus du conteneur : en position
+     absolue à `top: -3rem`, il imposait une réserve de hauteur au conteneur. */
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
   background-color: rgba(255, 255, 255, 0.1);
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
@@ -61,18 +89,43 @@
 }
 
 .image-lightbox__image {
+  /* Place réellement disponible. Calculable en CSS parce que tout le chrome
+     (fermeture, légende, aide) est hors flux et occupe une hauteur connue. */
+  --dispo-largeur: calc(100vw - 2 * var(--marge-cote));
+  --dispo-hauteur: calc(100vh - var(--marge-haut) - var(--marge-bas));
+
+  /* La largeur retenue est la plus contraignante des deux : soit la largeur
+     disponible, soit celle qu'impose la hauteur disponible à rapport constant.
+     `aspect-ratio` en déduit la hauteur.
+     C'est ce qui donne une boîte **exactement de la taille de l'image** — donc
+     un agrandissement réel *et* un vide alentour qui appartient bien à
+     l'arrière-plan, où le clic ferme la visionneuse. */
+  width: min(var(--dispo-largeur), calc(var(--dispo-hauteur) * var(--ratio, 1)));
+  height: auto;
+  aspect-ratio: var(--ratio, auto);
+
+  /* Filet de sécurité tant que `--ratio` n'est pas mesuré (image pas encore
+     chargée) : on ne déborde jamais. */
   max-width: 100%;
-  max-height: calc(90vh - 6rem);
+  max-height: 100%;
   object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+
+  /* Bordure : elle matérialise la zone « image » et rend visible, par
+     contraste, ce qui relève de l'arrière-plan cliquable. */
+  box-sizing: border-box;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 18px 50px rgba(0, 0, 0, 0.45);
+
   animation: zoomIn 0.3s ease-out;
+
+  /* Sur l'image, le clic ne ferme pas : le curseur ne doit donc pas l'annoncer. */
   cursor: default;
 }
 
 @keyframes zoomIn {
   from {
-    transform: scale(0.9);
+    transform: scale(0.96);
     opacity: 0;
   }
   to {
@@ -82,21 +135,28 @@
 }
 
 .image-lightbox__caption {
+  /* Hors flux, comme le reste du chrome : dans le flux, sa hauteur variable
+     (une ou deux lignes selon la légende) rendrait `--dispo-hauteur` faux. */
+  position: fixed;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
   background-color: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   color: white;
-  padding: 0.75rem 1.5rem;
+  padding: 0.5rem 1.25rem;
   border-radius: 8px;
   text-align: center;
-  max-width: 100%;
-  font-size: 0.875rem;
-  line-height: 1.5;
+  max-width: min(calc(100vw - 3rem), 90ch);
+  font-size: 0.8125rem;
+  line-height: 1.45;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .image-lightbox__help {
-  position: absolute;
-  bottom: -3rem;
+  position: fixed;
+  bottom: 0.75rem;
   left: 50%;
   transform: translateX(-50%);
   color: rgba(255, 255, 255, 0.6);
@@ -116,22 +176,24 @@
 /* Responsive */
 @media (max-width: 768px) {
   .image-lightbox {
-    padding: 1rem;
-  }
-
-  .image-lightbox__container {
-    max-width: 95vw;
-    max-height: 95vh;
+    /* Les marges restent des variables : l'image en dérive sa taille. */
+    --marge-haut: 3.5rem;
+    --marge-bas: 5.5rem;
+    --marge-cote: 0.5rem;
   }
 
   .image-lightbox__close {
-    top: -2.5rem;
+    top: 0.5rem;
+    right: 0.5rem;
     width: 40px;
     height: 40px;
   }
 
-  .image-lightbox__image {
-    max-height: calc(95vh - 5rem);
+  .image-lightbox__caption {
+    bottom: 2.25rem;
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+    max-width: calc(100vw - 1rem);
   }
 
   .image-lightbox__help {
@@ -160,6 +222,13 @@
     background-color: rgba(0, 0, 0, 0.05);
     color: #1e293b;
     border-color: rgba(0, 0, 0, 0.1);
+  }
+
+  /* Sur fond clair, une bordure blanche serait invisible — et c'est justement
+     elle qui indique où finit l'image et où commence l'arrière-plan. */
+  .image-lightbox__image {
+    border-color: rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6), 0 18px 50px rgba(0, 0, 0, 0.18);
   }
 
   .image-lightbox__help {
