@@ -84,10 +84,13 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
-      # ⚠️ Priorité **supérieure** à celle du front : les deux routeurs
-      # répondent au même hôte, et Traefik départage par priorité, pas par
-      # ordre de déclaration. Sans cela, `/api/...` pourrait tomber sur la SPA
-      # et renvoyer l'index.html à la place du JSON.
+      # ⚠️ Priorité **supérieure** à celle du front, et surtout jamais égale.
+      # Les deux routeurs répondent au même hôte. Mesuré sur une pile réelle :
+      # à priorités égales, `/api/...` renvoie l'index.html de la SPA au lieu
+      # du JSON. Sans priorité déclarée du tout, Traefik départage par longueur
+      # de règle (95 contre 22) et l'API l'emporte — mais s'y fier est fragile,
+      # c'est une propriété émergente : raccourcir cette règle inverserait le
+      # résultat en silence.
       - "traefik.http.routers.learning-api.rule=Host(`${DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/static`))"
       - "traefik.http.routers.learning-api.priority=100"
       - "traefik.http.routers.learning-api.entrypoints=websecure"

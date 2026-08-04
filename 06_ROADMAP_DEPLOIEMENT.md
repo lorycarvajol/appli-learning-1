@@ -109,10 +109,22 @@ C'est le sujet à trancher **avant** d'ouvrir le site, pas après.
 | D0.6 | `.env.production.example` complet et commenté | ✅ |
 | D0.7 | Amorcer le contenu : `load_course_content`, `seed_badges`, `sync_gamification`, `backfill_chapter_access` | ❌ |
 
-⚠️ **D0.3 — la priorité n'est pas décorative.** Les deux routeurs répondent au
-même hôte ; Traefik départage par priorité, **pas** par ordre de déclaration.
-Sans `priority=100` sur l'API, `/api/...` peut tomber sur la SPA et renvoyer
-`index.html` au lieu du JSON — une panne difficile à diagnostiquer.
+⚠️ **D0.3 — la priorité, mesurée.** Les deux routeurs répondent au même hôte.
+Trois cas ont été éprouvés sur une pile réelle (voir §6) :
+
+| Priorités | `/api/courses/chapters/` |
+|---|---|
+| Aucune — Traefik calcule d'après la **longueur de règle** (95 vs 22) | ✅ JSON |
+| **Égales** (1 et 1) | ❌ `text/html` : la SPA répond à la place de l'API |
+| Explicites (100 et 1) | ✅ JSON |
+
+Contrairement à ce que ce document affirmait d'abord, *omettre* la priorité ne
+casse rien : le défaut de Traefik favorise déjà la règle la plus longue, donc
+celle de l'API. Mais s'y fier est fragile — c'est une propriété **émergente**
+de la longueur des règles, pas une intention déclarée. Retirer `/admin` et
+`/static` de la règle API la raccourcirait, et le basculement se ferait en
+silence. D'où les priorités explicites, avec une seule règle absolue : **ne
+jamais leur donner la même valeur**.
 
 ⚠️ **D0.6 — deux pièges déjà documentés.** `production.py` refuse de démarrer
 sans `SECRET_KEY` propre : c'est voulu, l'échec au démarrage vaut mieux qu'une
@@ -263,7 +275,40 @@ points que l'étape 6.3 du guide passe sous silence.
 
 ---
 
-## 5. Ce que le guide traite bien
+## 5. Répétition locale — résultats
+
+Faite le 2026-08-04 : Traefik local + `docker-compose.prod.yml` monté sous un
+nom de projet distinct (`-p learning-repetition`), images de production
+construites, contenu amorcé. Tout est validé **avant** d'avoir touché au VPS.
+
+| Contrôle | Résultat |
+|---|---|
+| SPA `/` | 200 `text/html` |
+| API `/api/courses/chapters/` | 200 **`application/json`** |
+| Illustration `/media/…png` | 200 **`image/png`**, 35 761 o (taille du fichier) |
+| Admin `/admin/login/` | 200 `text/html` |
+| Statique `/static/…css` | 200 `text/css` (WhiteNoise) |
+| Ports publiés par le projet | **aucun** |
+| `VITE_API_URL` dans le bundle | `https://learning.local/api`, aucun `localhost` |
+| Inscription + connexion via Traefik | 201 puis jeton obtenu |
+| Soumission d'exercice | **503** avec le message d'indisponibilité |
+| Chapitre 2 avec 8 exercices non faits | **ouvert** |
+
+⚠️ **Deux pièges d'environnement local**, sans objet sur l'Ubuntu du VPS :
+
+- le **fournisseur Docker de Traefik ne fonctionne pas** sous Docker Desktop /
+  Windows (« Error response from daemon: », message vide). La répétition est
+  donc passée par le fournisseur fichier, en transcrivant les règles et
+  priorités des labels mot pour mot : c'est le moteur de routage qui a été
+  éprouvé, seule la voie de découverte changeait ;
+- le **rechargement à chaud du fichier de configuration ne se déclenche pas**
+  (inotify ne traverse pas la frontière du système de fichiers Windows). Un
+  premier essai de sabotage a donc paru réussir alors que Traefik servait
+  encore l'ancienne configuration — il a fallu redémarrer le conteneur pour
+  mesurer quoi que ce soit. Se méfier de tout test de configuration à chaud
+  sur ce poste.
+
+## 6. Ce que le guide traite bien
 
 À conserver tel quel : le choix d'Ubuntu LTS, le durcissement SSH (étape 2),
 Traefik avec Let's Encrypt automatique (étape 5), le principe d'un réseau
