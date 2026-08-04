@@ -1478,9 +1478,70 @@ une régression de sécurité directe.** Il n'y a plus de filet en amont pour
 rattraper l'erreur. Ne pas ajouter de `volumes=`, ne pas retirer
 `network_disabled`, ne pas allonger le délai sans y penser à deux fois.
 
-**Piste de durcissement non faite** : le conteneur s'exécute en `root` (aucun
-`user=` n'est passé). Ajouter `user='nobody'` serait peu coûteux, mais c'est un
-changement de comportement à valider sur les quatre langages.
+Le conteneur s'exécutait autrefois en `root`, sans capacité retirée et avec un
+système de fichiers inscriptible. C'est corrigé — voir « Le bac à sable sur un
+hôte mutualisé » ci-dessous.
+
+⚠️ **Défaut corrigé au passage : la branche Python ne produisait aucune sortie.**
+`_create_validation_script` concaténait le code de l'apprenant et les
+`assert`, **sans rien imprimer** : le conteneur sortait sans JSON et
+`run_code` échouait invariablement sur « Erreur lors du parsing des
+résultats ». Le défaut est resté invisible parce qu'aucun exercice n'utilise ce
+langage — les 25 existants sont en HTML ou en JavaScript. Il aurait accueilli
+le premier exercice Python écrit.
+
+### Le bac à sable sur un hôte mutualisé
+
+Le VPS héberge d'autres projets. Deux barrières ont donc été posées pour que
+l'exécution de code reste activable sans les exposer.
+
+**1. Le worker n'a plus la socket Docker.** Il parle à un mandataire
+(`tecnativa/docker-socket-proxy`, service `docker-proxy` de
+`docker-compose.prod.yml`) placé sur un réseau `internal: true` que lui seul
+atteint. Mesuré en conditions réelles :
+
+| Appel | Résultat |
+|---|---|
+| Créer, démarrer, attendre, lire, supprimer un conteneur | autorisé (le bac à sable en a besoin) |
+| Inspecter une image | autorisé |
+| **`exec` dans un autre conteneur** | **refusé** |
+| **Lister volumes / réseaux** | **refusé (403)** |
+| **`info` système** (chemins de l'hôte) | **refusé (403)** |
+| **Construire une image** | **refusé (403)** |
+
+**2. Le conteneur d'exécution est durci.** Chaque réglage retire un moyen
+d'évasion, et chacun est verrouillé par un test sur les arguments passés à
+Docker — lancer un vrai conteneur ne dirait pas si l'un a disparu d'un appel :
+
+| Réglage | Ce qu'il retire |
+|---|---|
+| `user='65534:65534'` | le code ne s'exécute plus en `root` |
+| `cap_drop=['ALL']` | toutes les capacités Linux, jusqu'à `CAP_SETUID` |
+| `no-new-privileges` | l'élévation par binaire setuid |
+| `read_only=True` | l'écriture hors `/tmp` |
+| `tmpfs` `noexec,size=16m` | déposer puis exécuter un binaire |
+| `pids_limit=64` | la bombe à fork |
+| `network_disabled=True` | toute sortie — **y compris vers le mandataire** |
+
+⚠️ **Ce que cela ne protège pas, et il faut le savoir.** Le mandataire filtre
+par **route**, pas par contenu de requête : `CONTAINERS=1` autorise donc encore
+la création d'un conteneur privilégié montant `/`. Quelqu'un qui obtiendrait
+l'exécution de code **dans le worker** (une faille Django ou une dépendance
+compromise) pourrait le faire.
+
+Ce n'est pas le scénario contre lequel ces barrières sont dressées. Le code
+d'apprenant s'exécute dans un conteneur **sans réseau** : il ne peut pas
+joindre le mandataire. Pour en abuser il faudrait d'abord compromettre le
+worker lui-même, ce qui n'est plus une évasion de bac à sable mais une prise de
+contrôle de l'application.
+
+La barrière suivante, si le besoin s'en fait sentir, serait un **runtime à
+isolation renforcée** (gVisor, Sysbox) — installation sur l'hôte, donc hors de
+portée d'une modification du dépôt.
+
+⚠️ `user='65534:65534'` est donné en **numérique** et non `nobody` : le nom
+n'est pas garanti d'une image à l'autre (`python:slim` est Debian,
+`node:alpine` est Alpine). Vérifié sur les quatre langages.
 
 ### Le drapeau `CODE_EXECUTION_ENABLED`
 

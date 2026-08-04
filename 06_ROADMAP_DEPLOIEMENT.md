@@ -44,10 +44,16 @@ des comptes dont les mots de passe sont publiés dans le dépôt. Le garde-fou d
 | Empreinte de ce projet | ~1 Go au repos, +128 Mo et ½ cœur par exécution de code |
 | Verdict capacité | **Large marge.** Aucun réglage d'économie nécessaire : ni réduction des workers gunicorn, ni Redis mutualisé. |
 
-**Décision actée : l'exécution de code est désactivée à l'ouverture**
-(`CODE_EXECUTION_ENABLED=False`). L'hôte étant partagé, monter
-`/var/run/docker.sock` dans le worker Celery exposerait les autres projets.
-Réversible sans migration.
+**Décision révisée le 2026-08-04 : l'exécution de code est activée.** Elle
+devait d'abord rester désactivée, l'hôte étant partagé. Deux barrières l'ont
+rendue acceptable — un mandataire de socket qui n'ouvre que les routes du bac à
+sable, et un conteneur d'exécution durci (non-root, sans capacité, en lecture
+seule). Voir « Le bac à sable sur un hôte mutualisé » dans CLAUDE.md, y compris
+ce que ces barrières **ne** protègent pas.
+
+Le drapeau `CODE_EXECUTION_ENABLED` reste le moyen de tout désactiver
+proprement en cas de doute : l'API répond 503 et la progression n'est jamais
+bloquée.
 
 ---
 
@@ -166,8 +172,9 @@ Django (`config/urls.py:46`).
 
 | # | Tâche | État |
 |---|---|---|
-| D1.1 | **Sort de la socket Docker** (§2) : bac à sable désactivé à l'ouverture, socket non montée, API qui refuse proprement, progression non bloquée | ✅ |
-| D1.2 | Faire tourner le conteneur d'exécution en `user='nobody'` — prérequis à toute réactivation | ❌ |
+| D1.1 | **Sort de la socket Docker** (§2) : le worker passe par un mandataire limité aux routes du bac à sable, sur un réseau `internal`. Mesuré : `exec`, volumes, réseaux, `info` et `build` refusés | ✅ |
+| D1.2 | Conteneur d'exécution durci : non-root, sans capacité, `no-new-privileges`, racine en lecture seule, `/tmp` en `noexec`, `pids_limit`. Vérifié sur les quatre langages | ✅ |
+| D1.2b | **Exercices réactivés** (`CODE_EXECUTION_ENABLED=True`) — les 25 exercices redeviennent validables | ✅ |
 | D1.3 | **Comptes de démonstration.** `create_demo_users` **refuse désormais de s'exécuter** quand `ENVIRONMENT=production`, et oriente vers `createsuperuser` | ✅ |
 | D1.4 | `purge_test_accounts` recense et supprime les comptes de démo et les jetables `e2e-*`. Sans `--apply`, il se contente de recenser | ✅ |
 

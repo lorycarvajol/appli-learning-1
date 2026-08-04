@@ -59,6 +59,24 @@ class DockerSandbox:
     MEMORY_LIMIT = '128m'  # 128 MB de RAM
     CPU_QUOTA = 50000  # 50% d'un CPU
     TIMEOUT = 5  # 5 secondes max
+    PIDS_LIMIT = 64  # bombe à fork : le conteneur s'épuise, pas l'hôte
+
+    # Utilisateur non privilégié. Sans cela le code d'apprenant s'exécutait en
+    # `root` **dans** le conteneur : une faille du runtime aboutissait alors
+    # directement à un `root` sur l'hôte, sans étape intermédiaire.
+    # 65534:65534 = nobody:nogroup, présent dans les deux images de base
+    # (python:slim est Debian, node:alpine est Alpine) — on donne les identifiants
+    # numériques plutôt que le nom, qui n'est pas garanti d'une image à l'autre.
+    RUN_AS_USER = '65534:65534'
+
+    # Espace inscriptible, en mémoire et borné. Le reste du système de fichiers
+    # est en lecture seule (`read_only=True`) : un code qui écrit ne peut pas
+    # préparer un binaire à exécuter ailleurs.
+    TMPFS = {'/tmp': 'rw,noexec,nosuid,size=16m'}
+
+    # `no-new-privileges` neutralise setuid/setgid : même un binaire setuid
+    # présent dans l'image ne peut plus élever les droits.
+    SECURITY_OPT = ['no-new-privileges:true']
 
     # Images Docker par langage
     DOCKER_IMAGES = {
@@ -238,8 +256,45 @@ console.log(JSON.stringify({
 }));
 '''
         else:
-            # Pour Python pur
-            script = user_code + '\n\n' + '\n'.join(test['code'] for test in tests)
+            # Python pur.
+            #
+            # ⚠️ Cette branche produisait `user_code + les asserts`, **sans rien
+            # imprimer** : le conteneur sortait sans JSON et `run_code`
+            # échouait invariablement sur « Erreur lors du parsing des
+            # résultats ». Le défaut est resté invisible parce qu'aucun
+            # exercice n'utilise ce langage — les 25 existants sont en HTML ou
+            # en JavaScript. Il aurait accueilli le premier exercice Python.
+            #
+            # Même contrat que les autres langages : le code de l'apprenant est
+            # exécuté d'abord (ses fonctions restent donc visibles des tests),
+            # puis chaque test est évalué isolément pour qu'un échec n'empêche
+            # pas les suivants.
+            script = (
+                'import json, sys\n'
+                '__tests = ' + json.dumps(tests) + '\n'
+                '__results = []\n'
+                '__espace = {}\n'
+                'exec(' + json.dumps(user_code) + ', __espace)\n'
+                'for __t in __tests:\n'
+                '    __nom = __t.get("name", "Test")\n'
+                '    __points = __t.get("points", 1)\n'
+                '    __msg = __t.get("error_message", "")\n'
+                '    try:\n'
+                '        exec(__t.get("code", ""), __espace)\n'
+                '        __results.append({"name": __nom, "passed": True,'
+                ' "points": __points, "message": "\\u2713 Parfait !"})\n'
+                '    except AssertionError as __e:\n'
+                '        __results.append({"name": __nom, "passed": False, "points": 0,'
+                ' "message": __msg or str(__e) or "Le test a \\u00e9chou\\u00e9"})\n'
+                '    except Exception as __e:\n'
+                '        __results.append({"name": __nom, "passed": False, "points": 0,'
+                ' "message": __msg or ("Erreur inattendue: " + str(__e))})\n'
+                'print(json.dumps({\n'
+                '    "results": __results,\n'
+                '    "total_points": sum(r["points"] for r in __results),\n'
+                '    "max_points": sum(t.get("points", 1) for t in __tests),\n'
+                '}))\n'
+            )
 
         return script
 
@@ -273,7 +328,14 @@ console.log(JSON.stringify({
                 detach=True,
                 mem_limit=self.MEMORY_LIMIT,
                 cpu_quota=self.CPU_QUOTA,
+                pids_limit=self.PIDS_LIMIT,
                 network_disabled=True,  # Pas d'accès réseau
+                # --- Durcissement : chaque ligne retire un moyen d'évasion ---
+                user=self.RUN_AS_USER,          # plus de root dans le conteneur
+                cap_drop=['ALL'],               # aucune capacité Linux conservée
+                security_opt=self.SECURITY_OPT,  # setuid neutralisé
+                read_only=True,                 # racine non inscriptible
+                tmpfs=self.TMPFS,               # sauf /tmp, en mémoire et noexec
                 remove=False,  # On supprimera manuellement après avoir récupéré les logs
             )
 
