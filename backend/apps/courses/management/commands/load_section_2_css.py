@@ -3,6 +3,8 @@ Management command to load Section 2: Introduction to CSS
 Usage: python manage.py load_section_2_css --force
 """
 from django.core.management.base import BaseCommand
+
+from apps.courses.content import pipeline, section2_css_extra
 from apps.courses.models import Chapter, Lesson, Exercise, Quiz
 
 
@@ -313,8 +315,6 @@ button:disabled {
 }
 ```
 
-> 📊 **Illustration à voir** : Tableau récapitulatif des sélecteurs CSS
-
 ---
 
 ## 📐 Le Box Model (modèle de boîte)
@@ -440,8 +440,6 @@ Largeur visible = **200px** (padding et border sont absorbés dans les 200px)
     box-sizing: border-box;
 }
 ```
-
-> 📊 **Illustration à voir** : Schéma comparatif `content-box` vs `border-box`
 
 ---
 
@@ -897,12 +895,12 @@ Bonne chance ! 🍀
         self.stdout.write(f'    ✅ Quiz créé pour : {lesson_2_5.title}')
 
         # ==========================================
-        # SUMMARY
+        # Compléments et illustrations
         # ==========================================
-        self.stdout.write(self.style.SUCCESS('\n✅ Section 2: Introduction to CSS loaded successfully!'))
-        self.stdout.write(f'📚 Chapitre : {chapter.title}')
-        self.stdout.write(f'📖 Leçons : {Lesson.objects.filter(chapter=chapter).count()}')
-        self.stdout.write(f'💻 Exercices : {Exercise.objects.filter(lesson__chapter=chapter).count()}')
-        self.stdout.write(f'📝 Quiz : {Quiz.objects.filter(lesson__chapter=chapter).count()}')
-        self.stdout.write(f'⏱️ Durée totale : {chapter.estimated_duration} minutes')
-        self.stdout.write(f'🏆 Points totaux : {sum(lesson.points for lesson in Lesson.objects.filter(chapter=chapter))} points')
+        # `section2_css_extra` ajoute 12 leçons, réordonne le chapitre et
+        # reconstruit le quiz au format enrichi.
+        pipeline.finish(
+            self, chapter,
+            steps=[section2_css_extra.build],
+            verbosity=options.get('verbosity', 1),
+        )

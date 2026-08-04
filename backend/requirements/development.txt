@@ -12,6 +12,13 @@ pytest-asyncio==0.23.5
 factory-boy==3.3.0
 faker==22.6.0
 
+# Génération des illustrations de cours (manage.py generate_course_images)
+# ⚠️ Développement uniquement, et à ne pas remonter dans base.txt : Pillow en a
+# été retiré avec le dernier ImageField (cf. « Avatars : catalogue, pas
+# téléversement » dans CLAUDE.md). Le dessin des figures est un outil d'auteur,
+# pas une dépendance de l'application — la production sert des PNG versionnés.
+Pillow==10.2.0
+
 # Code Quality
 black==24.1.1
 flake8==7.0.0

@@ -3,7 +3,7 @@ import { registerNewUser } from './helpers'
 
 /**
  * Parcours de navigation de contenu. Dépend du chapitre « Introduction au
- * HTML » : lancer `python manage.py load_section_1_html --force` avant
+ * HTML » : lancer `python manage.py load_course_content --section 1` avant
  * (cf. e2e/README.md). Ne pas amorcer avec `load_demo_content`, qui remplace
  * ce chapitre par une version maigre.
  *

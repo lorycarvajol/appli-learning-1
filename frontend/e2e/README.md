@@ -20,8 +20,11 @@ parcours réels, bout à bout.
 
    ```bash
    docker-compose exec backend python manage.py create_demo_users
-   docker-compose exec backend python manage.py load_section_1_html --force
+   docker-compose exec backend python manage.py load_course_content
    ```
+
+   `load_course_content` charge tout le parcours. Pour n'amorcer que ce dont
+   `navigation.spec.js` a besoin : `--section 1`.
 
    Seul `navigation.spec.js` dépend du contenu (il ouvre le chapitre
    « Introduction au HTML »). Les autres tests créent leurs propres comptes.

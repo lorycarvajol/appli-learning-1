@@ -325,25 +325,126 @@ Aucun bug connu actuellement. Toutes les fonctionnalités implémentées sont te
 7. **UUID everywhere**: Tous les IDs sont des UUID, pas d'entiers séquentiels
 8. **Slugs**: Chapitres, leçons, projets utilisent des slugs pour URLs lisibles
 
-## Le contenu des cours et la commande qui l'écrasait
+## Contenu des cours — architecture
 
-Le contenu pédagogique **ne vit pas en base de données** : il vit dans des
-commandes Django, sous `apps/courses/management/commands/`. La base n'en est
-qu'une projection, reconstructible à tout moment. C'est ce qui a permis de
-récupérer l'incident décrit ci-dessous sans perdre une ligne.
+Le contenu pédagogique **ne vit pas en base de données** : il vit dans le code,
+sous `apps/courses/content/`. La base n'en est qu'une projection,
+reconstructible à tout moment. C'est ce qui a permis de récupérer les deux
+incidents décrits plus bas sans perdre une ligne.
 
-| Commande | Chapitre créé | Contenu |
+```
+backend/apps/courses/
+├── content/                       ← la source du contenu
+│   ├── illustrations.py           règles déclaratives de rattachement des figures
+│   ├── pipeline.py                assemblage d'un chapitre (compléments + figures)
+│   ├── section1_html_extra.py     12 leçons complémentaires HTML
+│   ├── section1_html_quiz.py      quiz HTML (20 questions, positions mélangées)
+│   ├── section2_css_extra.py      12 leçons complémentaires CSS
+│   ├── section3_javascript.py     le chapitre JavaScript (17 leçons)
+│   ├── section3_javascript_quiz.py
+│   └── images/                    dessin des illustrations (Pillow)
+│       ├── palette.py             couleurs, polices, primitives — le socle commun
+│       ├── section1_html.py       13 figures
+│       ├── section2_css.py        11 figures
+│       └── section3_javascript.py  7 figures
+└── management/commands/
+    ├── load_course_content.py     ← orchestrateur, le point d'entrée
+    ├── load_section_1_html.py     un chapitre complet chacune
+    ├── load_section_2_css.py
+    ├── load_section_3_javascript.py
+    ├── load_section_4_site_vitrine.py
+    ├── load_demo_content.py       3 chapitres maigres, pour les démos
+    └── generate_course_images.py  régénère les 31 PNG
+```
+
+### Une commande = un chapitre complet
+
+```bash
+python manage.py load_course_content              # tout le parcours
+python manage.py load_course_content --section 3  # un seul chapitre
+python manage.py load_course_content --list
+```
+
+**C'est l'invariant central.** Une commande de section construit son chapitre
+*entier* : contenu de base, leçons complémentaires, quiz et illustrations. Il
+n'y a plus d'étape à ne pas oublier.
+
+| Chapitre | Commande | Contenu |
 |---|---|---|
-| `load_section_1_html` | `introduction-html` (order 1) | 5 leçons, 2 exercices, 1 quiz, 80 pts |
-| `load_section_2_css` | `introduction-css` (order 2) | 5 leçons, 2 exercices, 1 quiz, 90 pts |
-| `load_section_4_site_vitrine` | `site-vitrine` (order 4) | 15 leçons |
-| `load_demo_content` | 3 chapitres maigres (order 1-3) | contenus de 500 à 900 caractères |
+| 1 — HTML | `load_section_1_html` | 18 leçons, 8 exercices, 2 quiz |
+| 2 — CSS | `load_section_2_css` | 17 leçons, 8 exercices, 1 quiz |
+| 3 — JavaScript | `load_section_3_javascript` | 18 leçons, 9 exercices, 1 quiz |
+| 4 — Site vitrine | `load_section_4_site_vitrine` | 15 leçons, 1 quiz |
 
-Il n'existe **pas** de `load_section_3` : le chapitre JavaScript
-(`javascript-debutants`, order 3) n'a que sa version de démonstration. C'est le
-seul endroit du parcours où `load_demo_content` fournit encore le contenu réel.
+⚠️ `load_section_3_javascript` **supprime le chapitre de démonstration**
+`javascript-debutants` : les deux occupent la même place dans le parcours.
 
-### L'incident du 2026-07-22
+### Les illustrations sont rattachées au chargement, pas après coup
+
+`content/illustrations.py` déclare 32 règles « ancre → figure », appliquées par
+`pipeline.finish()` juste avant l'enregistrement. Deux propriétés, chacune
+couverte par un test (`tests/test_illustrations.py`) :
+
+- **Idempotent** — l'image déjà présente ⇒ la règle ne fait rien. Recharger un
+  chapitre n'empile pas les figures.
+- **Bruyant** — ancre introuvable ⇒ `IllustrationError`. Une figure qui
+  disparaît casse le chargement au lieu de produire une leçon amputée.
+
+Les PNG sont **versionnés** (`backend/media/courses/`, 31 fichiers, 710 Ko) :
+un clone affiche les illustrations sans rien exécuter. `.gitignore` ignore le
+reste de `backend/media/` (les téléversements d'exécution) mais ré-inclut
+`courses/`.
+
+`generate_course_images` ne sert qu'à **retoucher** une figure — on la relance
+et on commite le PNG. Elle exige Pillow et les polices DejaVu, installés dans
+l'**étage development** du Dockerfile seulement. ⚠️ Ne pas remonter Pillow dans
+`requirements/base.txt` : il en a été retiré avec le dernier `ImageField` (cf.
+« Avatars : catalogue, pas téléversement »), et la production sert des PNG
+versionnés — elle n'a rien à dessiner.
+
+### Ajouter du contenu
+
+- **Une leçon** → dans le module `content/sectionN_*.py` correspondant, puis
+  recharger la section.
+- **Une figure** → dessiner dans `content/images/sectionN_*.py`, lancer
+  `generate_course_images`, ajouter la règle dans `illustrations.py`, recharger.
+- **Un chapitre** → un module dans `content/`, une commande, et une entrée dans
+  `SECTIONS` de `load_course_content.py`.
+
+### L'incident du 2026-08-04 : 17 scripts à la racine
+
+Avant cette réorganisation, `backend/` portait **17 scripts** hors de toute
+commande Django, formant un pipeline manuel non documenté. Construire le seul
+chapitre 1 demandait six étapes dans un ordre précis : `load_section_1_html`,
+`expand_section_1_html.py`, `add_html_quiz.py`, `fix_html_quiz_option_order.py`,
+puis deux scripts d'images qui faisaient un `str.replace()` **sur la base**.
+
+Quatre conséquences, toutes constatées :
+
+- **L'étape 1 défaisait les étapes 2 à 8.** Recharger une section réécrivait le
+  contenu depuis la source, donc sans les figures — silencieusement.
+- **L'ordre était piégeux** : `expand_section_1_html.py` échouait si
+  `add_html_quiz.py` n'était pas passé *avant*, ce qu'aucun fichier ne disait.
+- **Le chapitre JavaScript était invisible** : ses 17 leçons existaient dans
+  `backend/load_section_3_javascript.py`, jamais promu en commande, donc jamais
+  lancé. Le parcours servait les 2 leçons squelettiques de la démo à sa place.
+- **Les illustrations n'étaient ni versionnées ni régénérables** : `media/`
+  était dans `.gitignore`, et l'image Docker n'avait ni Pillow ni les polices.
+  État mesuré au moment du diagnostic : **0 image référencée en base, 31 PNG
+  orphelins sur le disque**.
+
+Bilan après réorganisation : **43 leçons manquantes restaurées** (27 → 70), les
+17 scripts supprimés, `backend/` ne contenant plus que `manage.py`.
+
+⚠️ La refonte a été validée par **empreinte avant/après** : le pipeline manuel a
+d'abord été rejoué en entier pour figer un état de référence (hachage du contenu
+de chaque leçon), puis la nouvelle commande unique a dû le reproduire à
+l'identique. Elle a attrapé une vraie régression au passage — une transformation
+qui indentait l'intérieur des chaînes multilignes et décalait donc tout le
+contenu des leçons de 4 espaces. Refaire cette vérification avant toute
+manipulation de masse du contenu.
+
+### L'incident du 2026-07-22 : la commande qui écrasait tout
 
 `load_demo_content` faisait `Chapter.objects.all().delete()` — il ne supprimait
 pas *son* contenu mais **tout** le contenu, puis recréait trois chapitres
@@ -362,7 +463,9 @@ Trois règles en découlent, à ne pas défaire :
   `load_section_*` le faisaient déjà (`filter(slug=…)`) ; `load_demo_content`
   est désormais borné par `DEMO_CHAPTER_SLUGS`. Une nouvelle commande qui
   ajoute un chapitre doit ajouter son slug à sa propre liste de suppression,
-  jamais élargir la portée.
+  jamais élargir la portée. La seule exception est assumée et documentée :
+  `load_section_3_javascript` retire `javascript-debutants`, le chapitre de
+  démonstration qu'il remplace au même rang du parcours.
 - **L'amorçage E2E passe par `load_section_1_html --force`**, pas par
   `load_demo_content`. Le loader de section fournit le même slug, le même titre
   et la même première leçon que ce qu'attend `navigation.spec.js`, en plus
@@ -1718,10 +1821,9 @@ Conventions, chacune apprise en écrivant la suite :
   login raté (mauvais mot de passe, compte supprimé) asservissent désormais la
   présence du `role="alert"` — ils rougiraient si l'intercepteur se remettait à
   recharger `/login` sur un 401 d'auth.
-- **`navigation.spec.js` dépend de `load_section_1_html`** (`--force` en
-  non-interactif) ; les autres non. ⚠️ **Ne pas amorcer avec
-  `load_demo_content`** : voir « Le contenu des cours et la commande qui
-  l'écrasait » plus bas.
+- **`navigation.spec.js` dépend de `load_course_content --section 1`** ; les
+  autres non. ⚠️ **Ne pas amorcer avec `load_demo_content`** : voir « Contenu
+  des cours — architecture » plus haut.
 
 ⚠️ **La CI ne lance pas encore l'E2E** — choix assumé (stabiliser en local
 d'abord). Le jour venu : un job qui monte la stack, amorce, puis lance
