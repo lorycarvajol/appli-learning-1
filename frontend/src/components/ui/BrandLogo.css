@@ -1,0 +1,32 @@
+.brand-logo {
+  display: inline-flex;
+  text-decoration: none;
+  border-radius: 18px;
+  transition: transform 0.2s ease;
+}
+
+.brand-logo:hover .brand-logo__image {
+  transform: translateY(-2px);
+}
+
+.brand-logo:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+}
+
+/* Le fichier porte déjà son fond et ses coins arrondis : aucun cadre à
+   rajouter ici. `object-fit: contain` évite une déformation si le logo était
+   un jour remplacé par une image de proportions différentes. */
+.brand-logo__image {
+  width: 104px;
+  height: 104px;
+  object-fit: contain;
+  transition: transform 0.2s ease;
+}
+
+@media (max-width: 480px) {
+  .brand-logo__image {
+    width: 84px;
+    height: 84px;
+  }
+}

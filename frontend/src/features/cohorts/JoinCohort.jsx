@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import cohortsApi from '@/services/api/cohortsApi'
 import { fetchCurrentUser } from '@/features/auth/authSlice'
 import PasswordInput from '@/components/ui/PasswordInput'
+import BrandLogo from '@/components/ui/BrandLogo';
 
 /**
  * Page d'arrivée sur un lien d'invitation.
@@ -247,10 +248,7 @@ export default function JoinCohort() {
   return (
     <div className="auth-page">
       <div className="auth-container">
-        <Link to="/login" className="auth-logo">
-          <span className="auth-logo__mark" aria-hidden="true">&lt;/&gt;</span>
-          <span>CodeAcademy</span>
-        </Link>
+        <BrandLogo to="/login" />
 
         <div className="auth-card">
           <div className="auth-header">

@@ -32,18 +32,14 @@
   font-size: 1.05rem;
 }
 
+/* L'image porte son propre fond et ses coins arrondis : aucun cadre à
+   ajouter, sinon on encadrerait un cadre. */
 .footer__logo-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 24px;
   height: 24px;
+  object-fit: contain;
+  flex-shrink: 0;
   border-radius: 6px;
-  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
-  color: #fff;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.6rem;
-  font-weight: 700;
 }
 
 .footer__tagline {

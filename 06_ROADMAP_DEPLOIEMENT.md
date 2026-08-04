@@ -5,6 +5,36 @@ Chaque constat ci-dessous a été vérifié dans le code, référence à l'appui
 
 > **Convention :** ✅ fait · 🟡 partiel · ❌ à faire · ⛔ bloquant
 
+## ⏩ Où reprendre
+
+**Tout le code est fait et éprouvé. Il ne reste que les étapes sur le serveur.**
+
+La pile de production a été montée en local avec Traefik le 2026-08-04 et les
+dix contrôles d'ouverture passent (voir « Répétition locale — résultats »). Ce qui manque ne peut se faire que sur
+le VPS, avec vos secrets :
+
+| # | À faire | Où |
+|---|---|---|
+| 1 | Enregistrement DNS du sous-domaine (ou wildcard déjà en place) | espace client OVH |
+| 2 | `cp .env.production.example .env` puis remplir `SECRET_KEY`, `DB_PASSWORD`, `DOMAIN`, `CERT_RESOLVER` | VPS |
+| 3 | `docker compose -f docker-compose.prod.yml up -d --build` | VPS |
+| 4 | Amorcer le contenu, puis `createsuperuser` — **jamais `create_demo_users`** | VPS |
+| 5 | Vérifier les contrôles d’ouverture | navigateur |
+| 6 | SMTP réel (sans lui, « mot de passe oublié » échoue en silence) | `.env` |
+| 7 | Cron des sauvegardes + externalisation des archives hors du VPS | VPS |
+
+La commande exacte de chaque étape est à la section « Mise en service, concrètement ».
+
+⚠️ **À vérifier en premier sur place** : le nom du certresolver de votre
+Traefik. Le nôtre suppose `myresolver`, celui du guide. S'il diffère, la
+variable `CERT_RESOLVER` du `.env` suffit — ne pas toucher à la compose.
+
+⚠️ **Ne jamais restaurer un dump de développement en production** : il contient
+des comptes dont les mots de passe sont publiés dans le dépôt. Le garde-fou de
+`create_demo_users` ne peut rien contre une restauration.
+
+---
+
 ## Infrastructure cible (constatée)
 
 | | |
@@ -110,7 +140,7 @@ C'est le sujet à trancher **avant** d'ouvrir le site, pas après.
 | D0.7 | Amorcer le contenu : `load_course_content`, `seed_badges`, `sync_gamification`, `backfill_chapter_access` | ❌ |
 
 ⚠️ **D0.3 — la priorité, mesurée.** Les deux routeurs répondent au même hôte.
-Trois cas ont été éprouvés sur une pile réelle (voir §6) :
+Trois cas ont été éprouvés sur une pile réelle (voir « Répétition locale — résultats ») :
 
 | Priorités | `/api/courses/chapters/` |
 |---|---|

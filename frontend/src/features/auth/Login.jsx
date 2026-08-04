@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { login, clearError } from './authSlice'
 import PasswordInput from '@/components/ui/PasswordInput'
+import BrandLogo from '@/components/ui/BrandLogo';
 
 function Login() {
   const [email, setEmail] = useState('')
@@ -36,10 +37,7 @@ function Login() {
   return (
     <div className="auth-page">
       <div className="auth-container">
-        <Link to="/dashboard" className="auth-logo">
-          <span className="auth-logo__mark" aria-hidden="true">&lt;/&gt;</span>
-          <span>CodeAcademy</span>
-        </Link>
+        <BrandLogo to="/dashboard" />
 
         <div className="auth-card">
           <div className="auth-header">

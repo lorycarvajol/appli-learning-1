@@ -5,7 +5,7 @@ Plateforme interactive d'apprentissage de la programmation web avec système de 
 
 ---
 
-## 📍 État réel au 2026-07-21
+## 📍 État réel au 2026-08-04
 
 > ⚠️ **Avertissement.** Jusqu'à cette date, ce document marquait **tous** les
 > livrables en ✅ — y compris ceux dont aucune ligne de code n'existait
@@ -22,28 +22,34 @@ Plateforme interactive d'apprentissage de la programmation web avec système de 
 | 2 — Temps réel | 🟡 | Interfaces faites, **WebSockets inexistants** |
 | 3 — Gamification | ✅ | Badges, points, validation de code |
 | 4 — Projets & social | ❌ | Modèle `Project` seul ; ni soumission, ni forum |
-| 5 — Production | 🟡 | Sécurité et CI faites ; **déploiement à faire** — voir [`06_ROADMAP_DEPLOIEMENT.md`](06_ROADMAP_DEPLOIEMENT.md) |
+| 5 — Production | 🟡 | **Tout le code est prêt et éprouvé en répétition locale.** Ne restent que les étapes sur le serveur — voir [`06_ROADMAP_DEPLOIEMENT.md`](06_ROADMAP_DEPLOIEMENT.md) |
+
+**Le sujet actif est la mise en production, pas le produit.** Le contenu
+pédagogique est passé de 27 à 68 leçons et vit désormais dans le code
+(`apps/courses/content/`), reconstructible par une commande.
 
 **Hors roadmap initiale, livré depuis :** classes (cohortes) avec liens
 d'invitation, espace d'administration avec journal d'audit, réinitialisation de
 mot de passe, gardes de rôle côté front, conformité RGPD (anonymisation),
 profil personnalisable (avatars, thème rattaché au compte).
 
-### Filet de sécurité : 254 tests, exécutés automatiquement
+### Filet de sécurité : 349 tests
 
 | Périmètre | Tests | Remarque |
 |---|---|---|
-| `accounts` | 52 | comptes, mot de passe, profil, limitation des connexions |
+| `accounts` | 72 | comptes, mot de passe, profil, limitation des connexions, comptes de démonstration |
 | `administration` | 53 | journal d'audit, garde-fous, bridage de l'admin Django |
-| `progression` | 33 | verrou de chapitre, quiz, temps — validés par sabotage |
+| `progression` | 35 | verrou de chapitre, quiz, temps — validés par sabotage |
+| `validation` | 24 | isolement du bac à sable, désactivation de l’exécution (+ 7 tests Docker réels, hors CI) |
 | `cohorts` | 30 | classes, invitations, cloisonnement |
+| `courses` | 29 | normalisation JSONB, masquage des solutions, chargeurs, illustrations |
 | `gamification` | 29 | badges, points, anti-double-validation |
-| `validation` | 20 | isolement du bac à sable (+ 7 tests Docker réels, hors CI) |
-| **Backend** | **217** | pytest-django — 216 passants, 1 ignoré (contrôle réservé à la production) |
-| **Frontend** | **37** | Vitest + Testing Library, jsdom |
+| **Backend** | **272** | pytest-django — 270 passants, 2 ignorés (contrôles réservés à la production) |
+| **Frontend** | **65** | Vitest + Testing Library, jsdom |
+| **Bout-en-bout** | **12** | Playwright, en local — pas encore en CI |
 | ESLint | — | zéro erreur **et zéro avertissement**, porte de CI |
 
-**`courses` est la dernière app backend sans test propre.**
+Toutes les apps backend sont désormais couvertes.
 
 ### Les trois manques les plus structurants
 
@@ -398,14 +404,14 @@ c'est lui qui pilote le bac à sable. Les tests réels ne tournent donc que là
 > `guide-hebergement-ovh.md` se trompe sur ce dépôt) vit dans
 > [`06_ROADMAP_DEPLOIEMENT.md`](06_ROADMAP_DEPLOIEMENT.md).
 
-### Métriques ajoutées
-- [x] **216 tests backend** passants sur 217 (+ 7 tests Docker réels, hors CI)
-- [x] **37 tests frontend** (Vitest + Testing Library)
+### Métriques (2026-08-04)
+- [x] **270 tests backend** (+ 7 marqués `docker`, hors CI)
+- [x] **65 tests frontend** (Vitest + Testing Library)
+- [x] **12 tests bout-en-bout** (Playwright, en local)
 - [x] **ESLint à zéro** — erreurs *et* avertissements, en porte de CI
 - [x] **CI verte** sur `main` et sur chaque *pull request*
-- [ ] `courses` — dernière app backend sans test propre
-- [ ] Tests bout-en-bout (Playwright) — les parcours complets se vérifient
-      encore à la main
+- [x] Toutes les apps backend couvertes, `courses` comprise
+- [ ] La CI ne lance pas encore l'E2E et ne construit aucune image
 
 ---
 
@@ -513,8 +519,10 @@ Révisé le 2026-07-21 : les deux premières entrées de la liste précédente
 | Risque | Impact | Statut |
 |--------|--------|--------|
 | **Documentation affirmant des fonctionnalités inexistantes** | Élevé | 🟡 Trois cas corrigés (tests frontend, WebSockets, découpage de bundle). Risque **récurrent** : vérifier contre le code, jamais contre les documents |
-| Absence totale de tests frontend | Élevé | ✅ Fermé — Vitest, 37 tests |
-| Absence de CI/CD | Moyen | 🟡 CI faite ; **CD toujours absente** |
+| Absence totale de tests frontend | Élevé | ✅ Fermé — Vitest, 65 tests |
+| Absence de CI/CD | Moyen | 🟡 CI faite ; **CD toujours absente**, et la CI ne construit aucune image |
+| **Données de développement propagées en production** | Élevé | 🟡 `create_demo_users` refuse désormais de tourner en production et `purge_test_accounts` nettoie une base existante. **Reste ouvert** : rien n'empêche de restaurer un dump de développement, qui contient des comptes à mot de passe public |
+| **Contenu pédagogique détruit par une commande** | Élevé | ✅ Fermé — `load_demo_content` avait effacé les 4 chapitres ; chaque chargeur ne supprime plus que ses propres slugs, et deux tests le verrouillent |
 | Fonctionnalités « décoratives » (code présent, jamais appelé) | Élevé | 🟡 Cinq cas trouvés et corrigés (`ChapterAccess`, `time_spent`, tableau de bord formateur, `ProfileView` jamais appelée, `change-password` jamais branchée). En chercher d'autres avant de bâtir dessus |
 | **Garde-fous contournables par un autre chemin** | Élevé | 🟡 Deux cas fermés : l'admin Django écrivait rôles et points sans passer par les services ni le journal ; le bac à sable n'avait aucun test. Se demander systématiquement : *quelle autre porte ouvre sur cette table ?* |
 | **Sécurité qui gêne l'usage sans protéger** | Moyen | ✅ Un cas trouvé et retiré : la liste noire de motifs du bac à sable rejetait du code d'élève légitime et laissait passer les vrais contournements. Mesurer avant de garder |
@@ -529,3 +537,4 @@ Révisé le 2026-07-21 : les deux premières entrées de la liste précédente
 | 1.0 | 2025-12-12 | Équipe | Version initiale |
 | 2.0 | 2026-07-21 | Équipe | **Remise à plat des statuts.** Tous les livrables étaient marqués ✅ sans vérification, y compris des sprints entiers jamais commencés (WebSockets, projets, forum). Statuts revérifiés contre le code, ajout des livrables hors périmètre initial (classes, administration, sécurité), et des écarts volontaires (leaderboard, M2M). |
 | 2.1 | 2026-07-21 | Équipe | **Filet de sécurité posé.** Vitest (37 tests), CI GitHub Actions, ESLint ramené à zéro, couverture de `progression` (33 tests, validés par sabotage) et du bac à sable (27 tests). Sécurité : journal d'audit, admin Django bridé, limitation des échecs de connexion, retrait de la liste noire du bac à sable. Priorités réordonnées : le déploiement passe en tête, les WebSockets reculent — rien n'en dépend. |
+| 3.0 | 2026-08-04 | Équipe | **Contenu restauré, production préparée.** `load_demo_content` avait effacé tous les cours ; contenu remonté de 27 à 68 leçons et réorganisé (17 scripts hors commande supprimés, une commande par chapitre, illustrations rattachées au chargement et versionnées). Produit : validation d'une leçon au défilement au lieu d'un bouton, visionneuse d'images corrigée, logo et favicon. Production : pile complète éprouvée en répétition locale (Traefik, 10 contrôles), sauvegardes avec restauration testée, garde-fou des comptes de démonstration. Détail dans [`06_ROADMAP_DEPLOIEMENT.md`](06_ROADMAP_DEPLOIEMENT.md). |

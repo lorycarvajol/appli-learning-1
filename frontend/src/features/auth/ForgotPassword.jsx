@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { authApi } from '@/services/api/authApi'
+import BrandLogo from '@/components/ui/BrandLogo';
 
 /**
  * Demande d'un lien de réinitialisation.
@@ -37,10 +38,7 @@ export default function ForgotPassword() {
   return (
     <div className="auth-page">
       <div className="auth-container">
-        <Link to="/login" className="auth-logo">
-          <span className="auth-logo__mark" aria-hidden="true">&lt;/&gt;</span>
-          <span>CodeAcademy</span>
-        </Link>
+        <BrandLogo to="/login" />
 
         <div className="auth-card">
           <div className="auth-header">

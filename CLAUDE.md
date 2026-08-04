@@ -15,316 +15,67 @@ This is a **web-based learning platform** for teaching web development, featurin
 **Target Users:** 3 roles - Learner (students), Trainer (instructors), Admin
 **Tech Stack:** Django 5.0+ (backend), React 18+ (frontend), PostgreSQL, Redis, Celery, Django Channels
 
-## État Actuel du Développement (Mis à jour: 2025-12-12)
+## Où en est le projet (2026-08-04)
 
-### ✅ Fonctionnalités Complétées
+**La plateforme est fonctionnellement complète pour un premier usage réel.**
+Le chantier en cours est la **mise en production**, pas le produit.
 
-#### Infrastructure Docker
-- **Docker Compose configuré** avec 7 services:
-  - `postgres` (PostgreSQL 15)
-  - `redis` (Redis 7)
-  - `backend` (Django + Gunicorn)
-  - `daphne` (ASGI server pour WebSocket)
-  - `celery` (async tasks)
-  - `celery-beat` (scheduled tasks)
-  - `frontend` (React + Vite)
-- **Scripts de démarrage**: `start.bat` (Windows) et `start.sh` (Linux/Mac)
-- **Volumes persistants**: Base de données et médias conservés entre redémarrages
+| | |
+|---|---|
+| Backend | 7 apps : `accounts`, `administration`, `cohorts`, `courses`, `gamification`, `progression`, `validation` |
+| Frontend | 12 features, 17 routes |
+| Contenu | 4 chapitres, 68 leçons, 25 exercices, 5 quiz, 31 illustrations |
+| Tests | **270 backend** (+7 marqués `docker`, hors CI), **65 frontend**, 12 bout-en-bout |
+| CI | Verte sur `main` et sur chaque *pull request* |
 
-#### Backend Django (100% Fonctionnel)
+### Reprendre en trois commandes
 
-**Configuration:**
-- Settings modulaires: `base.py`, `development.py`, `production.py`
-- JWT authentication avec SimpleJWT (access 1h, refresh 7j)
-- CORS configuré pour localhost:5173
-- Rate limiting désactivé en développement
-- Logging en console (pas de fichiers pour Docker)
-
-**App Accounts (Authentification):**
-- ✅ Modèle User personnalisé avec UUID et email-based auth
-- ✅ Modèle Profile avec gamification (points, level)
-- ✅ Rôles: LEARNER, TRAINER, ADMIN
-- ✅ API complète: register, login, logout, token refresh, current user
-- ✅ Admin interface configurée
-- ✅ Migrations appliquées et testées
-- ✅ Système de blacklist des tokens lors du logout
-
-**App Courses (Gestion du contenu):**
-- ✅ 5 Modèles créés et migrés:
-  - `Chapter`: Chapitres avec ordre, durée estimée, publication
-  - `Lesson`: Leçons (3 types: THEORY, EXERCISE, QUIZ)
-  - `Exercise`: Exercices de code avec starter_code, solution, tests (JSONB)
-  - `Quiz`: Quiz avec questions (JSONB), passing_score, randomisation
-  - `Project`: Projets finaux avec évaluation et critères
-- ✅ Serializers pour tous les modèles avec permissions
-- ✅ ViewSets read-only avec filtres et ordering
-- ✅ URLs configurées: `/api/courses/chapters/`, `/api/courses/lessons/`, etc.
-- ✅ Admin interface complète avec inline editing
-- ✅ Relations: Chapter → Lessons, Lesson ↔ Exercise/Quiz
-
-**Endpoints Backend Disponibles:**
-```
-POST   /api/auth/register/           - Inscription
-POST   /api/auth/login/              - Connexion (retourne JWT)
-POST   /api/auth/logout/             - Déconnexion (blacklist token)
-POST   /api/auth/token/refresh/      - Rafraîchir access token
-GET    /api/auth/me/                 - Infos utilisateur courant
-PUT    /api/auth/me/                 - Modifier profil
-PUT    /api/auth/change-password/    - Changer mot de passe
-
-GET    /api/courses/chapters/        - Liste des chapitres
-GET    /api/courses/chapters/{slug}/ - Détails chapitre avec leçons
-GET    /api/courses/lessons/         - Liste des leçons
-GET    /api/courses/lessons/{slug}/  - Détails leçon avec exercise/quiz
-GET    /api/courses/exercises/{id}/  - Détails exercice
-GET    /api/courses/quizzes/{id}/    - Détails quiz
-GET    /api/courses/projects/        - Liste des projets
-GET    /api/courses/projects/{slug}/ - Détails projet
-
-GET    /admin/                       - Interface admin Django
-```
-
-#### Frontend React (100% Fonctionnel)
-
-**Configuration:**
-- Vite + React 18
-- Redux Toolkit pour state management
-- React Router v6 pour navigation
-- Tailwind CSS pour styling
-- Axios avec intercepteurs JWT
-
-**Features Authentification:**
-- ✅ Page Login avec formulaire et validation
-- ✅ Page Register avec confirmation password
-- ✅ Stockage tokens dans localStorage
-- ✅ Auto-refresh des tokens sur 401
-- ✅ PrivateRoute pour protection des routes
-- ✅ Redux slice authSlice avec async thunks
-- ✅ Dashboard utilisateur avec profil et stats
-- ✅ Logout fonctionnel avec redirection
-
-**Features Courses:**
-- ✅ Redux slice chaptersSlice pour state management
-- ✅ API service coursesApi.js avec tous les endpoints
-- ✅ Page ChaptersList: Grille de cartes avec tous les chapitres
-- ✅ Page ChapterDetail: Détails chapitre + liste des leçons
-- ✅ Page LessonView: Affichage du contenu selon le type
-  - Théorie: Contenu Markdown + vidéo optionnelle
-  - Exercice: Instructions + code de départ (éditeur à venir)
-  - Quiz: Instructions + métadonnées (interface à venir)
-- ✅ Navigation breadcrumb fonctionnelle
-- ✅ Bouton "Accéder aux chapitres" dans le Dashboard
-
-**Routes Frontend Disponibles:**
-```
-/login              - Connexion
-/register           - Inscription
-/dashboard          - Dashboard utilisateur (protected)
-/chapters           - Liste des chapitres (protected)
-/chapters/:slug     - Détails d'un chapitre (protected)
-/lessons/:slug      - Visualisation d'une leçon (protected)
-```
-
-### 🔧 Problèmes Résolus
-
-1. **Logging Error** (FileNotFoundError: django.log)
-   - Solution: Supprimé handler 'file', gardé uniquement console pour Docker
-
-2. **Docker Compose Warning** (version obsolete)
-   - Solution: Supprimé la ligne `version: '3.8'`
-
-3. **Migration Error** (relation 'accounts_user' does not exist)
-   - Solution: Exécuté makemigrations avant migrate
-
-4. **Rate Limiting en développement** (429 Too Many Requests)
-   - Solution: Désactivé throttling dans development.py
-
-5. **Infinite Loop Frontend** (ERR_INSUFFICIENT_RESOURCES)
-   - Cause: fetchCurrentUser() appelé à chaque render
-   - Solution: Ajouté state `hasFetched` pour appeler une seule fois
-
-### 📝 Comment Tester l'Application
-
-**1. Démarrer l'environnement:**
 ```bash
-.\start.bat  # Windows
-# ou
-./start.sh   # Linux/Mac
+docker-compose up -d
+docker-compose exec backend python manage.py load_course_content   # contenu
+docker-compose exec backend python manage.py create_demo_users     # comptes de dev
 ```
 
-**2. Créer un superuser (si pas déjà fait):**
-```bash
-docker-compose exec backend python manage.py createsuperuser
-```
+Puis http://localhost:5173 et http://localhost:8000/admin/.
 
-**3. Accéder à l'admin Django:**
-- URL: http://localhost:8000/admin/
-- Créer des chapitres et leçons
-- Marquer `is_published = True` pour les rendre visibles
+### Ce qui reste, par ordre de priorité
 
-**4. Tester le frontend:**
-- URL: http://localhost:5173/
-- S'inscrire ou se connecter
-- Cliquer sur "Accéder aux chapitres"
-- Naviguer dans les chapitres et leçons
+1. **Mise en production** — c'est le sujet actif. Tout le code est prêt et
+   éprouvé par une répétition locale ; ne restent que les étapes sur le
+   serveur. **Point d'entrée : [`06_ROADMAP_DEPLOIEMENT.md`](06_ROADMAP_DEPLOIEMENT.md)**,
+   qui contient aussi la confrontation de `guide-hebergement-ovh.md` au code réel.
+2. **CI qui construit les images** — elle n'en construit aucune aujourd'hui.
+3. **Produit, après ouverture** : WebSockets (rien n'existe, voir la section
+   dédiée), soumission de projets, forum, leaderboard.
 
-### 🚧 Prochaines Étapes (Par Ordre de Priorité)
+### Les pièges qui coûtent le plus cher
 
-#### Phase 1: Progression Tracking
-- [ ] Créer app `progression` avec modèles:
-  - `UserProgress`: État progression par leçon
-  - `ChapterAccess`: Contrôle d'accès aux chapitres
-  - `ActivityLog`: Historique des activités
-- [ ] API endpoints pour marquer leçons comme complétées
-- [x] Frontend: validation d'une leçon — **automatique**, pas de bouton
-      (voir « Validation d'une leçon — constatée, plus déclarée »)
-- [ ] Affichage de la progression dans ChaptersList
+Chacun a fait perdre du temps au moins une fois. Ils sont détaillés dans leur
+section, cette liste sert d'index.
 
-#### Phase 2: Validation de Code
-- [ ] Créer app `validation` avec sandbox Docker
-- [ ] Service `code_runner.py` pour exécution sécurisée
-- [ ] API endpoint `/api/exercises/{id}/submit/`
-- [ ] Frontend: Éditeur Monaco pour écrire du code
-- [ ] Affichage des résultats de tests
-- [ ] Système de hints progressifs
+| Piège | Section |
+|---|---|
+| `load_demo_content` a effacé tout le contenu des cours | « Contenu des cours — architecture » |
+| `/media/` n'est servi par personne en production | `06_ROADMAP_DEPLOIEMENT.md` §1 |
+| `SIMPLE_JWT` copie `SECRET_KEY` à l'import | « SECRET_KEY — garde-fou de production » |
+| `development.py` **mute** les réglages de `base.py` en place | « Testing Strategy » |
+| `login.fulfilled` ne peuple ni `user` ni `initialized` | « Gardes de rôle côté front » |
+| Supprimer un chapitre reverrouille les apprenants en classe | « Contenu des cours — architecture » |
+| `VITE_*` est figée à la construction, pas lue à l'exécution | « Ressources statiques » |
+| `--reuse-db` de pytest masque une migration manquante | « Testing Strategy » |
 
-#### Phase 3: Interface Quiz
-- [ ] Frontend: Composant QuizInterface
-- [ ] Affichage questions avec options multiples
-- [ ] Soumission et calcul du score
-- [ ] Feedback immédiat sur les réponses
-- [ ] Randomisation questions/options si configuré
+### Conventions non négociables
 
-#### Phase 4: Gamification — ✅ Fait (voir section dédiée plus bas)
-- [x] App `gamification` (Badge, UserBadge, PointTransaction, UserStreak)
-- [x] Attribution automatique idempotente des badges
-- [x] Objectifs secrets masqués côté serveur + révélation animée
-- [x] Frontend: page Trophées, prochains objectifs, série de jours
-- [ ] Leaderboard — volontairement reporté (choix produit : progression
-      personnelle d'abord, le grand livre de points le rend trivial à ajouter)
-
-#### Phase 5: Fonctionnalités Trainer
-- [ ] Dashboard trainer avec statistiques élèves
-- [ ] Système de déblocage de chapitres
-- [ ] Review de projets soumis
-- [ ] Tableau de bord activité en temps réel
-
-#### Phase 6: WebSocket & Real-time
-- [ ] Configuration Django Channels complète
-- [ ] Consumers pour auto-save code
-- [ ] Consumer pour activité en temps réel
-- [ ] Frontend: WebSocket service
-- [ ] Auto-save toutes les 3 secondes
-
-#### Phase 7: Forum Communautaire
-- [ ] Créer app `forum`:
-  - `Post`: Questions/discussions
-  - `Reply`: Réponses
-  - `Vote`: Système de votes
-- [ ] API CRUD complète
-- [ ] Frontend: Liste posts, création, réponses
-- [ ] Système de recherche et tags
-
-### 📁 Structure des Fichiers Importants
-
-**Backend:**
-```
-backend/
-├── config/
-│   ├── settings/
-│   │   ├── base.py          ✅ Settings partagés
-│   │   ├── development.py   ✅ Rate limiting désactivé
-│   │   └── production.py    ✅ Config production
-│   ├── urls.py              ✅ URLs principales
-│   ├── wsgi.py              ✅ WSGI pour Gunicorn
-│   └── asgi.py              🚧 ASGI pour Channels
-├── apps/
-│   ├── accounts/            ✅ 100% Complet
-│   │   ├── models.py        ✅ User, Profile
-│   │   ├── serializers.py   ✅ Register, User, Profile, ChangePassword
-│   │   ├── views.py         ✅ Register, CurrentUser, Logout
-│   │   ├── urls.py          ✅ Routes auth
-│   │   ├── admin.py         ✅ Admin interface
-│   │   └── signals.py       ✅ Auto-create Profile
-│   ├── courses/             ✅ 100% Complet
-│   │   ├── models.py        ✅ Chapter, Lesson, Exercise, Quiz, Project
-│   │   ├── serializers.py   ✅ Tous les serializers
-│   │   ├── views.py         ✅ ViewSets read-only
-│   │   ├── urls.py          ✅ Routes courses
-│   │   └── admin.py         ✅ Admin avec inlines
-│   ├── progression/         ⏳ À créer
-│   ├── gamification/        ⏳ À créer
-│   ├── validation/          ⏳ À créer
-│   └── forum/               ⏳ À créer
-├── requirements/
-│   ├── base.txt            ✅ Django, DRF, psycopg2, etc.
-│   ├── development.txt     ✅ Debug tools
-│   └── production.txt      ✅ Gunicorn, etc.
-└── Dockerfile              ✅ Python 3.11-slim
-
-Frontend:
-```
-frontend/
-├── src/
-│   ├── app/
-│   │   └── store.js         ✅ Redux store (auth, chapters)
-│   ├── features/
-│   │   ├── auth/            ✅ 100% Complet
-│   │   │   ├── authSlice.js       ✅ Redux slice
-│   │   │   ├── Login.jsx          ✅ Page login
-│   │   │   ├── Register.jsx       ✅ Page register
-│   │   │   └── PrivateRoute.jsx   ✅ Route protection
-│   │   └── chapters/        ✅ 100% Complet
-│   │       ├── chaptersSlice.js   ✅ Redux slice
-│   │       ├── ChaptersList.jsx   ✅ Liste chapitres
-│   │       ├── ChapterDetail.jsx  ✅ Détails chapitre
-│   │       └── LessonView.jsx     ✅ Vue leçon
-│   ├── components/
-│   │   ├── Dashboard.jsx    ✅ Dashboard utilisateur
-│   │   ├── layout/          ⏳ Navbar, Footer à créer
-│   │   └── ui/              ⏳ Composants réutilisables
-│   ├── services/
-│   │   └── api/
-│   │       ├── apiService.js      ✅ Axios + JWT interceptor
-│   │       └── coursesApi.js      ✅ API courses
-│   ├── App.jsx              ✅ Routes configurées
-│   └── main.jsx             ✅ Redux Provider
-├── package.json             ✅ Dependencies
-├── vite.config.js           ✅ Config Vite
-├── tailwind.config.js       ✅ Config Tailwind
-└── Dockerfile               ✅ Node 18 multi-stage
-```
-
-### 💾 État de la Base de Données
-
-**Tables existantes:**
-- ✅ `accounts_user` - Utilisateurs avec email-based auth
-- ✅ `accounts_profile` - Profils avec points et niveau
-- ✅ `courses_chapter` - Chapitres
-- ✅ `courses_lesson` - Leçons (THEORY/EXERCISE/QUIZ)
-- ✅ `courses_exercise` - Exercices de code
-- ✅ `courses_quiz` - Quiz
-- ✅ `courses_project` - Projets finaux
-- ✅ `token_blacklist_*` - Gestion tokens JWT
-
-**Migrations appliquées:**
-- ✅ accounts: 0001_initial
-- ✅ courses: 0001_initial
-
-### 🐛 Bugs Connus
-
-Aucun bug connu actuellement. Toutes les fonctionnalités implémentées sont testées et fonctionnelles.
-
-### 💡 Notes Importantes pour Reprise
-
-1. **Environnement Docker**: Tout passe par Docker, ne pas installer Python/Node localement
-2. **Admin Django**: Créer du contenu via http://localhost:8000/admin/ avant de tester le frontend
-3. **Rate Limiting**: Désactivé en dev, à réactiver en production
-4. **Tokens JWT**: Access token 1h, refresh 7j, rotation activée
-5. **State Management**: Redux pour auth et chapters, expandable pour autres features
-6. **JSONB Fields**: Utilisés pour tests (Exercise) et questions (Quiz), flexible pour évolution
-7. **UUID everywhere**: Tous les IDs sont des UUID, pas d'entiers séquentiels
-8. **Slugs**: Chapitres, leçons, projets utilisent des slugs pour URLs lisibles
+1. **Docker pour tout** — ne rien installer localement, sauf `npm` côté front
+   (le conteneur est en Node 18, la CI et les tests en Node 22).
+2. **Écrire en français** : commentaires, tests, messages de commit.
+3. **Valider par sabotage** : casser volontairement le code pour vérifier que
+   le test rougit. Un test vert sur du code cassé ne protège rien.
+4. **UUID partout**, jamais d'entiers séquentiels. Slugs pour les URL.
+5. **JSONB** pour `Exercise.tests` et `Quiz.questions` — toujours lus via
+   `test_cases` et `questions_list`, jamais directement.
+6. Les points ne se créditent que par `services.award_points`, jamais par
+   `Profile.add_points`.
 
 ## Contenu des cours — architecture
 
@@ -1362,50 +1113,70 @@ consentement au sens CNIL. La politique de confidentialité l'explique dans une
 notice. **Le jour où un analytics ou un traceur tiers est introduit, une vraie
 bannière (accepter/refuser, blocante) devient obligatoire.**
 
-## Reste à faire — audit du 2026-07-21
+## Reste à faire — audit du 2026-08-04
 
 Inventaire vérifié dans le code, pas recopié du roadmap. Classé par risque,
 pas par visibilité.
 
 ### Risque réel
 
-*Cette liste est vide. Les deux entrées qui s'y trouvaient — le throttle de
-connexion et l'absence de tests de `courses` — sont faites (voir « Connexion :
-limitation des échecs » et « Testing Strategy »).*
+*Vide.* Les entrées qui s'y trouvaient sont faites : throttle de connexion,
+tests de `courses`, comptes de démonstration à mot de passe public (voir
+« Comptes de démonstration — jamais en production ») et absence de sauvegardes
+(voir « Sauvegardes »).
 
 ### Dette structurelle
 
-*Cette liste est vide. Ses trois entrées sont faites : le contrat incohérent
-des services API (voir « Contrat des services API — uniforme »), le découpage
-de bundle (voir « Découpage de bundle »), et le champ mort `Profile.avatar`,
-supprimé après vérification qu'aucune base ne le renseignait (migration `0007` ;
-voir « Avatars : catalogue, pas téléversement »).*
+*Vide.* Contrat des services API, découpage de bundle, champ mort
+`Profile.avatar`, et les **17 scripts hors commande à la racine de `backend/`**
+(voir « Contenu des cours — architecture ») : tout est traité. `backend/` ne
+contient plus que `manage.py`.
+
+### Mise en production — le chantier actif
+
+Le code est prêt et **éprouvé par une répétition locale complète** (pile de
+production + Traefik, dix contrôles d'ouverture). Ne restent que les étapes qui
+demandent le serveur : DNS, `.env` avec les secrets, SMTP, `ufw`, cron des
+sauvegardes, et l'externalisation des archives hors du VPS.
+
+⚠️ **Point d'entrée : [`06_ROADMAP_DEPLOIEMENT.md`](06_ROADMAP_DEPLOIEMENT.md).**
+Il contient l'état détaillé de chaque tâche, la procédure de mise en service,
+les contrôles d'ouverture, et la confrontation de `guide-hebergement-ovh.md` au
+code réel — quatre de ses hypothèses sont fausses pour ce dépôt.
+
+Décision actée : **l'exécution de code est désactivée à l'ouverture**
+(`CODE_EXECUTION_ENABLED=False`), l'hôte étant partagé avec d'autres projets.
+Voir « Le drapeau `CODE_EXECUTION_ENABLED` ».
 
 ### Fonctionnalités jamais commencées
 
-7. **WebSocket / temps réel** — voir la section dédiée : `asgi.py` a un routeur
-   vide et `channels/consumers/` est un dossier vide. Rien n'en dépend
-   aujourd'hui.
-8. **Soumission et correction de projets** (Phase 4) — le modèle `Project`
-   existe dans `courses`, mais **aucun modèle de soumission** nulle part, donc
-   rien à rendre ni à corriger.
-9. **Forum** (Phase 4) — l'app n'existe pas, ni dans `INSTALLED_APPS` ni sur le
-   disque.
-10. **Leaderboard** — reporté volontairement (choix produit : progression
-    personnelle d'abord). Le grand livre de points le rend trivial à ajouter.
-11. **Déploiement** (Phase 5) — le garde-fou `SECRET_KEY` de production est en
-    place et testé, mais rien n'est déployé et la CI ne construit aucune image.
+- **WebSocket / temps réel** — `asgi.py` a un routeur vide et
+  `channels/consumers/` est un dossier vide. Rien n'en dépend ; le service
+  `daphne` a d'ailleurs été retiré de la compose de production.
+- **Soumission et correction de projets** — le modèle `Project` existe dans
+  `courses`, mais aucun modèle de soumission nulle part.
+- **Forum** — l'app n'existe pas, ni dans `INSTALLED_APPS` ni sur le disque.
+- **Leaderboard** — reporté volontairement (progression personnelle d'abord).
+  Le grand livre de points le rend trivial à ajouter.
+- **CI qui construit les images** — elle n'en construit aucune.
+- **Chapitre 3 JavaScript en version d'auteur** — il n'a pas de
+  `load_section_3` d'origine, seulement le contenu promu en commande.
+- **Illustrations en double résolution** — elles s'adoucissent en plein écran.
 
-### Ce qui vient d'être fait
+### Ce qui vient d'être fait (session du 2026-08-04)
 
-- [x] Infrastructure de test frontend (Vitest) — 37 tests
-- [x] Intégration continue (`.github/workflows/ci.yml`)
-- [x] `npm run lint` ramené à zéro erreur **et zéro avertissement**
-- [x] Couverture du bac à sable — 20 tests simulés (en CI) + 7 tests réels
-- [x] Retrait de la liste noire de motifs (voir « Security Considerations »)
-- [x] Limitation des échecs de connexion
-- [x] Couverture de `progression` — 33 tests : verrou de chapitre, deux
-      régimes de progression, notation des quiz, suivi du temps
+- [x] Contenu des cours restauré et réorganisé — 27 → **68 leçons**, 17 scripts
+      supprimés, une commande par chapitre, illustrations rattachées au
+      chargement
+- [x] Illustrations versionnées (31 PNG) et régénérables
+- [x] Validation d'une leçon **constatée** au défilement, plus déclarée par un
+      bouton
+- [x] Table des types d'activité centralisée (`constants/activity.js`)
+- [x] Visionneuse d'images : agrandissement réel et zone cliquable exacte
+- [x] Pile de production complète, éprouvée en répétition locale
+- [x] Garde-fou des comptes de démonstration + `purge_test_accounts`
+- [x] Sauvegardes : script, rotation, **restauration testée** (zéro écart)
+- [x] Logo et favicon intégrés
 
 ## Intégration continue
 
@@ -1419,7 +1190,7 @@ request*. Deux jobs indépendants qui échouent séparément.
 | `makemigrations --check --dry-run` | Un modèle modifié sans migration |
 | `migrate` sur base vierge | Une migration qui ne s'applique pas dans l'ordre |
 | `manage.py check` | Erreurs de configuration |
-| `pytest --create-db` | Les 243 tests |
+| `pytest --create-db` | Les 270 tests |
 
 ⚠️ Les deux premières étapes ne sont pas décoratives. `pytest.ini` fixe
 **`--nomigrations`** : le schéma de test est bâti directement depuis les
@@ -1848,6 +1619,27 @@ mois. Uniformisé d'un bloc, avec un test de contrat par module
 (`services/api/contract.test.js`) qui rougirait au moindre retour vers la
 réponse brute.
 
+### Ressources statiques : `public/` ou `src/assets/` ?
+
+| | Emplacement | Pourquoi |
+|---|---|---|
+| Favicons | `frontend/public/` | Référencés par un chemin **absolu** dans `index.html`, que le bundler ne traite pas : il leur faut une URL stable, ce que `public/` garantit (copié tel quel à la racine de `dist/`). |
+| Logos affichés par un composant | `frontend/src/assets/` | Importés (`import logo from '@/assets/logo.png'`), donc **hachés** par Vite : cache long terme *et* invalidation automatique au changement. |
+
+Placer un logo dans `public/` conserverait son nom d'un déploiement à l'autre,
+et les visiteurs de retour continueraient de voir l'ancienne image.
+
+⚠️ **Ni l'un ni l'autre dans `backend/media/`** : ce dossier porte les
+illustrations de cours, du contenu pédagogique référencé par
+`content/illustrations.py`, et un fichier étranger dans `media/courses/` fait
+échouer `test_aucune_illustration_orpheline`.
+
+Deux déclinaisons du même sigle, et ce n'est pas de la redondance :
+`logo.png` porte le nom « CODE ACADEMY » gravé dans l'image — illisible à 24 ou
+34 px, donc réservé aux pages d'authentification (`components/ui/BrandLogo`).
+L'en-tête et le pied de page utilisent `logo-mark.png`, le sigle seul, le nom
+restant du texte HTML : net à toute densité, et déjà masqué sur mobile.
+
 ### Frontend State Management
 - Redux slices per feature with createAsyncThunk for API calls
 - Loading states: `{ loading: false, error: null, data: null }`
@@ -1864,7 +1656,7 @@ réponse brute.
 
 ### Testing Strategy
 
-**Backend — en place.** pytest-django, 243 tests. Couvre désormais **tous** les
+**Backend — en place.** pytest-django, 270 tests. Couvre désormais **tous** les
 modules : `accounts`, `administration`, `cohorts`, `courses`, `gamification`,
 `progression`, `validation`.
 
@@ -2027,15 +1819,24 @@ python manage.py migrate
 
 ## Reference Documentation
 
-All detailed documentation is in the root directory:
+All detailed documentation is in the root directory.
 
-- **01_ROADMAP.md** - 12-week project roadmap with sprints and deliverables
-- **06_ROADMAP_DEPLOIEMENT.md** - Mise en production sur VPS OVH. ⚠️ Contient
-  la confrontation de `guide-hebergement-ovh.md` (étape 6.3) au code réel :
-  quatre de ses hypothèses sont fausses pour ce dépôt, et il passe sous silence
-  le fait que **`/media/` n'est servi par personne en production**
+**Pour reprendre le travail, deux fichiers suffisent :** la section « Où en est
+le projet » plus haut, et `06_ROADMAP_DEPLOIEMENT.md` si le sujet est la mise
+en ligne. Le reste est de la référence, à consulter au besoin.
+
+- **06_ROADMAP_DEPLOIEMENT.md** — ⏩ **le chantier actif.** Mise en production
+  sur VPS OVH : état de chaque tâche, procédure de mise en service, contrôles
+  d'ouverture, et résultats de la répétition locale. ⚠️ Contient aussi la
+  confrontation de `guide-hebergement-ovh.md` (étape 6.3) au code réel — quatre
+  de ses hypothèses sont fausses pour ce dépôt, et il passe sous silence le
+  fait que **`/media/` n'est servi par personne en production**
   (`config/urls.py:22` le conditionne à `DEBUG`), donc que les 31 illustrations
-  des cours renvoient 404. À lire avant tout déploiement.
+  des cours renverraient 404. À lire avant tout déploiement.
+- **guide-hebergement-ovh.md** — le guide d'origine, fourni par l'exploitant.
+  Bon sur l'infrastructure (SSH, Traefik, DNS), **faux sur ce projet** :
+  toujours le lire à travers `06_ROADMAP_DEPLOIEMENT.md`.
+- **01_ROADMAP.md** - 12-week project roadmap with sprints and deliverables
 - **02_USER_STORY_MAPPING.md** - User stories for all 3 personas with acceptance criteria
 - **03_DIAGRAMMES_UML.md** - UML diagrams (use cases, class, sequence, deployment)
 - **04_ARCHITECTURE_TECHNIQUE.md** - Complete technical architecture with code examples

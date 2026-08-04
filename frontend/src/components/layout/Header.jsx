@@ -5,6 +5,11 @@ import { logoutUser } from '@/features/auth/authSlice';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import Avatar from '@/components/ui/Avatar';
 import { ROLES, ROLE_LABELS, STAFF_ROLES } from '@/constants/roles';
+// Importé depuis `src/assets/` et non `public/` : Vite hache le nom de
+// fichier, ce qui donne un cache long terme *et* l'invalidation automatique
+// le jour où le logo change. Dans `public/`, le nom resterait le même et les
+// visiteurs de retour verraient l'ancienne image.
+import logoMark from '@/assets/logo-mark.png';
 import './Header.css';
 
 // Une entrée sans `roles` est visible par tout le monde.
@@ -76,9 +81,18 @@ export default function Header() {
     <header className="header">
       <div className="header__container">
         <Link to="/dashboard" className="header__logo">
-          <span className="header__logo-mark" aria-hidden="true">
-            &lt;/&gt;
-          </span>
+          {/* Le sigle seul, jamais le logo complet : celui-ci porte
+              « CODE ACADEMY » en dur, illisible à 34 px de haut. Le nom reste
+              donc du texte HTML — net à toute densité d'écran, et masqué sur
+              mobile par la règle existante. */}
+          <img
+            src={logoMark}
+            alt=""
+            aria-hidden="true"
+            className="header__logo-mark"
+            width="34"
+            height="34"
+          />
           <span className="header__logo-text">
             <span className="header__logo-name">Code</span>
             <span className="header__logo-suffix">Academy</span>

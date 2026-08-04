@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import logoMark from '@/assets/logo-mark.png';
 import './Footer.css';
 
 export default function Footer() {
@@ -21,7 +22,16 @@ export default function Footer() {
       <div className="footer__container">
         <div className="footer__brand">
           <div className="footer__logo">
-            <span className="footer__logo-mark" aria-hidden="true">&lt;/&gt;</span>
+            {/* Le sigle seul, comme dans l'en-tête : à 24 px, le nom gravé
+                dans le logo complet serait illisible. */}
+            <img
+              src={logoMark}
+              alt=""
+              aria-hidden="true"
+              className="footer__logo-mark"
+              width="24"
+              height="24"
+            />
             <span>CodeAcademy</span>
           </div>
           <p className="footer__tagline">
