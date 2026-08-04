@@ -23,6 +23,8 @@ export default function AdminSpace() {
   const [trainers, setTrainers] = useState([])
   const [users, setUsers] = useState([])
   const [cohorts, setCohorts] = useState([])
+  const [invites, setInvites] = useState([])
+  const [copiedInvite, setCopiedInvite] = useState(null)
   const [search, setSearch] = useState('')
   const [auditEntries, setAuditEntries] = useState([])
   const [auditActions, setAuditActions] = useState([])
@@ -41,6 +43,11 @@ export default function AdminSpace() {
     []
   )
 
+  const loadInvites = useCallback(
+    () => cohortsApi.listInvites().then(setInvites).catch(() => setInvites([])),
+    []
+  )
+
   const loadAudit = useCallback(
     (action) =>
       administrationApi
@@ -55,7 +62,8 @@ export default function AdminSpace() {
     administrationApi.getTrainers().then(setTrainers).catch(() => setTrainers([]))
     administrationApi.getAuditActions().then(setAuditActions).catch(() => setAuditActions([]))
     loadCohorts()
-  }, [loadCohorts])
+    loadInvites()
+  }, [loadCohorts, loadInvites])
 
   useEffect(() => {
     if (tab === 'unassigned') loadUsers({ unassigned: 'true' })
@@ -77,6 +85,7 @@ export default function AdminSpace() {
       // où l'on agit, plutôt qu'à la prochaine visite de l'onglet.
       await Promise.all([
         loadCohorts(),
+        loadInvites(),
         loadAudit(auditFilter),
         tab === 'unassigned' ? loadUsers({ unassigned: 'true' }) : null,
         tab === 'accounts' ? loadUsers(search ? { search } : {}) : null,
@@ -105,6 +114,16 @@ export default function AdminSpace() {
       return
     }
     run(() => administrationApi.anonymize(user.id), 'Compte anonymisé.')
+  }
+
+  const copyInviteLink = async (url, inviteId) => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedInvite(inviteId)
+      setTimeout(() => setCopiedInvite(null), 2000)
+    } catch {
+      setError('Copie impossible — sélectionnez le lien manuellement.')
+    }
   }
 
   return (
@@ -152,7 +171,27 @@ export default function AdminSpace() {
 
         {tab === 'overview' && <Overview overview={overview} />}
 
-        {tab === 'trainers' && <Trainers trainers={trainers} />}
+        {tab === 'trainers' && (
+          <Trainers
+            trainers={trainers}
+            // On ne montre que les invitations formateur ENCORE ACTIVES : un
+            // lien révoqué ou expiré est mort, l'afficher n'aurait aucun sens
+            // (sa trace reste dans le Journal).
+            invites={invites.filter((i) => i.role === ROLES.TRAINER && i.is_usable)}
+            busy={busy}
+            copied={copiedInvite}
+            onCreateInvite={() =>
+              run(
+                () => cohortsApi.createInvite({ role: ROLES.TRAINER }),
+                'Invitation formateur générée.'
+              )
+            }
+            onRevokeInvite={(id) =>
+              run(() => cohortsApi.revokeInvite(id), 'Invitation révoquée.')
+            }
+            onCopy={copyInviteLink}
+          />
+        )}
 
         {tab === 'cohorts' && (
           <Cohorts
@@ -517,18 +556,66 @@ function AdminStat({ value, label, alert }) {
   )
 }
 
-function Trainers({ trainers }) {
+function Trainers({ trainers, invites, busy, copied, onCreateInvite, onRevokeInvite, onCopy }) {
   return (
-    <section className="admin-card">
-      <h2 className="admin-card__title">Formateurs</h2>
-      <p className="admin-card__hint">
-        Pour en recruter un, générez une invitation de rôle « formateur » depuis
-        l’espace formateur — seul un administrateur peut en émettre.
-      </p>
+    <>
+      <section className="admin-card">
+        <h2 className="admin-card__title">Inviter un formateur</h2>
+        <p className="admin-card__hint">
+          Générez un lien d’invitation de rôle « formateur » et diffusez-le par
+          le canal de votre choix. À l’inscription, le compte est créé
+          directement avec le rôle formateur. Seul un administrateur peut émettre
+          ce type d’invitation.
+        </p>
 
-      {trainers.length === 0 ? (
-        <p className="admin-empty">Aucun formateur.</p>
-      ) : (
+        <button
+          type="button"
+          className="admin-action"
+          onClick={onCreateInvite}
+          disabled={busy}
+        >
+          Générer un lien d’invitation formateur
+        </button>
+
+        {invites.length === 0 ? (
+          <p className="admin-empty">Aucune invitation active.</p>
+        ) : (
+          <ul className="admin-invite-list">
+            {invites.map((invite) => (
+              <li key={invite.id} className="admin-invite">
+                <code className="admin-invite__url">{invite.url}</code>
+                <div className="admin-invite__row">
+                  <span className="admin-list__meta">
+                    {invite.uses_count} utilisation(s)
+                  </span>
+                  <button
+                    type="button"
+                    className="admin-action"
+                    onClick={() => onCopy(invite.url, invite.id)}
+                  >
+                    {copied === invite.id ? 'Copié !' : 'Copier'}
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-action admin-action--danger"
+                    onClick={() => onRevokeInvite(invite.id)}
+                    disabled={busy}
+                  >
+                    Révoquer
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="admin-card">
+        <h2 className="admin-card__title">Formateurs</h2>
+
+        {trainers.length === 0 ? (
+          <p className="admin-empty">Aucun formateur.</p>
+        ) : (
         <ul className="admin-list">
           {trainers.map((trainer) => (
             <li key={trainer.id} className="admin-list__item">
@@ -553,8 +640,9 @@ function Trainers({ trainers }) {
             </li>
           ))}
         </ul>
-      )}
-    </section>
+        )}
+      </section>
+    </>
   )
 }
 

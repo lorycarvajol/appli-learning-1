@@ -20,11 +20,19 @@ parcours réels, bout à bout.
 
    ```bash
    docker-compose exec backend python manage.py create_demo_users
-   docker-compose exec backend python manage.py load_demo_content
+   docker-compose exec backend python manage.py load_section_1_html --force
    ```
 
-   Seul `navigation.spec.js` dépend de `load_demo_content` (il ouvre le chapitre
+   Seul `navigation.spec.js` dépend du contenu (il ouvre le chapitre
    « Introduction au HTML »). Les autres tests créent leurs propres comptes.
+
+   ⚠️ **Ne pas utiliser `load_demo_content` pour amorcer.** C'est ce qui a
+   effacé tout le contenu des cours le 2026-07-22 : la commande supprimait
+   *tous* les chapitres, y compris ceux des sections. Elle est désormais bornée
+   à ses propres chapitres, mais elle remplace toujours le chapitre HTML riche
+   par sa version maigre — `load_section_1_html` fournit le même slug, le même
+   titre et la même première leçon, en plus complet et sans rien détruire
+   d'autre.
 
 3. **Installer les navigateurs Playwright** (une seule fois) :
 

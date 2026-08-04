@@ -69,6 +69,9 @@ beforeEach(() => {
   administrationApi.setCohortTrainer = vi.fn().mockResolvedValue({})
   administrationApi.createCohort = vi.fn().mockResolvedValue({})
   cohortsApi.listCohorts = vi.fn().mockResolvedValue([])
+  cohortsApi.listInvites = vi.fn().mockResolvedValue([])
+  cohortsApi.createInvite = vi.fn().mockResolvedValue({})
+  cohortsApi.revokeInvite = vi.fn().mockResolvedValue({})
 })
 
 describe('AdminSpace', () => {
@@ -149,5 +152,39 @@ describe('AdminSpace', () => {
     await waitFor(() =>
       expect(administrationApi.setCohortTrainer).toHaveBeenCalledWith('c1', 't1')
     )
+  })
+
+  it('génère une invitation de rôle formateur', async () => {
+    // La création d'une invitation formateur n'existait que côté API : elle a
+    // désormais un bouton dans l'espace admin, et vise bien le rôle TRAINER.
+    const user = userEvent.setup()
+    render(<AdminSpace />)
+
+    await user.click(await screen.findByRole('button', { name: 'Formateurs' }))
+    await user.click(
+      await screen.findByRole('button', { name: /Générer un lien d’invitation formateur/ })
+    )
+
+    await waitFor(() =>
+      expect(cohortsApi.createInvite).toHaveBeenCalledWith({ role: 'TRAINER' })
+    )
+  })
+
+  it('n’affiche jamais le lien d’une invitation révoquée', async () => {
+    // « supprime les liens d'invitation révoquée » : seul un lien actif est
+    // montré ; le lien mort disparaît (sa trace reste au journal).
+    cohortsApi.listInvites.mockResolvedValue([
+      { id: 'i1', role: 'TRAINER', cohort: null, is_usable: true,
+        uses_count: 0, url: 'http://x/rejoindre/ACTIF' },
+      { id: 'i2', role: 'TRAINER', cohort: null, is_usable: false,
+        invalid_reason: 'révoquée', uses_count: 0, url: 'http://x/rejoindre/REVOQUE' },
+    ])
+    const user = userEvent.setup()
+    render(<AdminSpace />)
+
+    await user.click(await screen.findByRole('button', { name: 'Formateurs' }))
+
+    expect(await screen.findByText(/rejoindre\/ACTIF/)).toBeInTheDocument()
+    expect(screen.queryByText(/rejoindre\/REVOQUE/)).not.toBeInTheDocument()
   })
 })

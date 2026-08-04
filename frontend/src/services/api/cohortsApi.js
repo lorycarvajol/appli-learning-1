@@ -57,6 +57,14 @@ const cohortsApi = {
     return response.data
   },
 
+  /** Ids des chapitres déjà ouverts à toute la classe (retour visuel). */
+  getUnlockedChapters: async (cohortId) => {
+    const response = await apiService.get(
+      `/cohorts/cohorts/${cohortId}/unlocked_chapters/`
+    )
+    return response.data.chapter_ids ?? []
+  },
+
   listInvites: async () => {
     const response = await apiService.get('/cohorts/invites/')
     return response.data.results ?? response.data

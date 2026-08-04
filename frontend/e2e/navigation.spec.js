@@ -2,8 +2,10 @@ import { test, expect } from '@playwright/test'
 import { registerNewUser } from './helpers'
 
 /**
- * Parcours de navigation de contenu. Dépend du contenu de démonstration :
- * lancer `python manage.py load_demo_content` avant (cf. e2e/README.md).
+ * Parcours de navigation de contenu. Dépend du chapitre « Introduction au
+ * HTML » : lancer `python manage.py load_section_1_html --force` avant
+ * (cf. e2e/README.md). Ne pas amorcer avec `load_demo_content`, qui remplace
+ * ce chapitre par une version maigre.
  *
  * Un apprenant fraîchement inscrit est **autonome** : le premier chapitre est
  * ouvert d'emblée (rythme libre), donc ses leçons sont consultables sans

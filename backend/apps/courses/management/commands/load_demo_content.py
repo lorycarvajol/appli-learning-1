@@ -1,10 +1,33 @@
 """
 Management command to load demo course content.
 Usage: python manage.py load_demo_content
+
+⚠️ Cette commande a écrasé tout le contenu des cours le 2026-07-22 : elle
+faisait `Chapter.objects.all().delete()`, donc elle emportait aussi les
+chapitres produits par les commandes `load_section_*` — des contenus bien plus
+riches, et qui étaient les seuls réellement servis aux apprenants. Elle ne
+supprime désormais que **les chapitres qu'elle crée elle-même**
+(`DEMO_CHAPTER_SLUGS`). Ne pas revenir à une suppression globale.
+
+⚠️ Limite résiduelle : le chapitre de démo `introduction-html` partage son slug
+avec celui de `load_section_1_html`. Lancer cette commande remplace donc encore
+la version riche du chapitre HTML par sa version maigre. C'est voulu (les deux
+décrivent le même chapitre du parcours), mais cela reste destructif : préférer
+`load_section_1_html` pour amorcer un environnement, y compris pour les tests
+bout-en-bout (cf. `frontend/e2e/README.md`).
 """
 from django.core.management.base import BaseCommand
 from django.utils.text import slugify
 from apps.courses.models import Chapter, Lesson, Exercise, Quiz
+
+# Les slugs des chapitres créés plus bas — et la seule chose que cette commande
+# a le droit de supprimer. Toute nouvelle création de chapitre doit être ajoutée
+# ici, sinon la relance laissera un doublon derrière elle.
+DEMO_CHAPTER_SLUGS = (
+    'introduction-html',
+    'css-fondamentaux',
+    'javascript-debutants',
+)
 
 
 class Command(BaseCommand):
@@ -20,11 +43,19 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS('Loading demo course content...'))
 
-        # Clear existing content if needed
+        # Clear existing content if needed — uniquement les chapitres de démo,
+        # jamais les autres (cf. l'avertissement en tête de module).
         force = options.get('force', False)
-        if force or self.confirm_action('This will DELETE all existing course content. Continue?'):
-            Chapter.objects.all().delete()
-            self.stdout.write(self.style.WARNING('Existing content deleted.'))
+        prompt = (
+            'This will DELETE the demo chapters (%s) and their lessons. '
+            'Other chapters are left untouched. Continue?'
+            % ', '.join(DEMO_CHAPTER_SLUGS)
+        )
+        if force or self.confirm_action(prompt):
+            deleted, _ = Chapter.objects.filter(slug__in=DEMO_CHAPTER_SLUGS).delete()
+            self.stdout.write(
+                self.style.WARNING(f'Demo chapters deleted ({deleted} rows).')
+            )
 
         # Chapter 1: Introduction au HTML
         chapter1 = Chapter.objects.create(

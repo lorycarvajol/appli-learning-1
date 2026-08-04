@@ -325,6 +325,57 @@ Aucun bug connu actuellement. Toutes les fonctionnalités implémentées sont te
 7. **UUID everywhere**: Tous les IDs sont des UUID, pas d'entiers séquentiels
 8. **Slugs**: Chapitres, leçons, projets utilisent des slugs pour URLs lisibles
 
+## Le contenu des cours et la commande qui l'écrasait
+
+Le contenu pédagogique **ne vit pas en base de données** : il vit dans des
+commandes Django, sous `apps/courses/management/commands/`. La base n'en est
+qu'une projection, reconstructible à tout moment. C'est ce qui a permis de
+récupérer l'incident décrit ci-dessous sans perdre une ligne.
+
+| Commande | Chapitre créé | Contenu |
+|---|---|---|
+| `load_section_1_html` | `introduction-html` (order 1) | 5 leçons, 2 exercices, 1 quiz, 80 pts |
+| `load_section_2_css` | `introduction-css` (order 2) | 5 leçons, 2 exercices, 1 quiz, 90 pts |
+| `load_section_4_site_vitrine` | `site-vitrine` (order 4) | 15 leçons |
+| `load_demo_content` | 3 chapitres maigres (order 1-3) | contenus de 500 à 900 caractères |
+
+Il n'existe **pas** de `load_section_3` : le chapitre JavaScript
+(`javascript-debutants`, order 3) n'a que sa version de démonstration. C'est le
+seul endroit du parcours où `load_demo_content` fournit encore le contenu réel.
+
+### L'incident du 2026-07-22
+
+`load_demo_content` faisait `Chapter.objects.all().delete()` — il ne supprimait
+pas *son* contenu mais **tout** le contenu, puis recréait trois chapitres
+maigres. Les chapitres HTML et CSS riches ont ainsi disparu, remplacés par leur
+version de démonstration ; seul `site-vitrine`, rechargé cinq heures plus tard,
+a survécu. Symptôme rapporté : « les cours étaient beaucoup plus développés,
+avec des illustrations et des exercices, et là c'est très vide ».
+
+Le déclencheur était documenté et recommandé : l'amorçage de la suite Playwright
+demandait de lancer `load_demo_content`. **Lancer les tests bout-en-bout
+détruisait le contenu des cours.**
+
+Trois règles en découlent, à ne pas défaire :
+
+- **Une commande de chargement ne supprime que les slugs qu'elle crée.** Les
+  `load_section_*` le faisaient déjà (`filter(slug=…)`) ; `load_demo_content`
+  est désormais borné par `DEMO_CHAPTER_SLUGS`. Une nouvelle commande qui
+  ajoute un chapitre doit ajouter son slug à sa propre liste de suppression,
+  jamais élargir la portée.
+- **L'amorçage E2E passe par `load_section_1_html --force`**, pas par
+  `load_demo_content`. Le loader de section fournit le même slug, le même titre
+  et la même première leçon que ce qu'attend `navigation.spec.js`, en plus
+  complet et sans rien détruire d'autre.
+- **Après toute recréation de chapitre, lancer `backfill_chapter_access`.**
+  Supprimer un `Chapter` cascade sur `ChapterAccess` et `UserProgress` : les
+  apprenants autonomes se rouvrent seuls le chapitre 1 (via
+  `ensure_self_paced_access`, appelé à chaque contrôle d'accès), mais un
+  apprenant **en classe** perd les accès que son formateur lui avait ouverts et
+  ne les récupère pas tout seul. C'est un reverrouillage accidentel, contraire
+  à l'invariant « on ne reverrouille jamais » — il faut le réparer à la main
+  (`unlock_chapter_for`) si le backfill ne le couvre pas.
+
 ## Système de Gamification
 
 App `apps/gamification`. Objectif : encourager sans jamais récompenser deux fois.
@@ -1667,8 +1718,10 @@ Conventions, chacune apprise en écrivant la suite :
   login raté (mauvais mot de passe, compte supprimé) asservissent désormais la
   présence du `role="alert"` — ils rougiraient si l'intercepteur se remettait à
   recharger `/login` sur un 401 d'auth.
-- **`navigation.spec.js` dépend de `load_demo_content`** (`--force` en
-  non-interactif) ; les autres non.
+- **`navigation.spec.js` dépend de `load_section_1_html`** (`--force` en
+  non-interactif) ; les autres non. ⚠️ **Ne pas amorcer avec
+  `load_demo_content`** : voir « Le contenu des cours et la commande qui
+  l'écrasait » plus bas.
 
 ⚠️ **La CI ne lance pas encore l'E2E** — choix assumé (stabiliser en local
 d'abord). Le jour venu : un job qui monte la stack, amorce, puis lance

@@ -131,6 +131,34 @@ def can_access_lesson(user, lesson):
     return can_access_chapter(user, lesson.chapter)
 
 
+def cohort_unlocked_chapter_ids(cohort):
+    """Ids des chapitres ouverts à **toute** la classe.
+
+    Un chapitre est « ouvert à la classe » quand *chacun* de ses membres actuels
+    y a accès. Conséquence assumée : un nouveau venu qui n'a pas encore l'accès
+    fait repasser le chapitre en « à ouvrir » — le formateur reclique, ce qui
+    est idempotent et rattache le nouveau. Sert au retour visuel du panneau
+    formateur (marquer les chapitres déjà ouverts).
+    """
+    from django.db.models import Count
+
+    from apps.accounts.models import User
+
+    total = User.objects.filter(profile__cohort=cohort).count()
+    if total == 0:
+        return set()
+
+    return set(
+        ChapterAccess.objects.filter(
+            user__profile__cohort=cohort, is_unlocked=True
+        )
+        .values('chapter_id')
+        .annotate(n=Count('user_id', distinct=True))
+        .filter(n=total)
+        .values_list('chapter_id', flat=True)
+    )
+
+
 def unlock_chapter_for(user, chapter, unlocked_by=None):
     """Débloque un chapitre pour un apprenant. Idempotent."""
     with transaction.atomic():
