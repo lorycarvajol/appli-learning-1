@@ -5,6 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import ChapterAccess, UserProgress, ActivityLog
+from .services import can_access_lesson, complete_lesson
 from .serializers import (
     ChapterAccessSerializer,
     UserProgressSerializer,
@@ -29,6 +30,34 @@ from apps.gamification.services import (
 # Plafond d'un incrément de temps unique. Le client émet toutes les 30 s ;
 # cette marge absorbe un flush tardif sans laisser passer d'écart aberrant.
 MAX_TIME_INCREMENT_SECONDS = 120
+
+
+def _refus_si_chapitre_verrouille(user, lesson):
+    """Rend une réponse 403 si la leçon appartient à un chapitre non ouvert.
+
+    ⚠️ **Le verrou de chapitre ne protégeait que la lecture.**
+    `LessonViewSet.retrieve` renvoyait bien 403, mais `mark_completed`,
+    `track_time` et `submit_quiz` acceptaient n'importe quelle leçon. Mesuré
+    sur un compte neuf : 68 appels à `mark_completed`, aucun refusé, et le
+    compte passait de 1 à 4 chapitres accessibles, 0 à 1485 points, 0 à
+    11 badges — **sans jamais ouvrir une seule leçon**.
+
+    Les trois invariants centraux du projet tombaient ensemble : la
+    progression contrôlée par le formateur (un apprenant autonome se
+    déverrouillait tout seul), le grand livre de points, et les badges. Pour un
+    apprenant en classe, l'effet était plus discret mais réel : il n'ouvrait
+    aucun chapitre, mais affichait une progression fictive dans le tableau de
+    bord de son formateur.
+
+    La décision d'accès vit déjà dans `progression.services` — elle n'était
+    simplement pas consultée ici.
+    """
+    if can_access_lesson(user, lesson):
+        return None
+    return Response(
+        {"error": "Ce chapitre ne vous est pas encore ouvert."},
+        status=status.HTTP_403_FORBIDDEN,
+    )
 
 
 def _grade_quiz(quiz, answers):
@@ -236,7 +265,21 @@ class UserProgressViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def mark_completed(self, request):
-        """Marquer une leçon comme complétée"""
+        """Marque une leçon **de théorie** comme terminée.
+
+        ⚠️ Cette route acceptait n'importe quel type de leçon, y compris les
+        exercices et les quiz — et créditait leurs points. C'était une porte
+        dérobée sur les deux seuls contenus dont la réussite est *objectivement
+        vérifiable* : un exercice se valide quand ses tests passent
+        (`apps/validation`), un quiz quand le score requis est atteint
+        (`submit_quiz`, qui note côté serveur). Les déclarer terminés par un
+        simple appel revenait à s'attribuer les points sans le travail.
+
+        Une leçon de théorie, elle, n'a pas de critère vérifiable : on ne peut
+        pas prouver qu'elle a été lue. La déclaration est donc le seul
+        mécanisme possible, et le front la déclenche automatiquement en bas de
+        page (`useScrollCompletion`).
+        """
         lesson_id = request.data.get('lesson_id')
         if not lesson_id:
             return Response(
@@ -252,41 +295,24 @@ class UserProgressViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Mettre à jour ou créer la progression
-        progress, created = UserProgress.objects.get_or_create(
-            user=request.user,
-            lesson=lesson,
-            defaults={
-                'status': UserProgress.ProgressStatus.COMPLETED,
-                'completed_at': timezone.now()
-            }
-        )
+        refus = _refus_si_chapitre_verrouille(request.user, lesson)
+        if refus:
+            return refus
 
-        was_already_completed = (
-            not created and progress.status == UserProgress.ProgressStatus.COMPLETED
-        )
-
-        if not created and not was_already_completed:
-            progress.status = UserProgress.ProgressStatus.COMPLETED
-            progress.completed_at = timezone.now()
-            progress.save()
-
-        # Les points de la leçon ne sont crédités qu'une fois dans la vie du
-        # compte : la clé d'idempotence est la leçon (cf. award_lesson_points).
-        points_earned = award_lesson_points(request.user, lesson)
-        if points_earned and not progress.points_awarded:
-            progress.points_awarded = True
-            progress.save(update_fields=['points_awarded', 'updated_at'])
-
-        # Ne pas polluer l'historique avec un log par reclic sur « terminé ».
-        if not was_already_completed:
-            ActivityLog.objects.create(
-                user=request.user,
-                activity_type=ActivityLog.ActivityType.LESSON_COMPLETED,
-                lesson=lesson,
-                chapter=lesson.chapter,
-                metadata={'time_spent': progress.time_spent}
+        if lesson.lesson_type != 'THEORY':
+            return Response(
+                {
+                    "error": (
+                        "Cette leçon se valide en la réussissant, pas en la "
+                        "déclarant terminée."
+                    ),
+                    "lesson_type": lesson.lesson_type,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # Logique partagée avec la validation d'exercice (cf. `complete_lesson`).
+        progress, points_earned, _ = complete_lesson(request.user, lesson)
 
         new_badges = sync_user_gamification(request.user)
 
@@ -408,6 +434,10 @@ class UserProgressViewSet(viewsets.ModelViewSet):
         except Lesson.DoesNotExist:
             return Response({"error": "Lesson not found"}, status=status.HTTP_404_NOT_FOUND)
 
+        refus = _refus_si_chapitre_verrouille(request.user, lesson)
+        if refus:
+            return refus
+
         progress, created = UserProgress.objects.get_or_create(
             user=request.user,
             lesson=lesson,
@@ -511,6 +541,10 @@ class UserProgressViewSet(viewsets.ModelViewSet):
             quiz = lesson.quiz
         except (Lesson.DoesNotExist, Quiz.DoesNotExist):
             return Response({"error": "Quiz introuvable"}, status=status.HTTP_404_NOT_FOUND)
+
+        refus = _refus_si_chapitre_verrouille(request.user, lesson)
+        if refus:
+            return refus
 
         progress, _ = UserProgress.objects.get_or_create(user=request.user, lesson=lesson)
 

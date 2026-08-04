@@ -152,6 +152,59 @@ def can_access_lesson(user, lesson):
     return can_access_chapter(user, lesson.chapter)
 
 
+def complete_lesson(user, lesson):
+    """Marque une leçon terminée, crédite ses points, journalise. Idempotent.
+
+    Extrait de `mark_completed` pour être partagé avec la validation
+    d'exercice : **la réussite d'un exercice se constate côté serveur**, pas
+    sur la parole du client. Le front annonçait auparavant lui-même « tests
+    passés » en appelant `mark_completed`, ce qui revenait à lui laisser
+    décider de l'attribution des points.
+
+    Rend `(progress, points_earned, deja_terminee)`.
+    """
+    progress, created = UserProgress.objects.get_or_create(
+        user=user,
+        lesson=lesson,
+        defaults={
+            'status': UserProgress.ProgressStatus.COMPLETED,
+            'completed_at': timezone.now(),
+        },
+    )
+
+    deja_terminee = (
+        not created and progress.status == UserProgress.ProgressStatus.COMPLETED
+    )
+
+    if not created and not deja_terminee:
+        progress.status = UserProgress.ProgressStatus.COMPLETED
+        progress.completed_at = timezone.now()
+        progress.save()
+
+    # Les points d'une leçon ne sont crédités qu'une fois dans la vie du
+    # compte : la clé d'idempotence est la leçon (cf. `award_lesson_points`).
+    from apps.gamification.services import award_lesson_points
+
+    points_earned = award_lesson_points(user, lesson)
+    if points_earned and not progress.points_awarded:
+        progress.points_awarded = True
+        progress.save(update_fields=['points_awarded', 'updated_at'])
+
+    # Ne pas polluer l'historique en cas de nouvelle soumission réussie.
+    if not deja_terminee:
+        from .models import ActivityLog
+
+        ActivityLog.objects.create(
+            user=user,
+            activity_type=ActivityLog.ActivityType.LESSON_COMPLETED,
+            lesson=lesson,
+            chapter=lesson.chapter,
+            metadata={'time_spent': progress.time_spent},
+        )
+
+    return progress, points_earned, deja_terminee
+
+
 def cohort_unlocked_chapter_ids(cohort):
     """Ids des chapitres ouverts à **toute** la classe.
 

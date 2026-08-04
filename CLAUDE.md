@@ -347,6 +347,42 @@ lecture d'une leçon de théorie compte désormais comme activité.
   chaque fermeture appelle `mark_seen` : une célébration ne rejoue jamais.
 - Route `/badges`, lien « Trophées » dans le header.
 
+## Le verrou de chapitre s'applique aussi aux écritures
+
+⚠️ **Il ne protégeait que la lecture.** `LessonViewSet.retrieve` renvoyait bien
+403, mais `mark_completed`, `track_time` et `submit_quiz` acceptaient
+n'importe quelle leçon — et `mark_completed` acceptait n'importe quel *type*,
+exercice et quiz compris, dont il créditait les points.
+
+Mesuré sur un compte neuf avant correction : **68 appels à `mark_completed`,
+aucun refusé**, le compte passant de 1 à 4 chapitres accessibles, de 0 à
+1485 points et de 0 à 11 badges, **sans jamais ouvrir une leçon**. Les trois
+invariants centraux tombaient ensemble : progression contrôlée par le
+formateur, grand livre de points, badges.
+
+Deux règles distinctes, et il faut les deux
+(`apps/progression/tests/test_ecriture_verrouillee.py`) :
+
+1. **Le chapitre doit être ouvert** — `_refus_si_chapitre_verrouille` sur les
+   trois vues. La décision vivait déjà dans `services.can_access_lesson`, elle
+   n'était simplement pas consultée.
+2. **Seule la théorie se déclare terminée.** Un exercice se valide en passant
+   ses tests, un quiz en atteignant son score : ce sont les deux seuls
+   contenus dont la réussite est objectivement vérifiable. Les déclarer
+   terminés revenait à s'en attribuer les points sans le travail. Une leçon de
+   théorie, elle, n'a pas de critère vérifiable — on ne peut pas prouver
+   qu'elle a été lue.
+
+Après correction, le même scénario donne **60 refus sur 68**, le chapitre 2 ne
+s'ouvre plus, et les points tombent de 1485 à 110 — les seules leçons de
+théorie du chapitre légitimement accessible.
+
+⚠️ **Corollaire : la réussite d'un exercice se constate côté serveur.** Le
+front appelait `mark_completed` depuis `onSubmit` dès que `result.success`
+était vrai — le client décidait donc de l'attribution des points. La
+complétion se fait maintenant dans `validation.tasks._constater_la_reussite`,
+via `progression.services.complete_lesson` partagé avec `mark_completed`.
+
 ## Validation d'une leçon — constatée, plus déclarée
 
 Il n'y a **plus de bouton « Marquer comme terminé »**. Demander à l'apprenant
@@ -1679,6 +1715,28 @@ qui a vidé le state de `trainerSlice` et rendu `/trainer` blanc pendant des
 mois. Uniformisé d'un bloc, avec un test de contrat par module
 (`services/api/contract.test.js`) qui rougirait au moindre retour vers la
 réponse brute.
+
+### Tailwind et SCSS coexistent — état constaté, pas choisi
+
+Tailwind n'est utilisé que dans **4 fichiers**, tous dans `features/trainer/`
+(83 attributs de classe). Les 46 autres composants sont en SCSS/BEM.
+
+Le coût en poids est négligeable : le purge JIT ne produit que **17 règles
+utilitaires**. Le vrai coût est ailleurs — `@tailwind base` charge **Preflight**,
+une réinitialisation CSS **globale**, qui s'applique donc à toute
+l'application pour servir quatre fichiers. Le projet a par ailleurs son propre
+`styles/base/_reset.scss` : **deux réinitialisations coexistent**, et comme
+`tailwind.css` est importé avant `main.scss` dans `main.jsx`, c'est le SCSS qui
+gagne propriété par propriété.
+
+⚠️ **Ne pas retirer Preflight sans vérification visuelle.** Les fichiers
+formateur utilisent `border border-gray-200` : Tailwind ne pose que
+`border-width`, c'est Preflight qui fournit `border-style: solid`. Sans lui,
+ces bordures disparaissent silencieusement.
+
+La convergence sur SCSS est la bonne direction, mais elle exige de voir les
+écrans formateur — donc une session connectée en rôle TRAINER. À faire d'un
+bloc, pas à l'aveugle.
 
 ### Ressources statiques : `public/` ou `src/assets/` ?
 

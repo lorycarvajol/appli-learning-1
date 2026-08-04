@@ -156,3 +156,52 @@ def test_l_exercice_reste_exigible_quand_l_execution_est_active(
     )
 
     assert chapitre2.id in accessible_chapter_ids(learner)
+
+
+# ---------------------------------------------------------------------------
+# La réussite d'un exercice se constate côté serveur
+# ---------------------------------------------------------------------------
+
+def test_la_reussite_dun_exercice_termine_la_lecon_sans_le_client(
+    learner, parcours
+):
+    """⚠️ Le front déclarait lui-même la réussite.
+
+    `LessonView` appelait `mark_completed` depuis `onSubmit` dès que
+    `result.success` était vrai : le client décidait donc de l'attribution des
+    points d'un exercice. Il suffisait d'appeler la route directement pour les
+    obtenir sans écrire une ligne de code — et `mark_completed` refuse
+    désormais les leçons d'exercice, ce qui rendrait la complétion impossible
+    si le serveur ne la constatait pas lui-même.
+    """
+    from unittest.mock import patch
+
+    from apps.progression.models import UserProgress
+    from apps.validation.tasks import run_code_validation
+
+    _, _, _, exercice = parcours
+    reussite = {'success': True, 'results': [], 'total_points': 5, 'max_points': 5}
+
+    with patch('apps.validation.tasks.validate_exercise_code', return_value=reussite):
+        run_code_validation(str(exercice.exercise.id), '<h1>ok</h1>', str(learner.id))
+
+    progress = UserProgress.objects.get(user=learner, lesson=exercice)
+    assert progress.status == UserProgress.ProgressStatus.COMPLETED
+
+
+def test_un_echec_ne_termine_pas_la_lecon(learner, parcours):
+    from unittest.mock import patch
+
+    from apps.progression.models import UserProgress
+    from apps.validation.tasks import run_code_validation
+
+    _, _, _, exercice = parcours
+    echec = {'success': False, 'results': [], 'total_points': 0, 'max_points': 5}
+
+    with patch('apps.validation.tasks.validate_exercise_code', return_value=echec):
+        run_code_validation(str(exercice.exercise.id), 'faux', str(learner.id))
+
+    assert not UserProgress.objects.filter(
+        user=learner, lesson=exercice,
+        status=UserProgress.ProgressStatus.COMPLETED,
+    ).exists()

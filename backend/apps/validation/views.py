@@ -66,7 +66,12 @@ def submit_exercise_code(request, exercise_id):
 
     user_code = submission_serializer.validated_data['code']
 
-    task = run_code_validation.apply_async(args=[str(exercise.id), user_code])
+    # L'identifiant de l'apprenant permet à la tâche de **constater** la
+    # réussite : la complétion et les points d'un exercice ne doivent pas
+    # dépendre de ce que le client affirme (cf. `_constater_la_reussite`).
+    task = run_code_validation.apply_async(
+        args=[str(exercise.id), user_code, str(request.user.id)]
+    )
 
     return Response(
         {'task_id': task.id, 'status': 'PENDING'},

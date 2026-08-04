@@ -39,14 +39,47 @@ def _build_pedagogical_message(result):
     return result
 
 
+def _constater_la_reussite(exercise, user_id):
+    """Marque la leçon terminée quand les tests passent — côté serveur.
+
+    ⚠️ C'est le **front** qui déclarait auparavant la réussite, en appelant
+    `mark_completed` depuis `onSubmit` dès que `result.success` était vrai.
+    Autrement dit, le client décidait de l'attribution des points d'un
+    exercice — il suffisait d'appeler la route directement pour les obtenir
+    sans écrire une ligne de code.
+
+    La réussite d'un exercice est objectivement vérifiable : elle se constate
+    ici, au même endroit que la notation d'un quiz (`submit_quiz`).
+    """
+    if not user_id:
+        return
+
+    from apps.accounts.models import User
+    from apps.progression.services import complete_lesson
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return
+
+    lesson = getattr(exercise, 'lesson', None)
+    if lesson is None:
+        return
+
+    complete_lesson(user, lesson)
+
+
 @shared_task(bind=True, queue='validation', name='validation.run_code_validation')
-def run_code_validation(self, exercise_id, user_code):
+def run_code_validation(self, exercise_id, user_code, user_id=None):
     """
     Exécute la validation Docker d'une soumission d'exercice.
 
     Args:
         exercise_id: UUID (str) de l'exercice
         user_code: code soumis par l'apprenant
+        user_id: UUID (str) de l'apprenant — sert à constater la réussite
+            côté serveur. Facultatif pour rester compatible avec une tâche
+            déjà en file au moment d'un déploiement.
 
     Returns:
         dict sérialisable prêt à être renvoyé tel quel par l'API
@@ -77,5 +110,8 @@ def run_code_validation(self, exercise_id, user_code):
             'total_points': 0,
             'max_points': 0,
         }
+
+    if result.get('success'):
+        _constater_la_reussite(exercise, user_id)
 
     return _build_pedagogical_message(result)

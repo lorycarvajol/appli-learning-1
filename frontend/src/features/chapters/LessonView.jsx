@@ -235,9 +235,16 @@ export default function LessonView() {
                 key={currentLesson.id}
                 exercise={currentLesson.exercise}
                 onSubmit={(code, result) => {
-                  // Auto-mark as completed if all tests pass
-                  if (result.success && !isCompleted) {
-                    dispatch(markLessonCompleted(currentLesson.id));
+                  // La complétion et les points sont constatés **côté
+                  // serveur** quand les tests passent (cf.
+                  // `validation.tasks._constater_la_reussite`) : on se contente
+                  // de resynchroniser l'état local, comme pour les quiz.
+                  //
+                  // Le front déclarait auparavant lui-même la réussite en
+                  // appelant `mark_completed` — c'était laisser au client le
+                  // soin de s'attribuer les points.
+                  if (result.success) {
+                    dispatch(fetchMyProgress());
                   }
                 }}
               />
