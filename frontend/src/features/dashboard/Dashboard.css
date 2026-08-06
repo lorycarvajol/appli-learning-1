@@ -204,35 +204,25 @@
 /* Main Content */
 .dashboard__content {
   display: grid;
-  grid-template-columns: 1fr 340px;
+
+  /* Trois colonnes, et les blocs placés d'après leur contenu :
+         [ Continuer l'apprentissage  ×2 ] [ Vue d'ensemble ]
+         [ Actions rapides ] [ Objectifs ] [ Conseil du jour ]
+
+     Il y avait avant deux conteneurs (colonne principale + barre latérale
+     figée à 340 px). Le contenu ne suivait pas ce découpage : trois liens
+     d'« Actions rapides » étiraient les deux tiers de la largeur pendant que
+     « Prochains objectifs », bien plus dense, se serrait dans le tiers
+     restant.
+
+     ⚠️ `minmax(0, 1fr)` et non `1fr` : la valeur implicite est
+     `minmax(auto, 1fr)`, et un mot insécable — un titre de chapitre, un nom
+     de leçon — pousse alors la colonne au-delà de sa part. C'est aussi ce qui
+     rend l'ellipse possible, `text-overflow` exigeant une largeur minimale
+     nulle. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1.75rem;
   align-items: stretch;
-}
-
-/* La colonne gauche occupe toute la hauteur de la rangée (donnée par la
-   sidebar, plus haute) et ses deux blocs se partagent l'espace : les bas
-   des deux colonnes s'alignent au lieu de laisser un décalage. */
-.dashboard__main {
-  display: flex;
-  flex-direction: column;
-  gap: 1.75rem;
-}
-
-.dashboard__main > .dashboard__section {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Ce sont les contenus qui absorbent la hauteur, pas les titres : ceux-ci
-   restent ancrés en haut de leur bloc. */
-.dashboard__main .learning-card,
-.dashboard__main .quick-actions {
-  flex: 1;
-}
-
-.dashboard__main .quick-action {
-  flex: 1;
 }
 
 /* Sections */
@@ -242,6 +232,27 @@
   padding: 1.75rem;
   border-radius: 16px;
   box-shadow: var(--shadow-sm);
+
+  /* Colonne flex pour que le contenu — et non le titre — absorbe la hauteur
+     que la rangée impose. Les titres restent ancrés en haut, donc alignés
+     d'un bloc à l'autre. */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Le seul bloc qui déborde de sa colonne : il porte l'action principale de la
+   page et mérite la largeur. */
+.dashboard__section--wide {
+  grid-column: span 2;
+}
+
+.dashboard__section .learning-card,
+.dashboard__section .quick-actions {
+  flex: 1;
+}
+
+.dashboard__section .quick-action {
+  flex: 1;
 }
 
 .dashboard__section-header {
@@ -412,38 +423,133 @@
   transform: translateX(4px);
 }
 
-/* Sidebar */
-.dashboard__sidebar {
+/* ---------- Conseil du jour ----------
+   Le seul bloc de la page qui parle plutôt qu'il ne mesure : il porte une
+   phrase, là où ses voisins portent des chiffres. Il est donc traité comme une
+   citation — fond chaud, guillemet ornemental, texte plus généreux — et c'est
+   ce qui l'empêche de paraître vide malgré sa hauteur imposée par la rangée. */
+.dashboard__section--tip {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+
+  /* Deux couches : une diagonale chaude, et un halo bas-droite qui creuse
+     l'angle le plus vide de la carte. Le halo est franchement dosé — à 30 %
+     il ne se voyait pas, et une décoration qu'on ne voit pas n'en est pas une. */
+  background-image: linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--accent-soft) 92%, var(--accent)),
+      color-mix(in srgb, var(--accent-soft) 30%, var(--surface))
+    ),
+    radial-gradient(
+      circle at 88% 100%,
+      color-mix(in srgb, var(--accent) 55%, transparent),
+      transparent 68%
+    );
+}
+
+/* Liseré de tête : le seul bloc de la page qui en porte un. Il signale « ceci
+   n'est pas un tableau de chiffres » avant même la lecture du titre. */
+.dashboard__section--tip::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--accent),
+    color-mix(in srgb, var(--accent) 35%, transparent)
+  );
+}
+
+/* Le corps occupe toute la hauteur laissée par le titre.
+   La répartition se fait par **marges automatiques** plutôt que par
+   `justify-content` : la citation se centre dans l'espace libre et le lien
+   reste posé en bas, que le conseil porte un lien ou non. Avec
+   `justify-content: center`, les deux cas ne se ressemblaient pas — texte
+   centré sans lien, texte collé au titre avec lien. */
+.dashboard__tip-body {
+  position: relative;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  align-items: flex-start;
 }
 
-.sidebar-card {
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  padding: 1.5rem;
-  border-radius: 16px;
-  box-shadow: var(--shadow-sm);
+/* Guillemet ornemental, dans l'angle haut-droit.
+   ⚠️ Trois réglages successifs avant d'arriver ici, chacun instructif :
+   - en absolu avec un décalage négatif, il sortait de la carte et se faisait
+     rogner par l'`overflow` : deux virgules perdues dans un coin ;
+   - avec `line-height: 0`, l'encre débordait **au-dessus** de sa boîte et
+     chevauchait le titre ;
+   - à 3,75 rem dans le flux, il ne pesait plus rien : l'encre d'un « “ »
+     n'occupe qu'environ un quart de sa boîte, un guillemet doit donc être
+     démesuré pour se voir.
+   D'où : hors du flux, **sous** la ligne de titre, et à 7 rem. */
+.dashboard__tip-mark {
+  position: absolute;
+  top: 2.6rem;
+  right: 1.25rem;
+  font-family: 'Space Grotesk', Georgia, serif;
+  font-size: 7rem;
+  line-height: 1;
+  color: color-mix(in srgb, var(--accent) 32%, transparent);
+  pointer-events: none;
+  user-select: none;
 }
 
-.sidebar-card--highlight {
-  background-color: var(--accent-soft);
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-}
-
-.sidebar-card__title {
-  font-size: 1.05rem;
-  font-weight: 700;
+.dashboard__tip-text {
+  margin: auto 0;
+  /* Le texte passe devant l'ornement, jamais derrière. */
+  position: relative;
+  /* Filet doré : il donne un bord à la citation et la rattache au liseré de
+     tête. Retiré un temps au profit du seul guillemet, puis remis — les deux
+     ne se gênent pas, l'un tient la marge gauche, l'autre l'angle droit. */
+  border-left: 3px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  padding-left: 0.95rem;
+  /* La citation ne court pas sous le guillemet : elle s'arrête avant. */
+  padding-right: 1.5rem;
+  /* La police d'affichage, celle des titres. Sur une phrase courte elle donne
+     à la carte le ton d'une parole ; sur un paragraphe entier elle fatiguerait,
+     mais un conseil tient en deux lignes. */
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.65;
   color: var(--ink);
-  margin-bottom: 1.1rem;
 }
 
-.sidebar-card__text {
-  color: var(--ink-soft);
-  line-height: 1.7;
-  margin: 0;
-  font-size: 0.9rem;
+.dashboard__tip-link {
+  /* Le bas de la carte est déjà réservé par la marge automatique du texte :
+     il ne reste qu'à respirer un peu au-dessus. */
+  margin-top: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  background-color: var(--surface);
+  box-shadow: var(--shadow-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-text);
+  text-decoration: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.dashboard__tip-link:hover {
+  background-color: var(--surface);
+  border-color: var(--accent);
+}
+
+/* La flèche avance, pas la pastille : le même geste que `.quick-action`, en
+   plus discret. */
+.dashboard__tip-arrow {
+  transition: transform 0.2s ease;
+}
+
+.dashboard__tip-link:hover .dashboard__tip-arrow {
+  transform: translateX(3px);
 }
 
 /* Progress Overview */
@@ -531,16 +637,6 @@
   transition: width 0.6s ease;
 }
 
-/* Lien d'un conseil : il propose l'action, il ne doit pas voler la vedette
-   au texte qui l'explique. */
-.sidebar-card__link {
-  display: inline-block;
-  margin-top: 0.7rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--brand-strong);
-}
-
 /* Achievements */
 .achievements {
   display: flex;
@@ -585,15 +681,23 @@
   }
 }
 
-@media (max-width: 1024px) {
+/* Deux colonnes : « Continuer l'apprentissage » occupe alors une rangée
+   entière, et les quatre autres blocs se rangent deux par deux. */
+@media (max-width: 1280px) {
   .dashboard__content {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .dashboard__content {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .dashboard__sidebar {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1.25rem;
+  /* Sans cela, le bloc large réclamerait deux colonnes sur une grille qui n'en
+     a plus qu'une : la grille en créerait une seconde, hors de l'écran. */
+  .dashboard__section--wide {
+    grid-column: span 1;
   }
 }
 
@@ -637,5 +741,9 @@
 @media (prefers-reduced-motion: reduce) {
   .dashboard__hero-circle {
     animation: none;
+  }
+
+  .dashboard__tip-link:hover .dashboard__tip-arrow {
+    transform: none;
   }
 }
