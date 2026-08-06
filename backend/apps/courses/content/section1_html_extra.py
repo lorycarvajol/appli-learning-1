@@ -7,8 +7,10 @@ Réordonne les leçons existantes (2 gros exercices + quiz) à la fin du
 chapitre pour qu'elles arrivent après avoir vu tout le vocabulaire testé
 par le quiz.
 
-Usage: python manage.py shell < expand_section_1_html.py
-   ou: docker-compose exec backend python expand_section_1_html.py
+Ce module ne se lance pas seul : il est appelé par
+`load_section_1_html`, qui construit le chapitre entier.
+
+    docker-compose exec backend python manage.py load_course_content --section 1
 """
 
 from apps.courses.models import Chapter, Lesson, Exercise

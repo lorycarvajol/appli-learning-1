@@ -9,7 +9,10 @@ données incompatible avec le moteur de quiz (correct_answer par lettre au
 lieu d'un index, questions enveloppées dans un dict) — ce qui provoquait une
 erreur serveur (total_points/question_count) dès qu'on ouvrait la leçon.
 
-Usage: docker-compose exec backend python expand_section_2_css.py
+Ce module ne se lance pas seul : il est appelé par
+`load_section_2_css`, qui construit le chapitre entier.
+
+    docker-compose exec backend python manage.py load_course_content --section 2
 """
 
 from apps.courses.models import Chapter, Lesson, Exercise, Quiz

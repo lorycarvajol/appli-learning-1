@@ -188,6 +188,17 @@ Quatre conséquences, toutes constatées :
 Bilan après réorganisation : **43 leçons manquantes restaurées** (27 → 70), les
 17 scripts supprimés, `backend/` ne contenant plus que `manage.py`.
 
+⚠️ **Cette suppression a été défaite une fois, et il faut savoir pourquoi.** La
+fusion des copies `-MonPC` du 2026-08-06 a **ressuscité les 18 fichiers**
+(16 scripts + 2 sondes de débogage) en même temps que `viewport.avif` : une
+copie OneDrive antérieure à la réorganisation les contenait encore, et la
+fusion a réintroduit tout ce qu'elle portait. Ils ont été re-supprimés le
+2026-08-06 après vérification que chaque contrepartie existe
+(`content/`, `content/images/`, `management/commands/`) et qu'aucun code ne
+les importe. Le même mécanisme peut avoir ramené d'autres fichiers morts :
+**au moindre doute sur un fichier réapparu, chercher d'abord s'il a une
+contrepartie dans `apps/`, avant de le lancer.**
+
 ⚠️ La refonte a été validée par **empreinte avant/après** : le pipeline manuel a
 d'abord été rejoué en entier pour figer un état de référence (hachage du contenu
 de chaque leçon), puis la nouvelle commande unique a dû le reproduire à
