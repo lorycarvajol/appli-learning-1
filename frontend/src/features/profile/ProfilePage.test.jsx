@@ -60,13 +60,13 @@ describe('ProfilePage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.click(await screen.findByRole('radio', { name: 'Avatar orbit violet' }))
+    await user.click(await screen.findByRole('radio', { name: 'Avatar nova violet' }))
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
 
     await waitFor(() => {
       expect(authApi.updateProfile).toHaveBeenCalledWith(
         expect.objectContaining({
-          profile: expect.objectContaining({ avatar_key: 'orbit-violet' }),
+          profile: expect.objectContaining({ avatar_key: 'nova-violet' }),
         })
       )
     })

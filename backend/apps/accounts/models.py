@@ -159,7 +159,7 @@ class Profile(models.Model):
     avatar_key = models.CharField(
         max_length=40,
         blank=True,
-        help_text="Clé du catalogue (« motif-palette »). Vide = initiales.",
+        help_text="Clé du catalogue (« visage-palette »). Vide = initiales.",
     )
 
     class Theme(models.TextChoices):

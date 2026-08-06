@@ -1,13 +1,13 @@
 import {
+  avatarFaceUri,
   initialsOf,
   initialsPalette,
-  motifShapes,
   paletteColors,
   parseAvatarKey,
 } from '@/features/profile/avatars'
 
 /**
- * Avatar d'un utilisateur : motif choisi au catalogue, ou initiales colorées.
+ * Avatar d'un utilisateur : visage choisi au catalogue, ou initiales colorées.
  *
  * Le repli sur les initiales n'est pas un pis-aller — c'est l'état par défaut
  * de tout compte, et il doit rester lisible. Sa couleur est dérivée du nom,
@@ -21,7 +21,7 @@ export default function Avatar({ user, size = 40, label, className = '' }) {
   const parsed = parseAvatarKey(user?.profile?.avatar_key)
   const palette = parsed ? parsed.palette : initialsPalette(user?.email || '')
   const colors = paletteColors(palette)
-  const gradientId = `av-${palette}-${parsed ? parsed.motif : 'initials'}`
+  const gradientId = `av-${palette}-${parsed ? parsed.visage : 'initials'}`
 
   const accessibility = label
     ? { role: 'img', 'aria-label': label }
@@ -45,18 +45,21 @@ export default function Avatar({ user, size = 40, label, className = '' }) {
       <rect width="100" height="100" rx="28" fill={`url(#${gradientId})`} />
 
       {parsed
-        ? motifShapes(parsed.motif).map((shape, index) => {
-            const Tag = shape.type
-            return (
-              <Tag
-                key={index}
-                fill={colors.ink}
-                stroke={colors.ink}
-                strokeWidth={0}
-                {...shape.props}
-              />
-            )
-          })
+        ? (
+          /*
+            Le visage est posé en image et non injecté en balisage : un SVG
+            référencé par `<image>` est rendu en mode image, sans script ni
+            requête sortante. Pas de `dangerouslySetInnerHTML` à surveiller.
+          */
+          <image
+            href={avatarFaceUri(parsed.visage)}
+            x="0"
+            y="0"
+            width="100"
+            height="100"
+            preserveAspectRatio="xMidYMid slice"
+          />
+        )
         : (
           <text
             x="50"

@@ -1,19 +1,48 @@
 /**
  * Rendu des avatars du catalogue.
  *
- * Les avatars sont dessinés en SVG à la volée : rien n'est téléversé, rien
- * n'est stocké, rien n'est servi depuis le disque. Voir
- * `backend/apps/accounts/avatars.py` pour le raisonnement complet (modération,
- * formats, surface d'attaque).
+ * Le choix se fait dans une liste close : rien n'est téléversé, rien n'est
+ * stocké côté serveur. Voir `backend/apps/accounts/avatars.py` pour le
+ * raisonnement complet (modération, formats, surface d'attaque).
  *
- * ⚠️ `MOTIFS` et `PALETTES` **dupliquent** les listes du serveur. C'est
+ * ⚠️ Les visages sont **pré-générés à la construction** (`npm run avatars`) et
+ * servis par l'application elle-même — **jamais** par l'API HTTP de DiceBear.
+ * Un appel distant enverrait l'IP de chaque apprenant à un tiers à chaque
+ * affichage, et ferait tomber la raison pour laquelle l'application n'a pas de
+ * bannière de consentement (aucun traceur tiers). Ne pas remplacer par une URL.
+ *
+ * Style : **Notionists**, licence **CC0 1.0** (Zoish) — domaine public, aucune
+ * attribution obligatoire. Plusieurs autres styles de la même bibliothèque sont
+ * en CC BY 4.0 : vérifier `meta.license` avant d'en changer.
+ *
+ * ⚠️ `VISAGES` et `PALETTES` **dupliquent** les listes du serveur. C'est
  * assumé : le serveur reste l'autorité sur ce qui est acceptable, le client
- * n'a besoin que de savoir dessiner. Mais ajouter un motif d'un seul côté
+ * n'a besoin que de savoir dessiner. Mais ajouter un visage d'un seul côté
  * produit soit un avatar vide, soit un choix refusé à l'enregistrement —
  * toujours modifier les deux fichiers ensemble.
  */
 
-export const MOTIFS = ['orbit', 'prism', 'wave', 'bloom', 'spark', 'mesh']
+// Visages **pré-générés** par `npm run avatars` (voir
+// `scripts/generate-avatars.mjs`). Vite les transforme en URLs : le navigateur
+// reçoit six SVG statiques, mis en cache, et **aucun code de génération**.
+//
+// ⚠️ Ne pas réintroduire `@dicebear/core` ici. Le catalogue est fermé : six
+// visages connus d'avance. Embarquer le générateur pour les recalculer à
+// l'exécution ajoutait ~380 ko au morceau d'entrée — `Avatar` est tiré par le
+// `Header`, donc structurel et jamais différé — et faisait repasser le bundle
+// de 261 ko à 640 ko.
+import novaSvg from '@/assets/avatars/nova.svg'
+import atlasSvg from '@/assets/avatars/atlas.svg'
+import vegaSvg from '@/assets/avatars/vega.svg'
+import orionSvg from '@/assets/avatars/orion.svg'
+import lyraSvg from '@/assets/avatars/lyra.svg'
+import solSvg from '@/assets/avatars/sol.svg'
+
+/**
+ * Chaque valeur **est** la graine DiceBear : la renommer change le visage de
+ * tous ceux qui l'avaient choisi. Miroir de `VISAGES` dans `avatars.py`.
+ */
+export const VISAGES = ['nova', 'atlas', 'vega', 'orion', 'lyra', 'sol']
 
 export const PALETTES = ['violet', 'amber', 'teal', 'rose', 'indigo', 'lime']
 
@@ -27,83 +56,40 @@ const PALETTE_COLORS = {
   lime: { from: '#5aa02c', to: '#a3d94f', ink: '#1b3000' },
 }
 
-/**
- * Géométrie de chaque motif, dans un carré de 100×100.
- *
- * Volontairement abstrait : des formes plutôt que des visages ou des animaux.
- * Un catalogue figuratif oblige à arbitrer des représentations (teintes de
- * peau, genres, cultures) qu'une liste de douze images ne peut pas rendre
- * justement — l'abstrait n'exclut personne.
- */
-const MOTIF_SHAPES = {
-  orbit: [
-    { type: 'circle', props: { cx: 50, cy: 50, r: 17 } },
-    { type: 'ellipse', props: { cx: 50, cy: 50, rx: 34, ry: 15, fill: 'none', strokeWidth: 6 } },
-  ],
-  prism: [
-    { type: 'path', props: { d: 'M50 22 L76 68 H24 Z' } },
-    { type: 'path', props: { d: 'M50 42 L63 68 H37 Z', opacity: 0.45 } },
-  ],
-  wave: [
-    {
-      type: 'path',
-      props: {
-        d: 'M18 58 q16 -22 32 0 t32 0',
-        fill: 'none',
-        strokeWidth: 8,
-        strokeLinecap: 'round',
-      },
-    },
-    {
-      type: 'path',
-      props: {
-        d: 'M18 40 q16 -22 32 0 t32 0',
-        fill: 'none',
-        strokeWidth: 8,
-        strokeLinecap: 'round',
-        opacity: 0.45,
-      },
-    },
-  ],
-  bloom: [
-    { type: 'circle', props: { cx: 50, cy: 32, r: 13 } },
-    { type: 'circle', props: { cx: 50, cy: 68, r: 13 } },
-    { type: 'circle', props: { cx: 32, cy: 50, r: 13, opacity: 0.55 } },
-    { type: 'circle', props: { cx: 68, cy: 50, r: 13, opacity: 0.55 } },
-  ],
-  spark: [
-    { type: 'path', props: { d: 'M50 18 L58 42 L82 50 L58 58 L50 82 L42 58 L18 50 L42 42 Z' } },
-  ],
-  mesh: [
-    { type: 'circle', props: { cx: 34, cy: 34, r: 8 } },
-    { type: 'circle', props: { cx: 66, cy: 34, r: 8, opacity: 0.55 } },
-    { type: 'circle', props: { cx: 34, cy: 66, r: 8, opacity: 0.55 } },
-    { type: 'circle', props: { cx: 66, cy: 66, r: 8 } },
-    {
-      type: 'path',
-      props: { d: 'M34 34 H66 M34 66 H66 M34 34 V66 M66 34 V66', fill: 'none', strokeWidth: 4, opacity: 0.4 },
-    },
-  ],
+const FACE_URLS = {
+  nova: novaSvg,
+  atlas: atlasSvg,
+  vega: vegaSvg,
+  orion: orionSvg,
+  lyra: lyraSvg,
+  sol: solSvg,
 }
 
-export const AVATAR_KEYS = MOTIFS.flatMap((motif) =>
-  PALETTES.map((palette) => `${motif}-${palette}`)
+/**
+ * URL du visage, à poser dans un `<image>`.
+ *
+ * On passe par une image plutôt que par une injection de balisage : le SVG
+ * référencé par `<image>` est rendu en mode « image », sans script ni requête
+ * vers un tiers. Aucun `dangerouslySetInnerHTML` n'est nécessaire.
+ */
+export function avatarFaceUri(visage) {
+  return FACE_URLS[visage] || null
+}
+
+export const AVATAR_KEYS = VISAGES.flatMap((visage) =>
+  PALETTES.map((palette) => `${visage}-${palette}`)
 )
 
-/** Décompose une clé en motif et palette, ou `null` si elle est inconnue. */
+/** Décompose une clé en visage et palette, ou `null` si elle est inconnue. */
 export function parseAvatarKey(key) {
   if (!key) return null
-  const [motif, palette] = String(key).split('-')
-  if (!MOTIFS.includes(motif) || !PALETTES.includes(palette)) return null
-  return { motif, palette }
+  const [visage, palette] = String(key).split('-')
+  if (!VISAGES.includes(visage) || !PALETTES.includes(palette)) return null
+  return { visage, palette }
 }
 
 export function paletteColors(palette) {
   return PALETTE_COLORS[palette] || PALETTE_COLORS.violet
-}
-
-export function motifShapes(motif) {
-  return MOTIF_SHAPES[motif] || []
 }
 
 /**

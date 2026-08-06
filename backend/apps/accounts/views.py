@@ -9,7 +9,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 
-from .avatars import MOTIFS, PALETTES, avatar_choices
+from .avatars import VISAGES, PALETTES, avatar_choices
 from .models import User, Profile
 from .throttling import FailedLoginThrottle
 from .serializers import (
@@ -133,7 +133,7 @@ class AvatarCatalogView(APIView):
     """
     GET /api/auth/avatars/
 
-    Motifs et palettes disponibles. Le client fait le rendu en SVG à partir de
+    Visages et palettes disponibles. Le client fait le rendu en SVG à partir de
     ces deux listes ; le serveur reste l'autorité sur ce qui est acceptable
     (cf. `ProfileSerializer.validate_avatar_key`).
     """
@@ -141,7 +141,7 @@ class AvatarCatalogView(APIView):
 
     def get(self, request):
         return Response({
-            'motifs': list(MOTIFS),
+            'visages': list(VISAGES),
             'palettes': list(PALETTES),
             'keys': avatar_choices(),
         })

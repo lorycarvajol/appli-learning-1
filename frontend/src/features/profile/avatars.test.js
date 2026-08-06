@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
   AVATAR_KEYS,
-  MOTIFS,
+  VISAGES,
   PALETTES,
+  avatarFaceUri,
   initialsOf,
   initialsPalette,
-  motifShapes,
   parseAvatarKey,
 } from './avatars'
 
@@ -17,19 +17,34 @@ import {
  */
 
 describe('catalogue d’avatars', () => {
-  it('couvre toutes les combinaisons motif × palette', () => {
-    expect(AVATAR_KEYS).toHaveLength(MOTIFS.length * PALETTES.length)
-    expect(AVATAR_KEYS).toContain('orbit-violet')
+  it('couvre toutes les combinaisons visage × palette', () => {
+    expect(AVATAR_KEYS).toHaveLength(VISAGES.length * PALETTES.length)
+    expect(AVATAR_KEYS).toContain('nova-violet')
   })
 
   it('sait dessiner chaque clé du catalogue', () => {
-    // Une clé valide côté serveur mais sans géométrie ici produirait un
-    // avatar vide, sans erreur visible.
+    // Une clé valide côté serveur mais sans visage pré-généré produirait un
+    // avatar vide, sans erreur visible. C'est ce test qui rougit si
+    // `npm run avatars` n'a pas été relancé après un ajout à `VISAGES`.
     for (const key of AVATAR_KEYS) {
       const parsed = parseAvatarKey(key)
       expect(parsed, key).not.toBeNull()
-      expect(motifShapes(parsed.motif).length, key).toBeGreaterThan(0)
+      expect(avatarFaceUri(parsed.visage), key).toBeTruthy()
     }
+  })
+
+  it('sert les visages depuis l’application, jamais depuis un tiers', () => {
+    // Aucune IP d'apprenant ne doit partir chez un hébergeur externe : pointer
+    // l'API HTTP de DiceBear imposerait une bannière de consentement (cf. la
+    // section RGPD de CLAUDE.md).
+    for (const visage of VISAGES) {
+      expect(avatarFaceUri(visage), visage).not.toMatch(/^(https?:)?\/\//)
+    }
+  })
+
+  it('refuse un visage hors catalogue', () => {
+    expect(avatarFaceUri('licorne')).toBeNull()
+    expect(avatarFaceUri('')).toBeNull()
   })
 
   it('retombe sur les initiales pour une clé inconnue', () => {

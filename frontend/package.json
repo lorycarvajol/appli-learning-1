@@ -11,7 +11,8 @@
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
-    "e2e:report": "playwright show-report"
+    "e2e:report": "playwright show-report",
+    "avatars": "node scripts/generate-avatars.mjs"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -27,6 +28,8 @@
     "socket.io-client": "^4.6.1"
   },
   "devDependencies": {
+    "@dicebear/core": "^9.4.3",
+    "@dicebear/notionists": "^9.4.2",
     "@playwright/test": "^1.61.1",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
@@ -41,7 +44,6 @@
     "eslint-plugin-react-refresh": "^0.4.5",
     "jsdom": "^29.1.1",
     "postcss": "^8.5.20",
-    "tailwindcss": "^3.4.19",
     "vite": "^5.0.12",
     "vitest": "^2.1.9"
   }

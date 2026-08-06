@@ -39,7 +39,7 @@ def test_un_apprenant_personnalise_son_profil(learner):
         'first_name': 'Ève',
         'profile': {
             'bio': 'J’apprends le JavaScript.',
-            'avatar_key': 'orbit-violet',
+            'avatar_key': 'nova-violet',
             'theme': Profile.Theme.DARK,
             'github_username': 'eve-dev',
         },
@@ -48,7 +48,7 @@ def test_un_apprenant_personnalise_son_profil(learner):
     assert response.status_code == 200
     learner.refresh_from_db()
     assert learner.first_name == 'Ève'
-    assert learner.profile.avatar_key == 'orbit-violet'
+    assert learner.profile.avatar_key == 'nova-violet'
     assert learner.profile.theme == Profile.Theme.DARK
     assert learner.profile.bio == 'J’apprends le JavaScript.'
 
@@ -57,15 +57,15 @@ def test_le_catalogue_davatars_est_expose(learner):
     response = client_for(learner).get('/api/auth/avatars/')
 
     assert response.status_code == 200
-    assert 'orbit' in response.data['motifs']
+    assert 'nova' in response.data['visages']
     assert 'violet' in response.data['palettes']
-    assert 'orbit-violet' in response.data['keys']
+    assert 'nova-violet' in response.data['keys']
     assert len(response.data['keys']) == 36
 
 
 def test_lavatar_vide_est_accepte(learner):
     """Revenir aux initiales doit rester possible."""
-    learner.profile.avatar_key = 'orbit-violet'
+    learner.profile.avatar_key = 'nova-violet'
     learner.profile.save()
 
     response = client_for(learner).patch(

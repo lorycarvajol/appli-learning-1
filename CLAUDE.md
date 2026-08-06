@@ -15,315 +15,221 @@ This is a **web-based learning platform** for teaching web development, featurin
 **Target Users:** 3 roles - Learner (students), Trainer (instructors), Admin
 **Tech Stack:** Django 5.0+ (backend), React 18+ (frontend), PostgreSQL, Redis, Celery, Django Channels
 
-## État Actuel du Développement (Mis à jour: 2025-12-12)
+## Où en est le projet (2026-08-04)
 
-### ✅ Fonctionnalités Complétées
+**La plateforme est fonctionnellement complète pour un premier usage réel.**
+Le chantier en cours est la **mise en production**, pas le produit.
 
-#### Infrastructure Docker
-- **Docker Compose configuré** avec 7 services:
-  - `postgres` (PostgreSQL 15)
-  - `redis` (Redis 7)
-  - `backend` (Django + Gunicorn)
-  - `daphne` (ASGI server pour WebSocket)
-  - `celery` (async tasks)
-  - `celery-beat` (scheduled tasks)
-  - `frontend` (React + Vite)
-- **Scripts de démarrage**: `start.bat` (Windows) et `start.sh` (Linux/Mac)
-- **Volumes persistants**: Base de données et médias conservés entre redémarrages
+| | |
+|---|---|
+| Backend | 7 apps : `accounts`, `administration`, `cohorts`, `courses`, `gamification`, `progression`, `validation` |
+| Frontend | 12 features, 17 routes |
+| Contenu | 4 chapitres, 68 leçons, 25 exercices, 5 quiz, 31 illustrations |
+| Tests | **270 backend** (+7 marqués `docker`, hors CI), **65 frontend**, 12 bout-en-bout |
+| CI | Verte sur `main` et sur chaque *pull request* |
 
-#### Backend Django (100% Fonctionnel)
+### Reprendre en trois commandes
 
-**Configuration:**
-- Settings modulaires: `base.py`, `development.py`, `production.py`
-- JWT authentication avec SimpleJWT (access 1h, refresh 7j)
-- CORS configuré pour localhost:5173
-- Rate limiting désactivé en développement
-- Logging en console (pas de fichiers pour Docker)
-
-**App Accounts (Authentification):**
-- ✅ Modèle User personnalisé avec UUID et email-based auth
-- ✅ Modèle Profile avec gamification (points, level)
-- ✅ Rôles: LEARNER, TRAINER, ADMIN
-- ✅ API complète: register, login, logout, token refresh, current user
-- ✅ Admin interface configurée
-- ✅ Migrations appliquées et testées
-- ✅ Système de blacklist des tokens lors du logout
-
-**App Courses (Gestion du contenu):**
-- ✅ 5 Modèles créés et migrés:
-  - `Chapter`: Chapitres avec ordre, durée estimée, publication
-  - `Lesson`: Leçons (3 types: THEORY, EXERCISE, QUIZ)
-  - `Exercise`: Exercices de code avec starter_code, solution, tests (JSONB)
-  - `Quiz`: Quiz avec questions (JSONB), passing_score, randomisation
-  - `Project`: Projets finaux avec évaluation et critères
-- ✅ Serializers pour tous les modèles avec permissions
-- ✅ ViewSets read-only avec filtres et ordering
-- ✅ URLs configurées: `/api/courses/chapters/`, `/api/courses/lessons/`, etc.
-- ✅ Admin interface complète avec inline editing
-- ✅ Relations: Chapter → Lessons, Lesson ↔ Exercise/Quiz
-
-**Endpoints Backend Disponibles:**
-```
-POST   /api/auth/register/           - Inscription
-POST   /api/auth/login/              - Connexion (retourne JWT)
-POST   /api/auth/logout/             - Déconnexion (blacklist token)
-POST   /api/auth/token/refresh/      - Rafraîchir access token
-GET    /api/auth/me/                 - Infos utilisateur courant
-PUT    /api/auth/me/                 - Modifier profil
-PUT    /api/auth/change-password/    - Changer mot de passe
-
-GET    /api/courses/chapters/        - Liste des chapitres
-GET    /api/courses/chapters/{slug}/ - Détails chapitre avec leçons
-GET    /api/courses/lessons/         - Liste des leçons
-GET    /api/courses/lessons/{slug}/  - Détails leçon avec exercise/quiz
-GET    /api/courses/exercises/{id}/  - Détails exercice
-GET    /api/courses/quizzes/{id}/    - Détails quiz
-GET    /api/courses/projects/        - Liste des projets
-GET    /api/courses/projects/{slug}/ - Détails projet
-
-GET    /admin/                       - Interface admin Django
-```
-
-#### Frontend React (100% Fonctionnel)
-
-**Configuration:**
-- Vite + React 18
-- Redux Toolkit pour state management
-- React Router v6 pour navigation
-- Tailwind CSS pour styling
-- Axios avec intercepteurs JWT
-
-**Features Authentification:**
-- ✅ Page Login avec formulaire et validation
-- ✅ Page Register avec confirmation password
-- ✅ Stockage tokens dans localStorage
-- ✅ Auto-refresh des tokens sur 401
-- ✅ PrivateRoute pour protection des routes
-- ✅ Redux slice authSlice avec async thunks
-- ✅ Dashboard utilisateur avec profil et stats
-- ✅ Logout fonctionnel avec redirection
-
-**Features Courses:**
-- ✅ Redux slice chaptersSlice pour state management
-- ✅ API service coursesApi.js avec tous les endpoints
-- ✅ Page ChaptersList: Grille de cartes avec tous les chapitres
-- ✅ Page ChapterDetail: Détails chapitre + liste des leçons
-- ✅ Page LessonView: Affichage du contenu selon le type
-  - Théorie: Contenu Markdown + vidéo optionnelle
-  - Exercice: Instructions + code de départ (éditeur à venir)
-  - Quiz: Instructions + métadonnées (interface à venir)
-- ✅ Navigation breadcrumb fonctionnelle
-- ✅ Bouton "Accéder aux chapitres" dans le Dashboard
-
-**Routes Frontend Disponibles:**
-```
-/login              - Connexion
-/register           - Inscription
-/dashboard          - Dashboard utilisateur (protected)
-/chapters           - Liste des chapitres (protected)
-/chapters/:slug     - Détails d'un chapitre (protected)
-/lessons/:slug      - Visualisation d'une leçon (protected)
-```
-
-### 🔧 Problèmes Résolus
-
-1. **Logging Error** (FileNotFoundError: django.log)
-   - Solution: Supprimé handler 'file', gardé uniquement console pour Docker
-
-2. **Docker Compose Warning** (version obsolete)
-   - Solution: Supprimé la ligne `version: '3.8'`
-
-3. **Migration Error** (relation 'accounts_user' does not exist)
-   - Solution: Exécuté makemigrations avant migrate
-
-4. **Rate Limiting en développement** (429 Too Many Requests)
-   - Solution: Désactivé throttling dans development.py
-
-5. **Infinite Loop Frontend** (ERR_INSUFFICIENT_RESOURCES)
-   - Cause: fetchCurrentUser() appelé à chaque render
-   - Solution: Ajouté state `hasFetched` pour appeler une seule fois
-
-### 📝 Comment Tester l'Application
-
-**1. Démarrer l'environnement:**
 ```bash
-.\start.bat  # Windows
-# ou
-./start.sh   # Linux/Mac
+docker-compose up -d
+docker-compose exec backend python manage.py load_course_content   # contenu
+docker-compose exec backend python manage.py create_demo_users     # comptes de dev
 ```
 
-**2. Créer un superuser (si pas déjà fait):**
+Puis http://localhost:5173 et http://localhost:8000/admin/.
+
+### Ce qui reste, par ordre de priorité
+
+1. **Mise en production** — c'est le sujet actif. Tout le code est prêt et
+   éprouvé par une répétition locale ; ne restent que les étapes sur le
+   serveur. **Point d'entrée : [`06_ROADMAP_DEPLOIEMENT.md`](06_ROADMAP_DEPLOIEMENT.md)**,
+   qui contient aussi la confrontation de `guide-hebergement-ovh.md` au code réel.
+2. **CI qui construit les images** — elle n'en construit aucune aujourd'hui.
+3. **Produit, après ouverture** : WebSockets (rien n'existe, voir la section
+   dédiée), soumission de projets, forum, leaderboard.
+
+### Les pièges qui coûtent le plus cher
+
+Chacun a fait perdre du temps au moins une fois. Ils sont détaillés dans leur
+section, cette liste sert d'index.
+
+| Piège | Section |
+|---|---|
+| `load_demo_content` a effacé tout le contenu des cours | « Contenu des cours — architecture » |
+| `/media/` n'est servi par personne en production | `06_ROADMAP_DEPLOIEMENT.md` §1 |
+| `SIMPLE_JWT` copie `SECRET_KEY` à l'import | « SECRET_KEY — garde-fou de production » |
+| `development.py` **mute** les réglages de `base.py` en place | « Testing Strategy » |
+| `login.fulfilled` ne peuple ni `user` ni `initialized` | « Gardes de rôle côté front » |
+| Supprimer un chapitre reverrouille les apprenants en classe | « Contenu des cours — architecture » |
+| `VITE_*` est figée à la construction, pas lue à l'exécution | « Ressources statiques » |
+| `--reuse-db` de pytest masque une migration manquante | « Testing Strategy » |
+
+### Conventions non négociables
+
+1. **Docker pour tout** — ne rien installer localement, sauf `npm` côté front
+   (le conteneur est en Node 18, la CI et les tests en Node 22).
+2. **Écrire en français** : commentaires, tests, messages de commit.
+3. **Valider par sabotage** : casser volontairement le code pour vérifier que
+   le test rougit. Un test vert sur du code cassé ne protège rien.
+4. **UUID partout**, jamais d'entiers séquentiels. Slugs pour les URL.
+5. **JSONB** pour `Exercise.tests` et `Quiz.questions` — toujours lus via
+   `test_cases` et `questions_list`, jamais directement.
+6. Les points ne se créditent que par `services.award_points`, jamais par
+   `Profile.add_points`.
+
+## Contenu des cours — architecture
+
+Le contenu pédagogique **ne vit pas en base de données** : il vit dans le code,
+sous `apps/courses/content/`. La base n'en est qu'une projection,
+reconstructible à tout moment. C'est ce qui a permis de récupérer les deux
+incidents décrits plus bas sans perdre une ligne.
+
+```
+backend/apps/courses/
+├── content/                       ← la source du contenu
+│   ├── illustrations.py           règles déclaratives de rattachement des figures
+│   ├── pipeline.py                assemblage d'un chapitre (compléments + figures)
+│   ├── section1_html_extra.py     12 leçons complémentaires HTML
+│   ├── section1_html_quiz.py      quiz HTML (20 questions, positions mélangées)
+│   ├── section2_css_extra.py      12 leçons complémentaires CSS
+│   ├── section3_javascript.py     le chapitre JavaScript (17 leçons)
+│   ├── section3_javascript_quiz.py
+│   └── images/                    dessin des illustrations (Pillow)
+│       ├── palette.py             couleurs, polices, primitives — le socle commun
+│       ├── section1_html.py       13 figures
+│       ├── section2_css.py        11 figures
+│       └── section3_javascript.py  7 figures
+└── management/commands/
+    ├── load_course_content.py     ← orchestrateur, le point d'entrée
+    ├── load_section_1_html.py     un chapitre complet chacune
+    ├── load_section_2_css.py
+    ├── load_section_3_javascript.py
+    ├── load_section_4_site_vitrine.py
+    ├── load_demo_content.py       3 chapitres maigres, pour les démos
+    └── generate_course_images.py  régénère les 31 PNG
+```
+
+### Une commande = un chapitre complet
+
 ```bash
-docker-compose exec backend python manage.py createsuperuser
+python manage.py load_course_content              # tout le parcours
+python manage.py load_course_content --section 3  # un seul chapitre
+python manage.py load_course_content --list
 ```
 
-**3. Accéder à l'admin Django:**
-- URL: http://localhost:8000/admin/
-- Créer des chapitres et leçons
-- Marquer `is_published = True` pour les rendre visibles
+**C'est l'invariant central.** Une commande de section construit son chapitre
+*entier* : contenu de base, leçons complémentaires, quiz et illustrations. Il
+n'y a plus d'étape à ne pas oublier.
 
-**4. Tester le frontend:**
-- URL: http://localhost:5173/
-- S'inscrire ou se connecter
-- Cliquer sur "Accéder aux chapitres"
-- Naviguer dans les chapitres et leçons
+| Chapitre | Commande | Contenu |
+|---|---|---|
+| 1 — HTML | `load_section_1_html` | 18 leçons, 8 exercices, 2 quiz |
+| 2 — CSS | `load_section_2_css` | 17 leçons, 8 exercices, 1 quiz |
+| 3 — JavaScript | `load_section_3_javascript` | 18 leçons, 9 exercices, 1 quiz |
+| 4 — Site vitrine | `load_section_4_site_vitrine` | 15 leçons, 1 quiz |
 
-### 🚧 Prochaines Étapes (Par Ordre de Priorité)
+⚠️ `load_section_3_javascript` **supprime le chapitre de démonstration**
+`javascript-debutants` : les deux occupent la même place dans le parcours.
 
-#### Phase 1: Progression Tracking
-- [ ] Créer app `progression` avec modèles:
-  - `UserProgress`: État progression par leçon
-  - `ChapterAccess`: Contrôle d'accès aux chapitres
-  - `ActivityLog`: Historique des activités
-- [ ] API endpoints pour marquer leçons comme complétées
-- [ ] Frontend: Bouton "Marquer comme terminé" fonctionnel
-- [ ] Affichage de la progression dans ChaptersList
+### Les illustrations sont rattachées au chargement, pas après coup
 
-#### Phase 2: Validation de Code
-- [ ] Créer app `validation` avec sandbox Docker
-- [ ] Service `code_runner.py` pour exécution sécurisée
-- [ ] API endpoint `/api/exercises/{id}/submit/`
-- [ ] Frontend: Éditeur Monaco pour écrire du code
-- [ ] Affichage des résultats de tests
-- [ ] Système de hints progressifs
+`content/illustrations.py` déclare 32 règles « ancre → figure », appliquées par
+`pipeline.finish()` juste avant l'enregistrement. Deux propriétés, chacune
+couverte par un test (`tests/test_illustrations.py`) :
 
-#### Phase 3: Interface Quiz
-- [ ] Frontend: Composant QuizInterface
-- [ ] Affichage questions avec options multiples
-- [ ] Soumission et calcul du score
-- [ ] Feedback immédiat sur les réponses
-- [ ] Randomisation questions/options si configuré
+- **Idempotent** — l'image déjà présente ⇒ la règle ne fait rien. Recharger un
+  chapitre n'empile pas les figures.
+- **Bruyant** — ancre introuvable ⇒ `IllustrationError`. Une figure qui
+  disparaît casse le chargement au lieu de produire une leçon amputée.
 
-#### Phase 4: Gamification — ✅ Fait (voir section dédiée plus bas)
-- [x] App `gamification` (Badge, UserBadge, PointTransaction, UserStreak)
-- [x] Attribution automatique idempotente des badges
-- [x] Objectifs secrets masqués côté serveur + révélation animée
-- [x] Frontend: page Trophées, prochains objectifs, série de jours
-- [ ] Leaderboard — volontairement reporté (choix produit : progression
-      personnelle d'abord, le grand livre de points le rend trivial à ajouter)
+Les PNG sont **versionnés** (`backend/media/courses/`, 31 fichiers, 710 Ko) :
+un clone affiche les illustrations sans rien exécuter. `.gitignore` ignore le
+reste de `backend/media/` (les téléversements d'exécution) mais ré-inclut
+`courses/`.
 
-#### Phase 5: Fonctionnalités Trainer
-- [ ] Dashboard trainer avec statistiques élèves
-- [ ] Système de déblocage de chapitres
-- [ ] Review de projets soumis
-- [ ] Tableau de bord activité en temps réel
+`generate_course_images` ne sert qu'à **retoucher** une figure — on la relance
+et on commite le PNG. Elle exige Pillow et les polices DejaVu, installés dans
+l'**étage development** du Dockerfile seulement. ⚠️ Ne pas remonter Pillow dans
+`requirements/base.txt` : il en a été retiré avec le dernier `ImageField` (cf.
+« Avatars : catalogue, pas téléversement »), et la production sert des PNG
+versionnés — elle n'a rien à dessiner.
 
-#### Phase 6: WebSocket & Real-time
-- [ ] Configuration Django Channels complète
-- [ ] Consumers pour auto-save code
-- [ ] Consumer pour activité en temps réel
-- [ ] Frontend: WebSocket service
-- [ ] Auto-save toutes les 3 secondes
+### Ajouter du contenu
 
-#### Phase 7: Forum Communautaire
-- [ ] Créer app `forum`:
-  - `Post`: Questions/discussions
-  - `Reply`: Réponses
-  - `Vote`: Système de votes
-- [ ] API CRUD complète
-- [ ] Frontend: Liste posts, création, réponses
-- [ ] Système de recherche et tags
+- **Une leçon** → dans le module `content/sectionN_*.py` correspondant, puis
+  recharger la section.
+- **Une figure** → dessiner dans `content/images/sectionN_*.py`, lancer
+  `generate_course_images`, ajouter la règle dans `illustrations.py`, recharger.
+- **Un chapitre** → un module dans `content/`, une commande, et une entrée dans
+  `SECTIONS` de `load_course_content.py`.
 
-### 📁 Structure des Fichiers Importants
+### L'incident du 2026-08-04 : 17 scripts à la racine
 
-**Backend:**
-```
-backend/
-├── config/
-│   ├── settings/
-│   │   ├── base.py          ✅ Settings partagés
-│   │   ├── development.py   ✅ Rate limiting désactivé
-│   │   └── production.py    ✅ Config production
-│   ├── urls.py              ✅ URLs principales
-│   ├── wsgi.py              ✅ WSGI pour Gunicorn
-│   └── asgi.py              🚧 ASGI pour Channels
-├── apps/
-│   ├── accounts/            ✅ 100% Complet
-│   │   ├── models.py        ✅ User, Profile
-│   │   ├── serializers.py   ✅ Register, User, Profile, ChangePassword
-│   │   ├── views.py         ✅ Register, CurrentUser, Logout
-│   │   ├── urls.py          ✅ Routes auth
-│   │   ├── admin.py         ✅ Admin interface
-│   │   └── signals.py       ✅ Auto-create Profile
-│   ├── courses/             ✅ 100% Complet
-│   │   ├── models.py        ✅ Chapter, Lesson, Exercise, Quiz, Project
-│   │   ├── serializers.py   ✅ Tous les serializers
-│   │   ├── views.py         ✅ ViewSets read-only
-│   │   ├── urls.py          ✅ Routes courses
-│   │   └── admin.py         ✅ Admin avec inlines
-│   ├── progression/         ⏳ À créer
-│   ├── gamification/        ⏳ À créer
-│   ├── validation/          ⏳ À créer
-│   └── forum/               ⏳ À créer
-├── requirements/
-│   ├── base.txt            ✅ Django, DRF, psycopg2, etc.
-│   ├── development.txt     ✅ Debug tools
-│   └── production.txt      ✅ Gunicorn, etc.
-└── Dockerfile              ✅ Python 3.11-slim
+Avant cette réorganisation, `backend/` portait **17 scripts** hors de toute
+commande Django, formant un pipeline manuel non documenté. Construire le seul
+chapitre 1 demandait six étapes dans un ordre précis : `load_section_1_html`,
+`expand_section_1_html.py`, `add_html_quiz.py`, `fix_html_quiz_option_order.py`,
+puis deux scripts d'images qui faisaient un `str.replace()` **sur la base**.
 
-Frontend:
-```
-frontend/
-├── src/
-│   ├── app/
-│   │   └── store.js         ✅ Redux store (auth, chapters)
-│   ├── features/
-│   │   ├── auth/            ✅ 100% Complet
-│   │   │   ├── authSlice.js       ✅ Redux slice
-│   │   │   ├── Login.jsx          ✅ Page login
-│   │   │   ├── Register.jsx       ✅ Page register
-│   │   │   └── PrivateRoute.jsx   ✅ Route protection
-│   │   └── chapters/        ✅ 100% Complet
-│   │       ├── chaptersSlice.js   ✅ Redux slice
-│   │       ├── ChaptersList.jsx   ✅ Liste chapitres
-│   │       ├── ChapterDetail.jsx  ✅ Détails chapitre
-│   │       └── LessonView.jsx     ✅ Vue leçon
-│   ├── components/
-│   │   ├── Dashboard.jsx    ✅ Dashboard utilisateur
-│   │   ├── layout/          ⏳ Navbar, Footer à créer
-│   │   └── ui/              ⏳ Composants réutilisables
-│   ├── services/
-│   │   └── api/
-│   │       ├── apiService.js      ✅ Axios + JWT interceptor
-│   │       └── coursesApi.js      ✅ API courses
-│   ├── App.jsx              ✅ Routes configurées
-│   └── main.jsx             ✅ Redux Provider
-├── package.json             ✅ Dependencies
-├── vite.config.js           ✅ Config Vite
-├── tailwind.config.js       ✅ Config Tailwind
-└── Dockerfile               ✅ Node 18 multi-stage
-```
+Quatre conséquences, toutes constatées :
 
-### 💾 État de la Base de Données
+- **L'étape 1 défaisait les étapes 2 à 8.** Recharger une section réécrivait le
+  contenu depuis la source, donc sans les figures — silencieusement.
+- **L'ordre était piégeux** : `expand_section_1_html.py` échouait si
+  `add_html_quiz.py` n'était pas passé *avant*, ce qu'aucun fichier ne disait.
+- **Le chapitre JavaScript était invisible** : ses 17 leçons existaient dans
+  `backend/load_section_3_javascript.py`, jamais promu en commande, donc jamais
+  lancé. Le parcours servait les 2 leçons squelettiques de la démo à sa place.
+- **Les illustrations n'étaient ni versionnées ni régénérables** : `media/`
+  était dans `.gitignore`, et l'image Docker n'avait ni Pillow ni les polices.
+  État mesuré au moment du diagnostic : **0 image référencée en base, 31 PNG
+  orphelins sur le disque**.
 
-**Tables existantes:**
-- ✅ `accounts_user` - Utilisateurs avec email-based auth
-- ✅ `accounts_profile` - Profils avec points et niveau
-- ✅ `courses_chapter` - Chapitres
-- ✅ `courses_lesson` - Leçons (THEORY/EXERCISE/QUIZ)
-- ✅ `courses_exercise` - Exercices de code
-- ✅ `courses_quiz` - Quiz
-- ✅ `courses_project` - Projets finaux
-- ✅ `token_blacklist_*` - Gestion tokens JWT
+Bilan après réorganisation : **43 leçons manquantes restaurées** (27 → 70), les
+17 scripts supprimés, `backend/` ne contenant plus que `manage.py`.
 
-**Migrations appliquées:**
-- ✅ accounts: 0001_initial
-- ✅ courses: 0001_initial
+⚠️ La refonte a été validée par **empreinte avant/après** : le pipeline manuel a
+d'abord été rejoué en entier pour figer un état de référence (hachage du contenu
+de chaque leçon), puis la nouvelle commande unique a dû le reproduire à
+l'identique. Elle a attrapé une vraie régression au passage — une transformation
+qui indentait l'intérieur des chaînes multilignes et décalait donc tout le
+contenu des leçons de 4 espaces. Refaire cette vérification avant toute
+manipulation de masse du contenu.
 
-### 🐛 Bugs Connus
+### L'incident du 2026-07-22 : la commande qui écrasait tout
 
-Aucun bug connu actuellement. Toutes les fonctionnalités implémentées sont testées et fonctionnelles.
+`load_demo_content` faisait `Chapter.objects.all().delete()` — il ne supprimait
+pas *son* contenu mais **tout** le contenu, puis recréait trois chapitres
+maigres. Les chapitres HTML et CSS riches ont ainsi disparu, remplacés par leur
+version de démonstration ; seul `site-vitrine`, rechargé cinq heures plus tard,
+a survécu. Symptôme rapporté : « les cours étaient beaucoup plus développés,
+avec des illustrations et des exercices, et là c'est très vide ».
 
-### 💡 Notes Importantes pour Reprise
+Le déclencheur était documenté et recommandé : l'amorçage de la suite Playwright
+demandait de lancer `load_demo_content`. **Lancer les tests bout-en-bout
+détruisait le contenu des cours.**
 
-1. **Environnement Docker**: Tout passe par Docker, ne pas installer Python/Node localement
-2. **Admin Django**: Créer du contenu via http://localhost:8000/admin/ avant de tester le frontend
-3. **Rate Limiting**: Désactivé en dev, à réactiver en production
-4. **Tokens JWT**: Access token 1h, refresh 7j, rotation activée
-5. **State Management**: Redux pour auth et chapters, expandable pour autres features
-6. **JSONB Fields**: Utilisés pour tests (Exercise) et questions (Quiz), flexible pour évolution
-7. **UUID everywhere**: Tous les IDs sont des UUID, pas d'entiers séquentiels
-8. **Slugs**: Chapitres, leçons, projets utilisent des slugs pour URLs lisibles
+Trois règles en découlent, à ne pas défaire :
+
+- **Une commande de chargement ne supprime que les slugs qu'elle crée.** Les
+  `load_section_*` le faisaient déjà (`filter(slug=…)`) ; `load_demo_content`
+  est désormais borné par `DEMO_CHAPTER_SLUGS`. Une nouvelle commande qui
+  ajoute un chapitre doit ajouter son slug à sa propre liste de suppression,
+  jamais élargir la portée. La seule exception est assumée et documentée :
+  `load_section_3_javascript` retire `javascript-debutants`, le chapitre de
+  démonstration qu'il remplace au même rang du parcours.
+- **L'amorçage E2E passe par `load_section_1_html --force`**, pas par
+  `load_demo_content`. Le loader de section fournit le même slug, le même titre
+  et la même première leçon que ce qu'attend `navigation.spec.js`, en plus
+  complet et sans rien détruire d'autre.
+- **Après toute recréation de chapitre, lancer `backfill_chapter_access`.**
+  Supprimer un `Chapter` cascade sur `ChapterAccess` et `UserProgress` : les
+  apprenants autonomes se rouvrent seuls le chapitre 1 (via
+  `ensure_self_paced_access`, appelé à chaque contrôle d'accès), mais un
+  apprenant **en classe** perd les accès que son formateur lui avait ouverts et
+  ne les récupère pas tout seul. C'est un reverrouillage accidentel, contraire
+  à l'invariant « on ne reverrouille jamais » — il faut le réparer à la main
+  (`unlock_chapter_for`) si le backfill ne le couvre pas.
 
 ## Système de Gamification
 
@@ -441,6 +347,83 @@ lecture d'une leçon de théorie compte désormais comme activité.
   chaque fermeture appelle `mark_seen` : une célébration ne rejoue jamais.
 - Route `/badges`, lien « Trophées » dans le header.
 
+## Le verrou de chapitre s'applique aussi aux écritures
+
+⚠️ **Il ne protégeait que la lecture.** `LessonViewSet.retrieve` renvoyait bien
+403, mais `mark_completed`, `track_time` et `submit_quiz` acceptaient
+n'importe quelle leçon — et `mark_completed` acceptait n'importe quel *type*,
+exercice et quiz compris, dont il créditait les points.
+
+Mesuré sur un compte neuf avant correction : **68 appels à `mark_completed`,
+aucun refusé**, le compte passant de 1 à 4 chapitres accessibles, de 0 à
+1485 points et de 0 à 11 badges, **sans jamais ouvrir une leçon**. Les trois
+invariants centraux tombaient ensemble : progression contrôlée par le
+formateur, grand livre de points, badges.
+
+Deux règles distinctes, et il faut les deux
+(`apps/progression/tests/test_ecriture_verrouillee.py`) :
+
+1. **Le chapitre doit être ouvert** — `_refus_si_chapitre_verrouille` sur les
+   trois vues. La décision vivait déjà dans `services.can_access_lesson`, elle
+   n'était simplement pas consultée.
+2. **Seule la théorie se déclare terminée.** Un exercice se valide en passant
+   ses tests, un quiz en atteignant son score : ce sont les deux seuls
+   contenus dont la réussite est objectivement vérifiable. Les déclarer
+   terminés revenait à s'en attribuer les points sans le travail. Une leçon de
+   théorie, elle, n'a pas de critère vérifiable — on ne peut pas prouver
+   qu'elle a été lue.
+
+Après correction, le même scénario donne **60 refus sur 68**, le chapitre 2 ne
+s'ouvre plus, et les points tombent de 1485 à 110 — les seules leçons de
+théorie du chapitre légitimement accessible.
+
+⚠️ **Corollaire : la réussite d'un exercice se constate côté serveur.** Le
+front appelait `mark_completed` depuis `onSubmit` dès que `result.success`
+était vrai — le client décidait donc de l'attribution des points. La
+complétion se fait maintenant dans `validation.tasks._constater_la_reussite`,
+via `progression.services.complete_lesson` partagé avec `mark_completed`.
+
+## Validation d'une leçon — constatée, plus déclarée
+
+Il n'y a **plus de bouton « Marquer comme terminé »**. Demander à l'apprenant
+de déclarer une progression que l'application peut observer était contre-
+intuitif : la leçon était lue, mais restait « en cours » tant qu'on n'avait pas
+pensé à cliquer.
+
+| Type de leçon | Condition de validation |
+|---|---|
+| **THEORY** | Le bas du contenu reste visible 3 secondes (`useScrollCompletion`) |
+| **EXERCISE** | Tous les tests passent (déjà le cas — `onSubmit` d'`ExerciseInterface`) |
+| **QUIZ** | Score requis atteint (déjà le cas — `submit_quiz`, côté serveur) |
+
+### Trois décisions, chacune couverte par un test
+
+- **Le défilement ne valide que la théorie.** `LessonView` ne monte le hook et
+  ne rend le repère que pour `THEORY`. Un exercice ou un quiz validé en faisant
+  défiler la page distribuerait ses points sans le travail —
+  `POST /progress/mark_completed/` crédite les points **sans vérifier** qu'un
+  exercice a été résolu ni qu'un quiz a été réussi. Le bouton retiré était donc
+  aussi une porte dérobée. ⚠️ Cette vérification manque toujours côté serveur :
+  aujourd'hui c'est le front qui n'appelle plus la route pour ces types-là, pas
+  l'API qui la refuse.
+- **Un repère observé, pas un calcul de défilement.** Un élément vide en fin de
+  contenu confié à un `IntersectionObserver` répond exactement à la question
+  posée, sans écouteur `scroll` global à amortir, et suit les changements de
+  mise en page — les illustrations qui finissent de charger rallongent la page
+  après coup.
+- **Le délai de 3 secondes n'est pas cosmétique.** Une leçon courte tient
+  entièrement à l'écran : son repère est visible dès l'ouverture, et valider
+  aussitôt marquerait la leçon terminée avant qu'elle soit lue. Quitter le bas
+  avant la fin du délai annule le compte à rebours.
+
+Sans `IntersectionObserver` (très vieux navigateur, jsdom sans polyfill), le
+hook **s'abstient** : mieux vaut ne rien valider que valider à tort.
+
+Le bouton est remplacé par une région `role="status"` nommée « Statut de la
+leçon » qui dit ce qui reste à faire. ⚠️ Le nom accessible n'est pas décoratif :
+`PageLoader` porte lui aussi `role="status"`, et sans lui les requêtes de test
+trouvent deux régions.
+
 ## Comptes, Rôles et Classes
 
 ### Invariants en place
@@ -473,7 +456,7 @@ progression en lecture seule.
 
 ### Avatars : catalogue, pas téléversement
 
-Le choix d'avatar se fait par `Profile.avatar_key`, une clé `<motif>-<palette>`
+Le choix d'avatar se fait par `Profile.avatar_key`, une clé `<visage>-<palette>`
 prise dans une liste close (`apps/accounts/avatars.py`, 6 × 6 = 36
 combinaisons), et le rendu se fait en SVG côté client. **Aucun téléversement
 d'image** : un ancien champ `Profile.avatar` (`ImageField`) jamais alimenté a
@@ -492,11 +475,61 @@ décompression et un stockage à sauvegarder. Le catalogue supprime tout cela.
 Le repli — initiales sur une couleur **dérivée du nom**, donc stable d'une
 session à l'autre — est l'état par défaut de tout compte, pas un pis-aller.
 
-⚠️ Les listes `MOTIFS` / `PALETTES` sont **dupliquées** entre
+#### Des visages illustrés, depuis le 2026-08-06
+
+Le catalogue était auparavant **volontairement abstrait** (orbit, prism, wave,
+bloom, spark, mesh) : des formes plutôt que des personnages, pour ne pas avoir
+à arbitrer des représentations — teintes de peau, genres, cultures — qu'une
+poignée de dessins ne peut pas rendre justement.
+
+Ce parti a été levé au profit de visages illustrés, plus conformes à l'attente
+d'un avatar de profil. L'objection d'origine tient toujours ; elle est traitée
+par le volume : chaque graine du style **Notionists** combine coiffure, traits,
+teint et accessoires. Migration `0008` : les anciennes clés ont été remises à
+vide (retour aux initiales), car elles sont désormais **refusées en écriture** —
+les laisser aurait fait échouer l'enregistrement d'un profil sur un champ que
+l'apprenant n'a pas touché.
+
+⚠️ **Les visages sont pré-générés à la construction**, pas à l'exécution, et
+**jamais** servis par l'API HTTP de DiceBear. Un appel distant enverrait l'IP de
+chaque apprenant à un tiers à chaque affichage de page — et ferait tomber la
+raison même pour laquelle l'application n'a pas de bannière de consentement
+(cf. « Pages légales et cookies »). Ne pas « simplifier » en pointant une URL.
+
+```bash
+npm run avatars   # scripts/generate-avatars.mjs → src/assets/avatars/*.svg
+```
+
+Les six SVG produits sont **versionnés** : la construction ne dépend donc pas
+de DiceBear, qui est en `devDependencies`. Relancer la commande après toute
+modification de `VISAGES` ou du style — le test front « sait dessiner chaque
+clé du catalogue » rougit si un visage manque.
+
+⚠️ **Ne pas réintroduire `@dicebear/core` dans le code d'exécution.** Le
+catalogue est fermé : six visages connus d'avance. Embarquer le générateur pour
+les recalculer à chaque affichage ajoutait **~380 ko au morceau d'entrée** —
+`Avatar` est tiré par le `Header`, donc structurel et jamais différé — faisant
+passer le bundle de 261 ko à 640 ko et refranchir le seuil d'alerte de Vite.
+Pré-générés, les visages sont six fichiers statiques cacheables (~5 ko gzip
+chacun) et le bundle d'entrée est inchangé.
+
+Licence : **CC0 1.0** (Notionists, par Zoish) — domaine public, aucune
+attribution obligatoire. Plusieurs autres styles de la même bibliothèque sont
+en **CC BY 4.0** et imposeraient une mention : vérifier `meta.license` du style
+avant tout changement.
+
+Le visage est posé en `<image href="…">` par-dessus le dégradé de palette, et
+non injecté en balisage : un SVG référencé par `<image>` est rendu en mode
+image, sans script — donc aucun `dangerouslySetInnerHTML` à surveiller.
+
+⚠️ Les listes `VISAGES` / `PALETTES` sont **dupliquées** entre
 `backend/apps/accounts/avatars.py` (autorité) et
 `frontend/src/features/profile/avatars.js` (rendu). En modifier une seule donne
 soit un avatar vide, soit un choix refusé à l'enregistrement. Un test front
 vérifie que chaque clé sait se dessiner.
+
+⚠️ Chaque valeur de `VISAGES` **est** la graine DiceBear : la renommer change
+le visage de tous ceux qui l'avaient choisie. Ajouter, oui ; renommer, non.
 
 ### L'écriture imbriquée du profil et le piège des points
 
@@ -607,6 +640,71 @@ Règles non négociables, chacune couverte par un test :
 Supprimer une invitation la **révoque** sans l'effacer : on garde trace de ce
 qui a été diffusé.
 
+## Comptes de démonstration — jamais en production
+
+`create_demo_users` crée un formateur et trois apprenants dont les mots de
+passe (`trainer123`, `learner123`) sont écrits dans le dépôt et repris dans
+plusieurs fichiers de documentation. Rien n'empêchait de lancer cette commande
+sur une instance réelle : recopier la ligne d'amorçage de
+`frontend/e2e/README.md` sur le serveur suffisait à ouvrir, à quiconque lit le
+dépôt, un compte formateur — qui voit la progression de ses apprenants,
+débloque des chapitres et consulte sa classe.
+
+La commande **refuse maintenant de s'exécuter** quand
+`settings.ENVIRONMENT == 'production'`, et oriente vers `createsuperuser`.
+
+⚠️ Le contrôle porte sur `ENVIRONMENT`, **pas sur `DEBUG`** : le lanceur de
+tests de Django force `DEBUG = False`, ce qui aurait rendu le comportement
+intestable, alors qu'`ENVIRONMENT` est la variable qui sélectionne réellement
+les réglages de production (`config/settings/__init__.py`).
+
+`purge_test_accounts` fait le ménage sur une base existante : il recense par
+défaut, ne supprime qu'avec `--apply`. Deux règles :
+
+- **Suppression, pas anonymisation** — l'inverse du choix fait pour un
+  apprenant réel. L'anonymisation préserve des statistiques de classe qui ont
+  un sens ; ici les comptes ne désignent personne et leur progression est du
+  bruit qui fausserait les taux de complétion.
+- **Jamais un administrateur**, même à adresse de test (`trainer@test.com` a
+  été promu ADMIN à la main en développement). Le supprimer alors qu'il serait
+  le seul rendrait l'instance impilotable — même logique que le garde-fou
+  « dernier administrateur actif ».
+
+Une adresse en `e2e-` que le motif ne reconnaît pas est **signalée et
+conservée** : l'écarter en silence serait le pire des deux mondes.
+
+## Sauvegardes
+
+`scripts/backup_db.sh` (dump + rotation) et `scripts/restore_db.sh`
+(restauration, avec confirmation par saisie du nom de la base).
+
+**Seule la base PostgreSQL est sauvegardée**, et c'est un choix : les
+illustrations sont versionnées dans le dépôt, le contenu pédagogique vit dans
+le code (`load_course_content` le reconstruit à l'identique), Redis ne porte
+que du cache et une file Celery. Ce qui n'existe qu'en base — comptes,
+progression, grand livre de points, badges, classes, journal d'audit — est
+exactement le périmètre du dump.
+
+Deux garde-fous contre la **fausse sauvegarde**, celle qui existe mais ne
+restaure rien :
+
+- écriture sous `.partiel` puis renommage — un fichier au nom définitif est un
+  fichier complet ; sans cela une coupure laisse une archive tronquée qui
+  *ressemble* à une sauvegarde ;
+- échec si le dump fait moins de 10 Ko — signature d'une base vide ou d'une
+  authentification refusée en silence.
+
+⚠️ `pg_dump --clean --if-exists` et `psql -v ON_ERROR_STOP=1` ne sont pas
+décoratifs : sans le premier, la restauration sur une base peuplée échoue sur
+les objets existants et la laisse à moitié écrasée ; sans le second, `psql`
+poursuit après une erreur et **signale un succès** sur une base partiellement
+restaurée.
+
+Le cycle a été rejoué en conditions réelles (sauvegarde, restauration dans une
+base jetable, comparaison table par table : zéro écart). À refaire après tout
+changement de schéma important — une sauvegarde jamais restaurée n'est pas une
+sauvegarde.
+
 ## SECRET_KEY — garde-fou de production
 
 `base.py` définit une valeur de repli publique (`INSECURE_DEV_SECRET_KEY`) pour
@@ -700,6 +798,18 @@ La normalisation des deux formes vit désormais sur le modèle
 (`Exercise.test_cases`) ; `apps/validation/services.py` la réutilise au lieu de
 refaire le test dans son coin. **Tout nouveau lecteur du champ doit passer par
 `test_cases`.**
+
+⚠️ **`Quiz` avait exactement le même bug, non corrigé jusqu'ici.**
+`Quiz.total_points` et `question_count` itéraient `self.questions` sur la forme
+`{'questions': [...]}` (celle des commandes `load_section_*`) → `AttributeError`
+à la **sérialisation de toute leçon QUIZ** (les propriétés sont des
+`ReadOnlyField`). Corrigé de la même façon : `Quiz.questions_list` normalise, et
+`QuizSerializer.to_representation` **renvoie toujours une liste** (le front fait
+`Array.isArray(quiz.questions)` — un dictionnaire brut afficherait « aucune
+question »). Le scoring de `apps/progression/views.py` normalisait déjà de son
+côté. Couvert par des tests en **forme enveloppée** dans `apps/courses/tests/`
+(l'ancien test utilisait la forme liste et passait donc à côté). **Même règle :
+tout lecteur des questions passe par `questions_list`.**
 
 ### `role` et `is_staff` sont désormais synchronisés
 
@@ -945,7 +1055,19 @@ worker. À revoir si le volume augmente.
 ```
 
 Rôles centralisés dans `src/constants/roles.js` (`ROLES`, `STAFF_ROLES`,
-`ROLE_LABELS`) — miroir de `User.Role` côté Django. Le header filtre ses liens
+`ROLE_LABELS`) — miroir de `User.Role` côté Django.
+
+Même principe pour les **types d'activité** : `src/constants/activity.js`
+(`ACTIVITY_TYPES`, `ACTIVITY_META`, `describeActivity`) est le miroir de
+`ActivityLog.ActivityType`. Le tableau était auparavant recopié dans trois
+écrans, et les trois avaient divergé — `ProgressionPage` ignorait
+`LESSON_STARTED` et affichait la clé brute sans icône, tandis que
+`LearnerDetail` et `RecentActivity` fabriquaient leur libellé avec
+`activity_type.replace('_', ' ').toLowerCase()`, soit « lesson started » en
+anglais dans une interface française. `describeActivity` garantit qu'aucune
+clé technique n'atteint l'écran, y compris pour un type inconnu.
+⚠️ Ajouter une valeur à `ActivityType` côté Django impose d'ajouter une entrée
+ici ; un test compare les deux listes. Le header filtre ses liens
 sur la même liste : un lien vers une page interdite n'est jamais affiché.
 
 **Ces gardes sont un confort d'affichage, pas une sécurité.** Elles évitent
@@ -1077,50 +1199,70 @@ consentement au sens CNIL. La politique de confidentialité l'explique dans une
 notice. **Le jour où un analytics ou un traceur tiers est introduit, une vraie
 bannière (accepter/refuser, blocante) devient obligatoire.**
 
-## Reste à faire — audit du 2026-07-21
+## Reste à faire — audit du 2026-08-04
 
 Inventaire vérifié dans le code, pas recopié du roadmap. Classé par risque,
 pas par visibilité.
 
 ### Risque réel
 
-*Cette liste est vide. Les deux entrées qui s'y trouvaient — le throttle de
-connexion et l'absence de tests de `courses` — sont faites (voir « Connexion :
-limitation des échecs » et « Testing Strategy »).*
+*Vide.* Les entrées qui s'y trouvaient sont faites : throttle de connexion,
+tests de `courses`, comptes de démonstration à mot de passe public (voir
+« Comptes de démonstration — jamais en production ») et absence de sauvegardes
+(voir « Sauvegardes »).
 
 ### Dette structurelle
 
-*Cette liste est vide. Ses trois entrées sont faites : le contrat incohérent
-des services API (voir « Contrat des services API — uniforme »), le découpage
-de bundle (voir « Découpage de bundle »), et le champ mort `Profile.avatar`,
-supprimé après vérification qu'aucune base ne le renseignait (migration `0007` ;
-voir « Avatars : catalogue, pas téléversement »).*
+*Vide.* Contrat des services API, découpage de bundle, champ mort
+`Profile.avatar`, et les **17 scripts hors commande à la racine de `backend/`**
+(voir « Contenu des cours — architecture ») : tout est traité. `backend/` ne
+contient plus que `manage.py`.
+
+### Mise en production — le chantier actif
+
+Le code est prêt et **éprouvé par une répétition locale complète** (pile de
+production + Traefik, dix contrôles d'ouverture). Ne restent que les étapes qui
+demandent le serveur : DNS, `.env` avec les secrets, SMTP, `ufw`, cron des
+sauvegardes, et l'externalisation des archives hors du VPS.
+
+⚠️ **Point d'entrée : [`06_ROADMAP_DEPLOIEMENT.md`](06_ROADMAP_DEPLOIEMENT.md).**
+Il contient l'état détaillé de chaque tâche, la procédure de mise en service,
+les contrôles d'ouverture, et la confrontation de `guide-hebergement-ovh.md` au
+code réel — quatre de ses hypothèses sont fausses pour ce dépôt.
+
+Décision actée : **l'exécution de code est désactivée à l'ouverture**
+(`CODE_EXECUTION_ENABLED=False`), l'hôte étant partagé avec d'autres projets.
+Voir « Le drapeau `CODE_EXECUTION_ENABLED` ».
 
 ### Fonctionnalités jamais commencées
 
-7. **WebSocket / temps réel** — voir la section dédiée : `asgi.py` a un routeur
-   vide et `channels/consumers/` est un dossier vide. Rien n'en dépend
-   aujourd'hui.
-8. **Soumission et correction de projets** (Phase 4) — le modèle `Project`
-   existe dans `courses`, mais **aucun modèle de soumission** nulle part, donc
-   rien à rendre ni à corriger.
-9. **Forum** (Phase 4) — l'app n'existe pas, ni dans `INSTALLED_APPS` ni sur le
-   disque.
-10. **Leaderboard** — reporté volontairement (choix produit : progression
-    personnelle d'abord). Le grand livre de points le rend trivial à ajouter.
-11. **Déploiement** (Phase 5) — le garde-fou `SECRET_KEY` de production est en
-    place et testé, mais rien n'est déployé et la CI ne construit aucune image.
+- **WebSocket / temps réel** — `asgi.py` a un routeur vide et
+  `channels/consumers/` est un dossier vide. Rien n'en dépend ; le service
+  `daphne` a d'ailleurs été retiré de la compose de production.
+- **Soumission et correction de projets** — le modèle `Project` existe dans
+  `courses`, mais aucun modèle de soumission nulle part.
+- **Forum** — l'app n'existe pas, ni dans `INSTALLED_APPS` ni sur le disque.
+- **Leaderboard** — reporté volontairement (progression personnelle d'abord).
+  Le grand livre de points le rend trivial à ajouter.
+- **CI qui construit les images** — elle n'en construit aucune.
+- **Chapitre 3 JavaScript en version d'auteur** — il n'a pas de
+  `load_section_3` d'origine, seulement le contenu promu en commande.
+- **Illustrations en double résolution** — elles s'adoucissent en plein écran.
 
-### Ce qui vient d'être fait
+### Ce qui vient d'être fait (session du 2026-08-04)
 
-- [x] Infrastructure de test frontend (Vitest) — 37 tests
-- [x] Intégration continue (`.github/workflows/ci.yml`)
-- [x] `npm run lint` ramené à zéro erreur **et zéro avertissement**
-- [x] Couverture du bac à sable — 20 tests simulés (en CI) + 7 tests réels
-- [x] Retrait de la liste noire de motifs (voir « Security Considerations »)
-- [x] Limitation des échecs de connexion
-- [x] Couverture de `progression` — 33 tests : verrou de chapitre, deux
-      régimes de progression, notation des quiz, suivi du temps
+- [x] Contenu des cours restauré et réorganisé — 27 → **68 leçons**, 17 scripts
+      supprimés, une commande par chapitre, illustrations rattachées au
+      chargement
+- [x] Illustrations versionnées (31 PNG) et régénérables
+- [x] Validation d'une leçon **constatée** au défilement, plus déclarée par un
+      bouton
+- [x] Table des types d'activité centralisée (`constants/activity.js`)
+- [x] Visionneuse d'images : agrandissement réel et zone cliquable exacte
+- [x] Pile de production complète, éprouvée en répétition locale
+- [x] Garde-fou des comptes de démonstration + `purge_test_accounts`
+- [x] Sauvegardes : script, rotation, **restauration testée** (zéro écart)
+- [x] Logo et favicon intégrés
 
 ## Intégration continue
 
@@ -1134,7 +1276,7 @@ request*. Deux jobs indépendants qui échouent séparément.
 | `makemigrations --check --dry-run` | Un modèle modifié sans migration |
 | `migrate` sur base vierge | Une migration qui ne s'applique pas dans l'ordre |
 | `manage.py check` | Erreurs de configuration |
-| `pytest --create-db` | Les 243 tests |
+| `pytest --create-db` | Les 270 tests |
 
 ⚠️ Les deux premières étapes ne sont pas décoratives. `pytest.ini` fixe
 **`--nomigrations`** : le schéma de test est bâti directement depuis les
@@ -1285,7 +1427,8 @@ React app organized by features in `frontend/src/features/`:
 - Axios interceptors for JWT token refresh on 401
 - Hooks maison : `useTimeTracker` (temps réellement actif),
   `useThemePreferenceSync` (thème rattaché au compte)
-- Tailwind CSS **et** SCSS par feature — les deux coexistent
+- Styling : **design system SCSS maison uniquement**, aucun framework CSS
+  (voir « Tailwind a été retiré » plus bas)
 
 ⚠️ Deux éléments listés ici auparavant n'existent toujours pas : `wsService.js`
 et `useAutosave` / `useWebSocket` (cf. « WebSocket — RIEN N'EXISTE »). Le
@@ -1422,9 +1565,96 @@ une régression de sécurité directe.** Il n'y a plus de filet en amont pour
 rattraper l'erreur. Ne pas ajouter de `volumes=`, ne pas retirer
 `network_disabled`, ne pas allonger le délai sans y penser à deux fois.
 
-**Piste de durcissement non faite** : le conteneur s'exécute en `root` (aucun
-`user=` n'est passé). Ajouter `user='nobody'` serait peu coûteux, mais c'est un
-changement de comportement à valider sur les quatre langages.
+Le conteneur s'exécutait autrefois en `root`, sans capacité retirée et avec un
+système de fichiers inscriptible. C'est corrigé — voir « Le bac à sable sur un
+hôte mutualisé » ci-dessous.
+
+⚠️ **Défaut corrigé au passage : la branche Python ne produisait aucune sortie.**
+`_create_validation_script` concaténait le code de l'apprenant et les
+`assert`, **sans rien imprimer** : le conteneur sortait sans JSON et
+`run_code` échouait invariablement sur « Erreur lors du parsing des
+résultats ». Le défaut est resté invisible parce qu'aucun exercice n'utilise ce
+langage — les 25 existants sont en HTML ou en JavaScript. Il aurait accueilli
+le premier exercice Python écrit.
+
+### Le bac à sable sur un hôte mutualisé
+
+Le VPS héberge d'autres projets. Deux barrières ont donc été posées pour que
+l'exécution de code reste activable sans les exposer.
+
+**1. Le worker n'a plus la socket Docker.** Il parle à un mandataire
+(`tecnativa/docker-socket-proxy`, service `docker-proxy` de
+`docker-compose.prod.yml`) placé sur un réseau `internal: true` que lui seul
+atteint. Mesuré en conditions réelles :
+
+| Appel | Résultat |
+|---|---|
+| Créer, démarrer, attendre, lire, supprimer un conteneur | autorisé (le bac à sable en a besoin) |
+| Inspecter une image | autorisé |
+| **`exec` dans un autre conteneur** | **refusé** |
+| **Lister volumes / réseaux** | **refusé (403)** |
+| **`info` système** (chemins de l'hôte) | **refusé (403)** |
+| **Construire une image** | **refusé (403)** |
+
+**2. Le conteneur d'exécution est durci.** Chaque réglage retire un moyen
+d'évasion, et chacun est verrouillé par un test sur les arguments passés à
+Docker — lancer un vrai conteneur ne dirait pas si l'un a disparu d'un appel :
+
+| Réglage | Ce qu'il retire |
+|---|---|
+| `user='65534:65534'` | le code ne s'exécute plus en `root` |
+| `cap_drop=['ALL']` | toutes les capacités Linux, jusqu'à `CAP_SETUID` |
+| `no-new-privileges` | l'élévation par binaire setuid |
+| `read_only=True` | l'écriture hors `/tmp` |
+| `tmpfs` `noexec,size=16m` | déposer puis exécuter un binaire |
+| `pids_limit=64` | la bombe à fork |
+| `network_disabled=True` | toute sortie — **y compris vers le mandataire** |
+
+⚠️ **Ce que cela ne protège pas, et il faut le savoir.** Le mandataire filtre
+par **route**, pas par contenu de requête : `CONTAINERS=1` autorise donc encore
+la création d'un conteneur privilégié montant `/`. Quelqu'un qui obtiendrait
+l'exécution de code **dans le worker** (une faille Django ou une dépendance
+compromise) pourrait le faire.
+
+Ce n'est pas le scénario contre lequel ces barrières sont dressées. Le code
+d'apprenant s'exécute dans un conteneur **sans réseau** : il ne peut pas
+joindre le mandataire. Pour en abuser il faudrait d'abord compromettre le
+worker lui-même, ce qui n'est plus une évasion de bac à sable mais une prise de
+contrôle de l'application.
+
+La barrière suivante, si le besoin s'en fait sentir, serait un **runtime à
+isolation renforcée** (gVisor, Sysbox) — installation sur l'hôte, donc hors de
+portée d'une modification du dépôt.
+
+⚠️ `user='65534:65534'` est donné en **numérique** et non `nobody` : le nom
+n'est pas garanti d'une image à l'autre (`python:slim` est Debian,
+`node:alpine` est Alpine). Vérifié sur les quatre langages.
+
+### Le drapeau `CODE_EXECUTION_ENABLED`
+
+Le bac à sable exige que le worker Celery pilote le démon Docker, donc que
+`/var/run/docker.sock` lui soit monté. Sur une machine dédiée le risque reste
+circonscrit ; sur un **hôte mutualisé** (le VPS héberge d'autres projets),
+qui contrôle ce worker contrôle le démon, donc l'hôte, donc *tous* les projets.
+
+`settings.CODE_EXECUTION_ENABLED` (défaut `True`, mis à `False` par
+`docker-compose.prod.yml`) permet d'ouvrir sans cette exposition. Il a **deux**
+effets, et le second est celui qu'on oublie :
+
+1. `validation.views.submit_exercise_code` renvoie **503** avec un message
+   explicite, *avant* toute mise en file — sinon la tâche partirait vers un
+   worker sans démon Docker et échouerait en `DockerException`, que l'apprenant
+   lirait comme un bug de son propre code.
+2. `progression.services._required_lessons` **retire les leçons d'exercice**
+   des conditions d'ouverture du chapitre suivant. Sans cela, un exercice
+   devenu insoumettable resterait éternellement inachevé : le chapitre 1
+   comptant 8 exercices sur 18 leçons, **plus aucun apprenant au rythme libre
+   n'atteindrait le chapitre 2**, et rien ne l'aurait signalé.
+
+Quatre tests verrouillent les deux effets, dans les deux positions du drapeau
+(`apps/validation/tests/test_execution_disabled.py`). Ni le contenu ni la
+publication ne sont modifiés : remettre le drapeau à `True` rétablit la règle
+d'origine, et les exercices déjà terminés le restent.
 
 **Authentication:**
 - JWT tokens: 1-hour access token, 7-day refresh token with rotation
@@ -1472,7 +1702,10 @@ When adding a new frontend feature (e.g., `notifications`):
 4. Create components: `NotificationList.jsx`, `NotificationItem.jsx`
 5. Add API service: `frontend/src/services/api/notificationsApi.js`
 6. Add routes in `frontend/src/App.jsx`
-7. Style with Tailwind utility classes
+7. Styler en BEM, soit dans un partiel `src/styles/components/_notifications.scss`
+   enregistré dans `main.scss`, soit dans une feuille de feature importée par le
+   composant. **Aucune classe utilitaire** : les couleurs viennent des tokens de
+   `_theme.scss`, jamais d'une valeur en dur.
 
 ### Working with WebSocket
 
@@ -1537,6 +1770,66 @@ mois. Uniformisé d'un bloc, avec un test de contrat par module
 (`services/api/contract.test.js`) qui rougirait au moindre retour vers la
 réponse brute.
 
+### Tailwind a été retiré — un seul système de style (2026-08-06)
+
+Le constat qui figurait ici était juste : Tailwind ne servait plus que **4
+fichiers**, tous dans `features/trainer/`, et son `tailwind.config.js` n'était
+plus qu'un pont remappant `bg-white`, `text-gray-900`, `bg-blue-500` vers les
+tokens maison. Les écrans formateur sont désormais dans
+`styles/components/_trainer.scss` et **Tailwind est entièrement retiré** :
+`tailwind.config.js`, `styles/tailwind.css`, l'import dans `main.jsx` et la
+dépendance npm. `postcss.config.js` ne garde qu'`autoprefixer`, qui n'a jamais
+eu de rapport avec Tailwind.
+
+Deux emplacements coexistent pour le style, et c'est voulu :
+
+| Emplacement | Pour quoi |
+|---|---|
+| `styles/components/_*.scss` | Partiels enregistrés dans `main.scss`, qui **réutilisent les mixins** (`card`, `button-base`, `respond-to`, `heading-*`) |
+| `features/*/X.css` | Feuille de feature importée par son composant, en CSS simple avec les `var(--…)` |
+
+Règle commune : **BEM, et les couleurs viennent toujours des tokens** de
+`styles/base/_theme.scss` — jamais une valeur en dur (sauf le blanc posé sur un
+fond de marque). C'est ce qui fait fonctionner le thème sombre gratuitement.
+
+⚠️ **La dette Preflight a été reprise dans `styles/base/_reset.scss`.**
+L'avertissement qui figurait ici — Preflight fournit `border-style: solid`, et
+les bordures disparaissent sans lui — était fondé, et vaut au-delà des
+bordures : Preflight neutralisait aussi le chrome natif des `<button>` et
+l'héritage des contrôles de formulaire, et **les 50 boutons de l'application
+ont été écrits en le supposant actif**. Ces règles, marquées `[preflight]`, ont
+été ajoutées **avant** de couper Tailwind. Ne pas les « nettoyer ».
+
+⚠️ **Ces règles sont enveloppées dans `:where()`, et ce n'est pas cosmétique.**
+`:where()` force la spécificité à zéro. Sans lui, `[type='button']` pèse autant
+qu'une classe (0,1,0) et fait jeu égal avec `.scroll-to-top`, `.admin-tab`… ;
+comme `main.scss` est importé **en dernier** dans `main.jsx`, c'est le reset qui
+gagnait, et tout `<button type="button">` stylé par une feuille de feature
+perdait son fond. Symptôme observé : la flèche « remonter » devenue blanche sur
+fond transparent, invisible en thème clair. **Un reset ne doit jamais pouvoir
+battre le style d'un composant.**
+
+### Ressources statiques : `public/` ou `src/assets/` ?
+
+| | Emplacement | Pourquoi |
+|---|---|---|
+| Favicons | `frontend/public/` | Référencés par un chemin **absolu** dans `index.html`, que le bundler ne traite pas : il leur faut une URL stable, ce que `public/` garantit (copié tel quel à la racine de `dist/`). |
+| Logos affichés par un composant | `frontend/src/assets/` | Importés (`import logo from '@/assets/logo.png'`), donc **hachés** par Vite : cache long terme *et* invalidation automatique au changement. |
+
+Placer un logo dans `public/` conserverait son nom d'un déploiement à l'autre,
+et les visiteurs de retour continueraient de voir l'ancienne image.
+
+⚠️ **Ni l'un ni l'autre dans `backend/media/`** : ce dossier porte les
+illustrations de cours, du contenu pédagogique référencé par
+`content/illustrations.py`, et un fichier étranger dans `media/courses/` fait
+échouer `test_aucune_illustration_orpheline`.
+
+Deux déclinaisons du même sigle, et ce n'est pas de la redondance :
+`logo.png` porte le nom « CODE ACADEMY » gravé dans l'image — illisible à 24 ou
+34 px, donc réservé aux pages d'authentification (`components/ui/BrandLogo`).
+L'en-tête et le pied de page utilisent `logo-mark.png`, le sigle seul, le nom
+restant du texte HTML : net à toute densité, et déjà masqué sur mobile.
+
 ### Frontend State Management
 - Redux slices per feature with createAsyncThunk for API calls
 - Loading states: `{ loading: false, error: null, data: null }`
@@ -1553,7 +1846,7 @@ réponse brute.
 
 ### Testing Strategy
 
-**Backend — en place.** pytest-django, 243 tests. Couvre désormais **tous** les
+**Backend — en place.** pytest-django, 270 tests. Couvre désormais **tous** les
 modules : `accounts`, `administration`, `cohorts`, `courses`, `gamification`,
 `progression`, `validation`.
 
@@ -1616,6 +1909,9 @@ dans ce document**, pas la couverture de ligne :
 | `features/auth/PrivateRoute.test.jsx` | La garde attend `initialized` avant de trancher sur le rôle (sinon un formateur est éjecté à chaque rafraîchissement) |
 | `features/gamification/gamificationSlice.test.js` | Une célébration ne rejoue jamais, même si `unseen_badges` et `newly_earned` mentionnent le même badge |
 | `features/progression/useTimeTracker.test.jsx` | Onglet caché ou inactif depuis 90 s ⇒ aucun temps crédité (le compteur alimente des badges) |
+| `features/progression/useScrollCompletion.test.jsx` | Le bas doit rester visible 3 s ; quitter avant annule ; une seule validation par montage |
+| `features/chapters/LessonView.test.jsx` | Le repère de fin n'existe que sur la théorie — jamais sur un exercice ni un quiz |
+| `constants/activity.test.js` | La table des types d'activité couvre tous ceux du backend ; aucune clé technique n'atteint l'écran |
 | `features/administration/AdminSpace.test.jsx` | L'anonymisation exige une confirmation ; le journal affiche l'identité **figée**, pas l'identité courante |
 | `features/profile/avatars.test.js` | Chaque clé du catalogue sait se dessiner ; une clé inconnue retombe sur les initiales |
 | `features/profile/ProfilePage.test.jsx` | Le formulaire n'envoie ni `role` ni les points ; les erreurs DRF imbriquées restent lisibles |
@@ -1655,8 +1951,9 @@ Conventions, chacune apprise en écrivant la suite :
   login raté (mauvais mot de passe, compte supprimé) asservissent désormais la
   présence du `role="alert"` — ils rougiraient si l'intercepteur se remettait à
   recharger `/login` sur un 401 d'auth.
-- **`navigation.spec.js` dépend de `load_demo_content`** (`--force` en
-  non-interactif) ; les autres non.
+- **`navigation.spec.js` dépend de `load_course_content --section 1`** ; les
+  autres non. ⚠️ **Ne pas amorcer avec `load_demo_content`** : voir « Contenu
+  des cours — architecture » plus haut.
 
 ⚠️ **La CI ne lance pas encore l'E2E** — choix assumé (stabiliser en local
 d'abord). Le jour venu : un job qui monte la stack, amorce, puis lance
@@ -1712,8 +2009,23 @@ python manage.py migrate
 
 ## Reference Documentation
 
-All detailed documentation is in the root directory:
+All detailed documentation is in the root directory.
 
+**Pour reprendre le travail, deux fichiers suffisent :** la section « Où en est
+le projet » plus haut, et `06_ROADMAP_DEPLOIEMENT.md` si le sujet est la mise
+en ligne. Le reste est de la référence, à consulter au besoin.
+
+- **06_ROADMAP_DEPLOIEMENT.md** — ⏩ **le chantier actif.** Mise en production
+  sur VPS OVH : état de chaque tâche, procédure de mise en service, contrôles
+  d'ouverture, et résultats de la répétition locale. ⚠️ Contient aussi la
+  confrontation de `guide-hebergement-ovh.md` (étape 6.3) au code réel — quatre
+  de ses hypothèses sont fausses pour ce dépôt, et il passe sous silence le
+  fait que **`/media/` n'est servi par personne en production**
+  (`config/urls.py:22` le conditionne à `DEBUG`), donc que les 31 illustrations
+  des cours renverraient 404. À lire avant tout déploiement.
+- **guide-hebergement-ovh.md** — le guide d'origine, fourni par l'exploitant.
+  Bon sur l'infrastructure (SSH, Traefik, DNS), **faux sur ce projet** :
+  toujours le lire à travers `06_ROADMAP_DEPLOIEMENT.md`.
 - **01_ROADMAP.md** - 12-week project roadmap with sprints and deliverables
 - **02_USER_STORY_MAPPING.md** - User stories for all 3 personas with acceptance criteria
 - **03_DIAGRAMMES_UML.md** - UML diagrams (use cases, class, sequence, deployment)
