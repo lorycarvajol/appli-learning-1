@@ -1,0 +1,61 @@
+// Rattache VS Code au conteneur `backend` déjà décrit par docker-compose.yml.
+//
+// Pourquoi pas un venv local : le dépôt applique « Docker pour tout » (cf.
+// CLAUDE.md), et il n'existe donc aucun environnement Python sur le poste.
+// `.vscode/settings.json` pointait vers `backend/venv/Scripts/python.exe`, un
+// chemin qui n'a jamais existé — d'où l'alerte « invalid Python interpreter »
+// et l'absence totale de résolution de Django, DRF et pytest.
+//
+// ⚠️ Un venv local ne serait de toute façon pas équivalent : le conteneur est
+// en **Python 3.11**, et les versions épinglées (`psycopg2-binary==2.9.9`,
+// `Pillow==10.2.0`) n'ont pas de roues pour les Python plus récents. Ici,
+// l'éditeur voit exactement l'interpréteur et les dépendances qui font
+// tourner les tests et la CI.
+{
+  "name": "appli learning — backend (Python 3.11)",
+
+  // Le second fichier ne fait qu'ajouter un montage : la pile reste celle de
+  // développement, sans duplication de sa définition.
+  "dockerComposeFile": ["../docker-compose.yml", "compose.devcontainer.yml"],
+  "service": "backend",
+
+  // Le dépôt **entier**, pas seulement `backend/` : l'application monte déjà
+  // `./backend` sur `/app`, mais ouvrir uniquement ce dossier ferait perdre le
+  // frontend, la documentation et l'historique git dans la fenêtre VS Code.
+  "workspaceFolder": "/workspace",
+
+  // ⚠️ Ne pas arrêter la pile en fermant VS Code. Sans cela, fermer la fenêtre
+  // couperait aussi Postgres, Redis et Celery — y compris pour un `npm run dev`
+  // lancé à côté.
+  "shutdownAction": "none",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.analysis.extraPaths": ["/workspace/backend"],
+
+        // pytest se lance depuis `backend/`, seul endroit où `pytest.ini` est
+        // lu — c'est lui qui fixe `DJANGO_SETTINGS_MODULE`, `--reuse-db` et
+        // l'exclusion des tests marqués `docker`.
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "python.testing.cwd": "/workspace/backend",
+        "python.testing.pytestArgs": ["."],
+
+        // Le montage du dépôt entier expose aussi `frontend/node_modules` :
+        // laisser VS Code le surveiller coûte cher pour rien.
+        "files.watcherExclude": {
+          "**/node_modules/**": true,
+          "**/dist/**": true,
+          "**/__pycache__/**": true,
+          "**/.pytest_cache/**": true
+        }
+      }
+    }
+  }
+}

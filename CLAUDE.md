@@ -1553,6 +1553,37 @@ docker-compose down
 docker-compose down -v
 ```
 
+### L'éditeur, lui aussi, passe par le conteneur
+
+Corollaire de « Docker pour tout » : **il n'existe aucun Python sur le poste**,
+donc rien à donner à l'extension Python de VS Code. Elle affichait « An invalid
+Python interpreter is selected », et Django, DRF et pytest ressortaient
+introuvables — pas d'auto-complétion, pas d'aller-à-la-définition, pas
+d'exécution de tests depuis l'éditeur.
+
+`.devcontainer/` rattache VS Code au service `backend` déjà décrit par
+`docker-compose.yml` : F1 → « Dev Containers: Reopen in Container ». L'éditeur
+voit alors **exactement** l'interpréteur de la CI (Python 3.11) et ses
+dépendances.
+
+⚠️ **Ne pas « corriger » l'alerte en recréant un venv local.** Le conteneur est
+en 3.11 et les versions épinglées (`psycopg2-binary==2.9.9`, `Pillow==10.2.0`)
+n'ont pas de roues pour les Python plus récents : l'installation échouerait sur
+un poste en 3.13. C'est ce chemin mort (`backend/venv/Scripts/python.exe`) que
+`.vscode/settings.json` désignait, et qui n'a jamais existé.
+
+Deux points d'attention dans `.devcontainer/` :
+
+- `compose.devcontainer.yml` n'ajoute qu'**un montage**, le dépôt entier sur
+  `/workspace` — sans lui, la fenêtre ne verrait que `backend/` (seul dossier
+  monté par la pile) et perdrait le frontend et la documentation. ⚠️ Son chemin
+  relatif est résolu depuis le **répertoire du projet**, pas depuis le fichier :
+  écrire `..` y montait tout le dossier parent, projets voisins compris. À
+  vérifier d'un `docker compose -f docker-compose.yml -f
+  .devcontainer/compose.devcontainer.yml config`.
+- `"shutdownAction": "none"` : fermer VS Code ne doit pas couper Postgres,
+  Redis et Celery, qui servent aussi le `npm run dev` lancé à côté.
+
 ## Architecture Overview
 
 ### Backend Structure

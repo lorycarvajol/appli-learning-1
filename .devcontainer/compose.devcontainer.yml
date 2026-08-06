@@ -1,0 +1,18 @@
+# Surcouche appliquée **uniquement** quand VS Code ouvre le dépôt dans le
+# conteneur. Elle n'ajoute qu'un montage : `docker-compose up` seul ne la lit
+# jamais, et la pile de développement reste identique.
+#
+# ⚠️ Le chemin est relatif au **répertoire du projet** (celui de
+# `docker-compose.yml`, donc la racine du dépôt), et non à ce fichier-ci.
+# Écrire `..` — le réflexe, puisque ce fichier est dans `.devcontainer/` —
+# montait `C:\Dev` en entier, c'est-à-dire tous les projets voisins.
+# Vérifiable d'une commande :
+#     docker compose -f docker-compose.yml \
+#       -f .devcontainer/compose.devcontainer.yml config
+#
+# Compose ajoute ce volume à ceux déjà déclarés — `./backend:/app` reste en
+# place, et c'est toujours lui qui sert l'application.
+services:
+  backend:
+    volumes:
+      - .:/workspace:cached
