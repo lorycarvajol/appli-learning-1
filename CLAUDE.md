@@ -573,7 +573,8 @@ dominante suivant le chapitre :
 | Leçon | Motif | État |
 |---|---|---|
 | `quest-ce-que-le-html` | Le document et ses balises, chevrons | ✅ |
-| *les 67 autres* | — | ❌ |
+| `structure-base-page-html` | L'imbrication : tête et corps, et l'arbre qu'ils forment | ✅ |
+| *les 66 autres* | — | ❌ |
 
 Le parcours compte **68 leçons** : la table se remplit au fil des dessins, et
 une leçon sans entrée s'affiche simplement sans illustration.
@@ -622,6 +623,13 @@ ensemble et se règlent **à l'œil**, jamais au raisonnement :
 
 Sous 768 px, l'illustration **disparaît** : un bloc étroit n'a pas de tiers
 droit libre, et c'est une décoration — elle n'a rien à défendre.
+
+⚠️ **En tête de leçon, la place du dessin est réservée par une marge**
+(`padding-right: 32%`), pas déduite de la longueur du titre. « Structure de
+base d'une page HTML » suffisait à traverser toute la largeur et à se poser
+sur l'illustration. Le titre porte en plus `text-wrap: balance`, sans quoi la
+réserve renvoyait le « ? » de « Qu'est-ce que le HTML ? » seul sur une
+deuxième ligne.
 
 Une leçon sans illustration n'a simplement pas la classe. ⚠️ Renommer un slug
 de leçon la fait disparaître **en silence** — le repli est volontairement

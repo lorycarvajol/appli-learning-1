@@ -64,13 +64,23 @@
   @include slide-up;
 
   // Illustration de la leçon (composant partagé avec la carte « Continuer
-  // l'apprentissage » du tableau de bord). L'en-tête ne porte qu'un titre et
-  // trois étiquettes : sa moitié droite est libre, le dessin y tient plus au
-  // large que dans la carte du tableau de bord.
+  // l'apprentissage » du tableau de bord).
+  //
+  // ⚠️ La place du dessin est **réservée par une marge**, pas devinée à partir
+  // de la longueur du titre. Un titre un peu long — « Structure de base d'une
+  // page HTML » suffit — traverse sinon toute la largeur et vient se poser
+  // sur l'illustration. Avec la réserve, il passe à la ligne et le tiers droit
+  // reste libre quel que soit le titre.
   &.lesson-illustration {
-    --illus-taille: 55%;
-    --illus-depart: 40%;
-    --illus-fin: 75%;
+    --illus-taille: 45%;
+    --illus-depart: 50%;
+    --illus-fin: 80%;
+
+    // Sous ce seuil l'illustration est masquée (voir le composant partagé) :
+    // la réserve n'aurait plus d'objet et amputerait le titre.
+    @include respond-to('md') {
+      padding-right: 32%;
+    }
   }
 
   &__meta {
@@ -120,6 +130,11 @@
   &__title {
     @include heading-1;
     margin-bottom: 0;
+    // Répartit les lignes plutôt que de remplir la première : sans cela, la
+    // marge réservée à l'illustration renvoyait le « ? » de « Qu'est-ce que le
+    // HTML ? » seul sur une deuxième ligne. Ignoré par les navigateurs qui ne
+    // le connaissent pas — le titre revient alors au découpage habituel.
+    text-wrap: balance;
   }
 }
 

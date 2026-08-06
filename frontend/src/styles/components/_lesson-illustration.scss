@@ -71,7 +71,11 @@
 // Sur un écran étroit, aucun bloc n'a de tiers droit libre : le texte occupe
 // toute la largeur et l'illustration passerait dessous. Elle disparaît — c'est
 // une décoration, elle n'a rien à défendre.
-@media (max-width: 768px) {
+// ⚠️ 767 px et non 768 : le point d'arrêt `md` du projet est un `min-width:
+// 768px`, et les blocs qui réservent une marge pour l'illustration s'en
+// servent. À 768 px pile, un `max-width: 768px` masquerait le dessin tout en
+// laissant la réserve — le titre se retrouverait comprimé pour rien.
+@media (max-width: 767px) {
   .lesson-illustration::before {
     display: none;
   }
