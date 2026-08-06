@@ -2,7 +2,21 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <!--
+      Icônes servies depuis `public/`, copié tel quel à la racine de `dist/`
+      au build. Le chemin est absolu et n'est donc **pas** traité par le
+      bundler : il lui faut une URL stable, ce que `public/` garantit.
+
+      L'ancienne valeur pointait vers `/vite.svg`, absent du dépôt : le
+      serveur répondait `index.html` par repli SPA, donc du HTML en guise
+      d'image — un 200 qui masquait un favicon cassé.
+
+      Le `.ico` embarque les tailles 16, 32 et 48 : un seul fichier pour tous
+      les navigateurs. iOS l'ignore et exige un PNG, d'où `apple-touch-icon`.
+    -->
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/favicon-192.png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#110D22" />

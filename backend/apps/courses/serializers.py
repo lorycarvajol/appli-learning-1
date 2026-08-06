@@ -79,19 +79,28 @@ class QuizSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def to_representation(self, instance):
-        """Hide correct_answer/explanation from learners so answers can't be
-        read from the API before (or during) an attempt. Trainers/admins get
-        the full payload."""
+        """Expose les questions sous forme de **liste** normalisée, en masquant
+        `correct_answer`/`explanation` aux apprenants.
+
+        Deux corrections cohabitent ici :
+        - **Normalisation** : le champ JSONB peut valoir `{'questions': [...]}`.
+          Renvoyer ce dictionnaire brut ferait afficher « aucune question » côté
+          front (`Array.isArray(quiz.questions)` est faux). On part donc de
+          `instance.questions_list`, toujours une liste.
+        - **Masquage** : sans cela, un apprenant lirait les bonnes réponses dans
+          la réponse réseau avant même de répondre.
+        """
         data = super().to_representation(instance)
         request = self.context.get('request')
         user = getattr(request, 'user', None)
 
+        questions = instance.questions_list
         if not (user and getattr(user, 'role', None) in ('TRAINER', 'ADMIN')):
-            data['questions'] = [
+            questions = [
                 {k: v for k, v in question.items() if k not in ('correct_answer', 'explanation')}
-                for question in data.get('questions', [])
+                for question in questions
             ]
-
+        data['questions'] = questions
         return data
 
 

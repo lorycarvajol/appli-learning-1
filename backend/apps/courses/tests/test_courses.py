@@ -83,7 +83,10 @@ def quiz(lesson_quiz):
     return Quiz.objects.create(
         lesson=lesson_quiz,
         instructions='Choisis la bonne réponse',
-        questions=[
+        # Forme **enveloppée** `{'questions': [...]}` — celle produite par les
+        # commandes de seed (`load_section_*`). C'est la forme réelle en base ;
+        # la tester ici aurait attrapé le bug `Quiz.total_points`.
+        questions={'questions': [
             {
                 'text': 'Que signifie HTML ?',
                 'options': ['a', 'b', 'c'],
@@ -91,7 +94,7 @@ def quiz(lesson_quiz):
                 'explanation': 'HyperText Markup Language',
                 'points': 2,
             },
-        ],
+        ]},
     )
 
 
@@ -151,9 +154,30 @@ def test_total_points_vaut_zero_sans_tests(lesson):
     assert ex.total_points == 0
 
 
-def test_quiz_totaux(quiz):
+def test_quiz_totaux_forme_enveloppee(quiz):
+    """Régression `Quiz.total_points` : sur `{'questions': [...]}` la somme
+    itérait les clés du dictionnaire et levait `AttributeError`."""
     assert quiz.total_points == 2
     assert quiz.question_count == 1
+
+
+def test_quiz_totaux_forme_liste_directe(lesson_quiz):
+    """L'autre forme historique (`[...]`) doit fonctionner aussi."""
+    q = Quiz.objects.create(
+        lesson=lesson_quiz,
+        questions=[{'text': 'Q', 'points': 5}, {'text': 'Q2', 'points': 3}],
+    )
+    assert q.total_points == 8
+    assert q.question_count == 2
+
+
+def test_le_serialiseur_de_quiz_rend_une_liste(learner, quiz):
+    """Le front fait `Array.isArray(quiz.questions)` : l'API doit donc renvoyer
+    une **liste**, jamais le dictionnaire enveloppant brut."""
+    response = client_for(learner).get(f'/api/courses/quizzes/{quiz.id}/')
+    assert response.status_code == 200
+    assert isinstance(response.json()['questions'], list)
+    assert len(response.json()['questions']) == 1
 
 
 def test_chapter_lesson_count(chapter, lesson, lesson_quiz):

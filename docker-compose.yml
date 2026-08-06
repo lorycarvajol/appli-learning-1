@@ -62,27 +62,11 @@ services:
     networks:
       - learning_network
 
-  # Django Channels (ASGI - WebSocket)
-  daphne:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: development
-    container_name: learning_platform_daphne
-    command: daphne -b 0.0.0.0 -p 8001 config.asgi:application
-    volumes:
-      - ./backend:/app
-    ports:
-      - "8001:8001"
-    env_file:
-      - ./backend/.env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - learning_network
+  # ⚠️ Le service `daphne` a été retiré. Il servait `config.asgi:application`,
+  # dont l'`URLRouter` est **vide** : aucun consumer WebSocket n'existe dans le
+  # projet (cf. « WebSocket — RIEN N'EXISTE » dans CLAUDE.md). Il consommait
+  # 72 Mo pour ne répondre à personne. À réintroduire — ici et dans
+  # `docker-compose.prod.yml` — le jour où le temps réel existe vraiment.
 
   # Celery Worker (Async Tasks)
   celery:
@@ -142,22 +126,15 @@ services:
       - learning_network
 
   # Nginx Reverse Proxy (Optional - for production-like setup)
-  nginx:
-    image: nginx:alpine
-    container_name: learning_platform_nginx
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - static_volume:/static:ro
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
-      - daphne
-      - frontend
-    networks:
-      - learning_network
-    profiles:
-      - production
+  # ⚠️ Le service `nginx` (profil `production`) a été retiré, avec son
+  # `nginx/nginx.conf`. Il proxyfiait `/` vers le serveur **de développement**
+  # Vite et `/media/` vers Django, qui ne sert pas les médias hors `DEBUG` :
+  # il ne pouvait donc pas fonctionner en production. La vraie pile de
+  # production est `docker-compose.prod.yml` — Traefik devant, et le nginx de
+  # l'image front pour la SPA et les illustrations.
+  #
+  # Il publiait aussi le port 80, ce qui serait entré en collision frontale
+  # avec le Traefik déjà en place sur le VPS.
 
 volumes:
   postgres_data:

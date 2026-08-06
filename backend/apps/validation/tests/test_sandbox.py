@@ -233,3 +233,85 @@ def test_aucun_systeme_de_fichiers_hote_nest_monte(docker_mock):
     kwargs = client.containers.run.call_args.kwargs
     assert 'volumes' not in kwargs
     assert 'mounts' not in kwargs
+
+
+# ---------------------------------------------------------------------------
+# Durcissement du conteneur d'exécution
+# ---------------------------------------------------------------------------
+#
+# Ces réglages ont été ajoutés pour pouvoir réactiver l'exécution de code sur
+# un **hôte mutualisé**. Chacun retire un moyen d'évasion précis ; les vérifier
+# sur les arguments passés à Docker est délibéré — lancer un vrai conteneur ne
+# dirait pas si l'un d'eux a disparu d'un appel.
+
+def test_le_code_ne_sexecute_plus_en_root(docker_mock):
+    """Sans cela, une faille du runtime donnait `root` sur l'hôte d'un coup.
+
+    Les identifiants sont numériques (65534:65534) et non `nobody` : le nom
+    n'est pas garanti d'une image à l'autre — Debian pour `python:slim`,
+    Alpine pour `node:alpine`.
+    """
+    client, _ = docker_mock
+    DockerSandbox(language='python').run_code('x = 1', TESTS)
+
+    assert client.containers.run.call_args.kwargs['user'] == '65534:65534'
+
+
+def test_aucune_capacite_linux_nest_conservee(docker_mock):
+    """`cap_drop=ALL` retire jusqu'à `CAP_CHOWN` et `CAP_SETUID`.
+
+    Un exercice n'a besoin d'aucune capacité privilégiée : les garder ne
+    servait qu'à un éventuel attaquant.
+    """
+    client, _ = docker_mock
+    DockerSandbox(language='python').run_code('x = 1', TESTS)
+
+    assert client.containers.run.call_args.kwargs['cap_drop'] == ['ALL']
+
+
+def test_lelevation_de_privileges_est_neutralisee(docker_mock):
+    """`no-new-privileges` rend inopérant tout binaire setuid de l'image."""
+    client, _ = docker_mock
+    DockerSandbox(language='python').run_code('x = 1', TESTS)
+
+    assert 'no-new-privileges:true' in client.containers.run.call_args.kwargs['security_opt']
+
+
+def test_le_systeme_de_fichiers_est_en_lecture_seule(docker_mock):
+    """Un code qui ne peut rien écrire ne peut pas déposer de binaire à exécuter.
+
+    `/tmp` reste inscriptible — certains interpréteurs en ont besoin — mais en
+    mémoire, plafonné, et surtout `noexec`.
+    """
+    client, _ = docker_mock
+    DockerSandbox(language='python').run_code('x = 1', TESTS)
+
+    kwargs = client.containers.run.call_args.kwargs
+    assert kwargs['read_only'] is True
+    assert 'noexec' in kwargs['tmpfs']['/tmp']
+    assert 'size=' in kwargs['tmpfs']['/tmp']
+
+
+def test_le_nombre_de_processus_est_borne(docker_mock):
+    """Une bombe à fork épuise le conteneur, jamais la table de l'hôte."""
+    client, _ = docker_mock
+    DockerSandbox(language='python').run_code('x = 1', TESTS)
+
+    assert client.containers.run.call_args.kwargs['pids_limit'] == 64
+
+
+def test_la_branche_python_produit_un_resultat_lisible(docker_mock):
+    """Elle ne produisait **aucune** sortie JSON, donc échouait toujours.
+
+    Le défaut est resté invisible parce qu'aucun exercice n'utilise ce
+    langage — il aurait accueilli le premier.
+    """
+    client, _ = docker_mock
+    script = DockerSandbox(language='python')._create_validation_script(
+        'def somme(a, b):\n    return a + b',
+        [{'name': 'somme', 'code': 'assert somme(2, 3) == 5', 'points': 5}],
+    )
+
+    assert 'json.dumps' in script, "sans sortie JSON, le résultat est impossible à lire"
+    assert 'total_points' in script
+    assert 'max_points' in script

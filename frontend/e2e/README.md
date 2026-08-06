@@ -20,11 +20,31 @@ parcours réels, bout à bout.
 
    ```bash
    docker-compose exec backend python manage.py create_demo_users
-   docker-compose exec backend python manage.py load_demo_content
+   docker-compose exec backend python manage.py load_course_content
    ```
 
-   Seul `navigation.spec.js` dépend de `load_demo_content` (il ouvre le chapitre
+   ⚠️ `create_demo_users` crée des comptes dont les mots de passe sont écrits
+   dans le dépôt. La commande **refuse de s'exécuter** si
+   `ENVIRONMENT=production` — ne pas chercher à contourner ce refus sur un
+   serveur : le premier administrateur d'une instance réelle se crée avec
+   `createsuperuser`.
+
+   La suite laisse derrière elle un compte jetable par test. Pour nettoyer :
+   `python manage.py purge_test_accounts` (puis `--apply`).
+
+   `load_course_content` charge tout le parcours. Pour n'amorcer que ce dont
+   `navigation.spec.js` a besoin : `--section 1`.
+
+   Seul `navigation.spec.js` dépend du contenu (il ouvre le chapitre
    « Introduction au HTML »). Les autres tests créent leurs propres comptes.
+
+   ⚠️ **Ne pas utiliser `load_demo_content` pour amorcer.** C'est ce qui a
+   effacé tout le contenu des cours le 2026-07-22 : la commande supprimait
+   *tous* les chapitres, y compris ceux des sections. Elle est désormais bornée
+   à ses propres chapitres, mais elle remplace toujours le chapitre HTML riche
+   par sa version maigre — `load_section_1_html` fournit le même slug, le même
+   titre et la même première leçon, en plus complet et sans rien détruire
+   d'autre.
 
 3. **Installer les navigateurs Playwright** (une seule fois) :
 

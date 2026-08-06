@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { login, clearError } from './authSlice'
 import PasswordInput from '@/components/ui/PasswordInput'
+import BrandLogo from '@/components/ui/BrandLogo';
+import { safeRedirectPath } from '@/utils/safePath'
 
 function Login() {
   const [email, setEmail] = useState('')
@@ -14,13 +16,11 @@ function Login() {
 
   // Destination après connexion. Sert au parcours d'invitation : quelqu'un qui
   // a déjà un compte doit revenir sur le lien pour être rattaché.
-  // On n'accepte qu'un chemin interne : une URL absolue permettrait de
-  // rediriger vers un site tiers depuis un lien de connexion piégé.
-  const rawNext = searchParams.get('next')
-  const nextPath =
-    rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//')
-      ? rawNext
-      : '/dashboard'
+  //
+  // La validation vit dans `utils/safePath` : le contrôle qui se trouvait ici
+  // (« commence par `/` mais pas `//` ») laissait passer `/\evil.com`, que les
+  // navigateurs réinterprètent comme protocole-relatif.
+  const nextPath = safeRedirectPath(searchParams.get('next'))
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -36,10 +36,7 @@ function Login() {
   return (
     <div className="auth-page">
       <div className="auth-container">
-        <Link to="/dashboard" className="auth-logo">
-          <span className="auth-logo__mark" aria-hidden="true">&lt;/&gt;</span>
-          <span>CodeAcademy</span>
-        </Link>
+        <BrandLogo to="/dashboard" />
 
         <div className="auth-card">
           <div className="auth-header">

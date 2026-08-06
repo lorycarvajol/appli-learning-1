@@ -21,6 +21,13 @@ COPY requirements/base.txt requirements/base.txt
 # ---- Development: dev tools, tests, debug toolbar ----
 FROM base AS development
 
+# Polices utilisées par `manage.py generate_course_images` pour dessiner les
+# illustrations des cours. Volontairement absentes de l'étage production : les
+# PNG y sont servis depuis le dépôt, jamais régénérés.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements/development.txt requirements/development.txt
 RUN pip install -r requirements/development.txt
 

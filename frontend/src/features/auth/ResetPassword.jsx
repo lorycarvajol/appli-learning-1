@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { authApi } from '@/services/api/authApi'
 import PasswordInput from '@/components/ui/PasswordInput'
+import BrandLogo from '@/components/ui/BrandLogo';
 
 /**
  * Choix du nouveau mot de passe depuis le lien reçu par email.
@@ -158,10 +159,7 @@ export default function ResetPassword() {
   return (
     <div className="auth-page">
       <div className="auth-container">
-        <Link to="/login" className="auth-logo">
-          <span className="auth-logo__mark" aria-hidden="true">&lt;/&gt;</span>
-          <span>CodeAcademy</span>
-        </Link>
+        <BrandLogo to="/login" />
 
         <div className="auth-card">
           <div className="auth-header">

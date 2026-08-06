@@ -19,7 +19,9 @@ export default function CohortsPanel() {
   const [newName, setNewName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [notice, setNotice] = useState(null)
   const [copied, setCopied] = useState(null)
+  const [unlockedChapters, setUnlockedChapters] = useState(new Set())
 
   const refresh = useCallback(async () => {
     try {
@@ -44,11 +46,17 @@ export default function CohortsPanel() {
   }, [refresh])
 
   useEffect(() => {
+    setNotice(null)
     if (!selected) {
       setMembers([])
+      setUnlockedChapters(new Set())
       return
     }
     cohortsApi.getMembers(selected).then(setMembers).catch(() => setMembers([]))
+    cohortsApi
+      .getUnlockedChapters(selected)
+      .then((ids) => setUnlockedChapters(new Set(ids)))
+      .catch(() => setUnlockedChapters(new Set()))
   }, [selected])
 
   const run = async (action, onDone) => {
@@ -84,8 +92,29 @@ export default function CohortsPanel() {
   const handleRevoke = (inviteId) =>
     run(() => cohortsApi.revokeInvite(inviteId), refresh)
 
-  const handleUnlock = (chapterId) =>
-    run(() => cohortsApi.unlockChapterForCohort(selected, chapterId))
+  // Déblocage manuel, avec retour visuel : message de succès + marquage du
+  // chapitre comme « ouvert ». Sans ce retour, l'action réussissait en silence
+  // et laissait croire qu'il ne se passait rien.
+  const handleUnlock = async (chapter) => {
+    setBusy(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const res = await cohortsApi.unlockChapterForCohort(selected, chapter.id)
+      setUnlockedChapters((prev) => new Set(prev).add(chapter.id))
+      setNotice(
+        res.newly_unlocked > 0
+          ? `Chapitre « ${chapter.title} » ouvert — ${res.newly_unlocked} nouvel(le)(s) accès sur ${res.members} apprenant(s).`
+          : `Chapitre « ${chapter.title} » déjà ouvert à toute la classe.`
+      )
+    } catch (err) {
+      const detail = err.response?.data
+      const first = detail && Object.values(detail)[0]
+      setError(Array.isArray(first) ? first[0] : first || 'Déblocage impossible.')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const handleRemove = (userId) =>
     run(
@@ -103,13 +132,19 @@ export default function CohortsPanel() {
     }
   }
 
-  const cohortInvites = invites.filter((i) => i.cohort === selected)
+  // On n'affiche que les liens ENCORE ACTIFS : un lien révoqué ou expiré est
+  // mort, le montrer (et son URL) n'aurait aucun sens. La trace de révocation
+  // reste, elle, dans le journal d'audit.
+  const cohortInvites = invites.filter((i) => i.cohort === selected && i.is_usable)
   const selectedCohort = cohorts.find((c) => c.id === selected)
 
   return (
     <div className="cohorts-panel">
       {error && (
         <div className="auth-alert auth-alert--error" role="alert">{error}</div>
+      )}
+      {notice && (
+        <div className="auth-alert auth-alert--success" role="status">{notice}</div>
       )}
 
       <section className="cohorts-panel__section">
@@ -173,14 +208,8 @@ export default function CohortsPanel() {
                   <li key={invite.id} className="invite">
                     <code className="invite__url">{invite.url}</code>
                     <div className="invite__meta">
-                      <span
-                        className={`invite__state ${
-                          invite.is_usable ? '' : 'invite__state--dead'
-                        }`}
-                      >
-                        {invite.is_usable
-                          ? `actif — ${invite.uses_count} utilisation(s)`
-                          : invite.invalid_reason}
+                      <span className="invite__state">
+                        actif — {invite.uses_count} utilisation(s)
                       </span>
                       <button
                         type="button"
@@ -189,16 +218,14 @@ export default function CohortsPanel() {
                       >
                         {copied === invite.id ? 'Copié !' : 'Copier'}
                       </button>
-                      {invite.is_usable && (
-                        <button
-                          type="button"
-                          onClick={() => handleRevoke(invite.id)}
-                          className="invite__action invite__action--danger"
-                          disabled={busy}
-                        >
-                          Révoquer
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRevoke(invite.id)}
+                        className="invite__action invite__action--danger"
+                        disabled={busy}
+                      >
+                        Révoquer
+                      </button>
                     </div>
                   </li>
                 ))}
@@ -217,18 +244,25 @@ export default function CohortsPanel() {
 
           <section className="cohorts-panel__section">
             <h3 className="cohorts-panel__title">Ouvrir un chapitre à la classe</h3>
+            <p className="cohorts-panel__hint">
+              Le déblocage est manuel : c’est vous qui donnez le tempo. Un
+              chapitre marqué ✓ est déjà ouvert à toute la classe.
+            </p>
             <div className="cohorts-panel__chips">
-              {chapters.map((chapter) => (
-                <button
-                  key={chapter.id}
-                  type="button"
-                  onClick={() => handleUnlock(chapter.id)}
-                  disabled={busy}
-                  className="cohort-chip"
-                >
-                  🔓 {chapter.title}
-                </button>
-              ))}
+              {chapters.map((chapter) => {
+                const open = unlockedChapters.has(chapter.id)
+                return (
+                  <button
+                    key={chapter.id}
+                    type="button"
+                    onClick={() => handleUnlock(chapter)}
+                    disabled={busy || open}
+                    className={`cohort-chip ${open ? 'cohort-chip--done' : ''}`}
+                  >
+                    {open ? '✓' : '🔓'} {chapter.title}
+                  </button>
+                )
+              })}
             </div>
           </section>
 

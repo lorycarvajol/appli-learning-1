@@ -14,6 +14,7 @@ Règle transverse : **on ne reverrouille jamais**. Un accès obtenu le reste,
 qu'on rejoigne une classe ensuite ou qu'on quitte la sienne. C'est la même
 logique de monotonie que pour les badges — elle rend les recalculs sûrs.
 """
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -33,8 +34,28 @@ def has_staff_role(user):
     return bool(user) and getattr(user, 'role', None) in STAFF_ROLES
 
 
+def _required_lessons(chapter):
+    """Leçons dont l'achèvement conditionne l'ouverture du chapitre suivant.
+
+    ⚠️ Les leçons d'exercice sont **exclues quand l'exécution de code est
+    désactivée** (`settings.CODE_EXECUTION_ENABLED`, cf. le commentaire dans
+    `config/settings/base.py`). Sans cette exclusion, un exercice qu'on ne peut
+    plus soumettre reste éternellement inachevé : le chapitre 1 comptant 8
+    exercices sur 18 leçons, plus aucun apprenant au rythme libre n'atteindrait
+    le chapitre 2. Le verrou de progression se refermerait sur tout le monde
+    sans que rien ne l'annonce.
+
+    On n'y touche ni au contenu ni à la publication : le drapeau remis à `True`
+    rétablit la règle d'origine, et les exercices déjà terminés le restent.
+    """
+    lessons = [l for l in chapter.lessons.all() if l.is_published]
+    if not settings.CODE_EXECUTION_ENABLED:
+        lessons = [l for l in lessons if l.lesson_type != 'EXERCISE']
+    return lessons
+
+
 def _completed_chapter_ids(user, chapters):
-    """Chapitres dont *toutes* les leçons publiées sont terminées."""
+    """Chapitres dont *toutes* les leçons requises sont terminées."""
     completed_lesson_ids = set(
         UserProgress.objects.filter(
             user=user, status=UserProgress.ProgressStatus.COMPLETED
@@ -43,7 +64,7 @@ def _completed_chapter_ids(user, chapters):
 
     done = set()
     for chapter in chapters:
-        lesson_ids = [l.id for l in chapter.lessons.all() if l.is_published]
+        lesson_ids = [l.id for l in _required_lessons(chapter)]
         if lesson_ids and all(lid in completed_lesson_ids for lid in lesson_ids):
             done.add(chapter.id)
     return done
@@ -129,6 +150,87 @@ def can_access_chapter(user, chapter):
 
 def can_access_lesson(user, lesson):
     return can_access_chapter(user, lesson.chapter)
+
+
+def complete_lesson(user, lesson):
+    """Marque une leçon terminée, crédite ses points, journalise. Idempotent.
+
+    Extrait de `mark_completed` pour être partagé avec la validation
+    d'exercice : **la réussite d'un exercice se constate côté serveur**, pas
+    sur la parole du client. Le front annonçait auparavant lui-même « tests
+    passés » en appelant `mark_completed`, ce qui revenait à lui laisser
+    décider de l'attribution des points.
+
+    Rend `(progress, points_earned, deja_terminee)`.
+    """
+    progress, created = UserProgress.objects.get_or_create(
+        user=user,
+        lesson=lesson,
+        defaults={
+            'status': UserProgress.ProgressStatus.COMPLETED,
+            'completed_at': timezone.now(),
+        },
+    )
+
+    deja_terminee = (
+        not created and progress.status == UserProgress.ProgressStatus.COMPLETED
+    )
+
+    if not created and not deja_terminee:
+        progress.status = UserProgress.ProgressStatus.COMPLETED
+        progress.completed_at = timezone.now()
+        progress.save()
+
+    # Les points d'une leçon ne sont crédités qu'une fois dans la vie du
+    # compte : la clé d'idempotence est la leçon (cf. `award_lesson_points`).
+    from apps.gamification.services import award_lesson_points
+
+    points_earned = award_lesson_points(user, lesson)
+    if points_earned and not progress.points_awarded:
+        progress.points_awarded = True
+        progress.save(update_fields=['points_awarded', 'updated_at'])
+
+    # Ne pas polluer l'historique en cas de nouvelle soumission réussie.
+    if not deja_terminee:
+        from .models import ActivityLog
+
+        ActivityLog.objects.create(
+            user=user,
+            activity_type=ActivityLog.ActivityType.LESSON_COMPLETED,
+            lesson=lesson,
+            chapter=lesson.chapter,
+            metadata={'time_spent': progress.time_spent},
+        )
+
+    return progress, points_earned, deja_terminee
+
+
+def cohort_unlocked_chapter_ids(cohort):
+    """Ids des chapitres ouverts à **toute** la classe.
+
+    Un chapitre est « ouvert à la classe » quand *chacun* de ses membres actuels
+    y a accès. Conséquence assumée : un nouveau venu qui n'a pas encore l'accès
+    fait repasser le chapitre en « à ouvrir » — le formateur reclique, ce qui
+    est idempotent et rattache le nouveau. Sert au retour visuel du panneau
+    formateur (marquer les chapitres déjà ouverts).
+    """
+    from django.db.models import Count
+
+    from apps.accounts.models import User
+
+    total = User.objects.filter(profile__cohort=cohort).count()
+    if total == 0:
+        return set()
+
+    return set(
+        ChapterAccess.objects.filter(
+            user__profile__cohort=cohort, is_unlocked=True
+        )
+        .values('chapter_id')
+        .annotate(n=Count('user_id', distinct=True))
+        .filter(n=total)
+        .values_list('chapter_id', flat=True)
+    )
 
 
 def unlock_chapter_for(user, chapter, unlocked_by=None):

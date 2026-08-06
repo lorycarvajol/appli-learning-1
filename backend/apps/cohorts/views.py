@@ -19,7 +19,10 @@ from apps.administration.audit import label_for, record
 from apps.administration.models import AuditLog
 from apps.accounts.serializers import UserSerializer
 from apps.courses.models import Chapter
-from apps.progression.services import unlock_chapter_for
+from apps.progression.services import (
+    cohort_unlocked_chapter_ids,
+    unlock_chapter_for,
+)
 
 from .models import Cohort, CohortInvite
 from .serializers import (
@@ -138,6 +141,13 @@ class CohortViewSet(viewsets.ModelViewSet):
         learner.profile.cohort = None
         learner.profile.save(update_fields=['cohort', 'updated_at'])
         return Response({'removed': str(learner.id)}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'])
+    def unlocked_chapters(self, request, pk=None):
+        """Chapitres déjà ouverts à toute la classe (pour le retour visuel)."""
+        cohort = self.get_object()
+        ids = cohort_unlocked_chapter_ids(cohort)
+        return Response({'chapter_ids': [str(chapter_id) for chapter_id in ids]})
 
     @action(detail=True, methods=['post'])
     def unlock_chapter(self, request, pk=None):

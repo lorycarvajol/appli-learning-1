@@ -5,30 +5,8 @@ import { fetchChapters } from '../chapters/chaptersSlice';
 import { fetchMyProgress, selectAllProgress } from './progressionSlice';
 import coursesApi from '@/services/api/coursesApi';
 import progressionApi from '@/services/api/progressionApi';
+import { describeActivity } from '@/constants/activity';
 import './ProgressionPage.css';
-
-const ACTIVITY_META = {
-  LESSON_COMPLETED: {
-    icon: '✅',
-    label: (a) => `Leçon terminée — ${a.lesson_title || 'leçon'}`,
-  },
-  CHAPTER_UNLOCKED: {
-    icon: '🔓',
-    label: (a) => `Chapitre débloqué — ${a.chapter_title || 'chapitre'}`,
-  },
-  EXERCISE_SUBMITTED: {
-    icon: '💻',
-    label: (a) => `Exercice soumis — ${a.lesson_title || 'exercice'}`,
-  },
-  QUIZ_COMPLETED: {
-    icon: '📝',
-    label: (a) => `Quiz terminé — ${a.lesson_title || 'quiz'}`,
-  },
-  BADGE_EARNED: {
-    icon: '🏆',
-    label: () => 'Nouveau badge débloqué',
-  },
-};
 
 function formatRelativeTime(dateString) {
   const date = new Date(dateString);
@@ -265,16 +243,13 @@ export default function ProgressionPage() {
             ) : (
               <ul className="progression-activity">
                 {activity.slice(0, 12).map((item) => {
-                  const meta = ACTIVITY_META[item.activity_type] || {
-                    icon: '•',
-                    label: () => item.activity_type,
-                  };
+                  const { icon, label } = describeActivity(item);
                   return (
                     <li key={item.id} className="progression-activity__item">
                       <span className="progression-activity__icon" aria-hidden="true">
-                        {meta.icon}
+                        {icon}
                       </span>
-                      <span className="progression-activity__text">{meta.label(item)}</span>
+                      <span className="progression-activity__text">{label}</span>
                       <time
                         className="progression-activity__time"
                         dateTime={item.created_at}

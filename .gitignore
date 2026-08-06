@@ -15,9 +15,17 @@ htmlcov/
 # Django
 *.log
 db.sqlite3
-media/
 staticfiles/
 backend/logs/
+
+# Médias : le contenu téléversé à l'exécution est ignoré, mais les
+# illustrations des cours sont du contenu pédagogique — elles font partie du
+# dépôt au même titre que le texte des leçons. Sans elles, un clone donne un
+# cours sans une seule figure, et rien ne permet de les retrouver.
+# (`media/*` plutôt que `media/` : on ne peut pas ré-inclure un chemin dont un
+# répertoire parent est lui-même exclu.)
+backend/media/*
+!backend/media/courses/
 
 # Environment
 .env

@@ -194,14 +194,30 @@ class Quiz(models.Model):
         return f"Quiz: {self.lesson.title}"
 
     @property
+    def questions_list(self):
+        """Liste des questions, quelle que soit la forme du champ JSONB.
+
+        Même piège que `Exercise.test_cases` : deux formes coexistent en base —
+        `{'questions': [...]}`, celle que produisent les commandes de seed, et
+        `[...]` directement. Sans normalisation, `total_points`/`question_count`
+        itèrent les **clés** du dictionnaire et lèvent `AttributeError`, ce qui
+        fait planter la sérialisation de n'importe quelle leçon de type QUIZ.
+        **Tout lecteur du champ doit passer par ici.**
+        """
+        questions = self.questions
+        if isinstance(questions, dict):
+            questions = questions.get('questions', [])
+        return [q for q in (questions or []) if isinstance(q, dict)]
+
+    @property
     def total_points(self):
-        """Calculate total points from all questions."""
-        return sum(q.get('points', 1) for q in self.questions)
+        """Total des points de toutes les questions."""
+        return sum(q.get('points', 1) for q in self.questions_list)
 
     @property
     def question_count(self):
-        """Return the number of questions."""
-        return len(self.questions)
+        """Nombre de questions."""
+        return len(self.questions_list)
 
 
 class Project(models.Model):

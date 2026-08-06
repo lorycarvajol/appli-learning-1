@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from 'react';
+import { useCallback, useEffect, lazy, Suspense } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
@@ -12,6 +12,7 @@ import {
   selectProgressByLesson,
 } from '../progression/progressionSlice';
 import useTimeTracker from '../progression/useTimeTracker';
+import useScrollCompletion from '../progression/useScrollCompletion';
 import { badgesEarned } from '@/features/gamification/gamificationSlice';
 import QuizInterface from '@/features/quizzes/QuizInterface';
 import MarkdownImage from '@/components/ui/MarkdownImage';
@@ -38,6 +39,21 @@ export default function LessonView() {
   // Mesure le temps réellement passé sur la leçon (onglet visible + apprenant
   // actif). Doit être appelé avant les retours anticipés de rendu.
   useTimeTracker(currentLesson?.id);
+
+  const isTheory = currentLesson?.lesson_type === 'THEORY';
+
+  const completeOnScroll = useCallback(() => {
+    if (currentLesson) dispatch(markLessonCompleted(currentLesson.id));
+  }, [dispatch, currentLesson]);
+
+  // La théorie se valide en atteignant le bas du contenu. Les exercices et les
+  // quiz ont leur propre condition de réussite (tests passés, score atteint) :
+  // les valider au défilement distribuerait leurs points sans le travail.
+  const { sentinelRef, reached } = useScrollCompletion({
+    enabled: Boolean(currentLesson) && isTheory && !isCompleted,
+    onComplete: completeOnScroll,
+    resetOn: currentLesson?.id,
+  });
 
   useEffect(() => {
     dispatch(fetchLesson(slug));
@@ -112,12 +128,21 @@ export default function LessonView() {
     }
   }
 
-  // Handler pour marquer la leçon comme terminée
-  const handleMarkCompleted = async () => {
-    if (currentLesson && !isCompleted) {
-      await dispatch(markLessonCompleted(currentLesson.id));
-    }
-  };
+  // La leçon n'est plus déclarée terminée par l'apprenant mais constatée par
+  // l'application : le libellé explique donc ce qui reste à faire, plutôt que
+  // d'offrir un bouton.
+  const pendingLabel = {
+    THEORY: 'Faites défiler jusqu’en bas pour valider la leçon',
+    EXERCISE: 'Validée dès que tous les tests passent',
+    QUIZ: 'Validée dès que le score requis est atteint',
+  }[currentLesson.lesson_type] ?? '';
+
+  let completionLabel = pendingLabel;
+  if (isCompleted) {
+    completionLabel = '✓ Leçon terminée';
+  } else if (markingCompleted || reached) {
+    completionLabel = 'Enregistrement…';
+  }
 
   // Composants personnalisés pour ReactMarkdown
   const markdownComponents = {
@@ -194,6 +219,12 @@ export default function LessonView() {
                   </div>
                 </div>
               )}
+
+              {/* Repère de fin de lecture : son entrée durable dans la fenêtre
+                  vaut validation de la leçon (cf. useScrollCompletion). Placé
+                  après la vidéo pour qu'une leçon vidéo ne se valide pas dès
+                  la fin du texte. */}
+              <div ref={sentinelRef} aria-hidden="true" className="lesson-content__end" />
             </>
           )}
 
@@ -204,9 +235,16 @@ export default function LessonView() {
                 key={currentLesson.id}
                 exercise={currentLesson.exercise}
                 onSubmit={(code, result) => {
-                  // Auto-mark as completed if all tests pass
-                  if (result.success && !isCompleted) {
-                    dispatch(markLessonCompleted(currentLesson.id));
+                  // La complétion et les points sont constatés **côté
+                  // serveur** quand les tests passent (cf.
+                  // `validation.tasks._constater_la_reussite`) : on se contente
+                  // de resynchroniser l'état local, comme pour les quiz.
+                  //
+                  // Le front déclarait auparavant lui-même la réussite en
+                  // appelant `mark_completed` — c'était laisser au client le
+                  // soin de s'attribuer les points.
+                  if (result.success) {
+                    dispatch(fetchMyProgress());
                   }
                 }}
               />
@@ -254,15 +292,13 @@ export default function LessonView() {
             )}
           </div>
 
-          <button
-            className={`lesson-navigation__button lesson-navigation__button--complete ${
-              isCompleted ? 'lesson-navigation__button--completed' : ''
-            }`}
-            onClick={handleMarkCompleted}
-            disabled={isCompleted || markingCompleted}
+          <p
+            className={`lesson-status ${isCompleted ? 'lesson-status--done' : ''}`}
+            role="status"
+            aria-label="Statut de la leçon"
           >
-            {isCompleted ? '✓ Leçon terminée' : markingCompleted ? 'Enregistrement...' : 'Marquer comme terminé'}
-          </button>
+            {completionLabel}
+          </p>
 
           <div className="lesson-navigation__side lesson-navigation__side--right">
             {nextLesson ? (

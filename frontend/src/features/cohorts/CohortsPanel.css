@@ -67,6 +67,16 @@
   color: #fff;
 }
 
+/* Chapitre déjà ouvert à la classe : état « fait », lisible malgré le disabled */
+.cohort-chip--done,
+.cohort-chip--done:disabled {
+  opacity: 1;
+  background: var(--ok-soft);
+  border-color: var(--ok-text);
+  color: var(--ok-text);
+  cursor: default;
+}
+
 .cohort-chip__count {
   padding: 0.05rem 0.45rem;
   border-radius: 999px;

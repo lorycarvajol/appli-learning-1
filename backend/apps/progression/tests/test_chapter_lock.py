@@ -16,12 +16,16 @@ facile à commettre :
 """
 import pytest
 
+from apps.accounts.models import User
 from apps.progression.models import ChapterAccess, UserProgress
 from apps.progression.services import (
     accessible_chapter_ids,
     can_access_chapter,
+    cohort_unlocked_chapter_ids,
     unlock_chapter_for,
 )
+
+from .conftest import TEST_PASSWORD
 
 pytestmark = pytest.mark.django_db
 
@@ -33,6 +37,32 @@ def terminer_chapitre(user, chapter):
             user=user, lesson=lesson,
             defaults={'status': UserProgress.ProgressStatus.COMPLETED},
         )
+
+
+# ---------------------------------------------------------------------------
+# « Ouvert à la classe » : le retour visuel du panneau formateur
+# ---------------------------------------------------------------------------
+
+def test_chapitre_ouvert_a_la_classe_seulement_si_tous_les_membres_l_ont(
+    cohort, cohort_learner, parcours
+):
+    """Vert uniquement quand *chaque* membre a l'accès — sinon le formateur
+    croirait la classe entière servie alors qu'un apprenant est laissé dehors."""
+    autre = User.objects.create_user(email='autre@example.com', password=TEST_PASSWORD)
+    autre.profile.cohort = cohort_learner.profile.cohort
+    autre.profile.save(update_fields=['cohort'])
+
+    ch1 = parcours[0]
+
+    unlock_chapter_for(cohort_learner, ch1)
+    assert ch1.id not in cohort_unlocked_chapter_ids(cohort)  # un seul des deux
+
+    unlock_chapter_for(autre, ch1)
+    assert ch1.id in cohort_unlocked_chapter_ids(cohort)      # les deux
+
+
+def test_classe_vide_n_a_aucun_chapitre_ouvert(cohort, parcours):
+    assert cohort_unlocked_chapter_ids(cohort) == set()
 
 
 # ---------------------------------------------------------------------------
