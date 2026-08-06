@@ -592,6 +592,25 @@ son préfixe dans le cartouche d'un SVG rend le fichier **entier** mal formé :
 le navigateur n'affiche alors *rien*, sans le moindre message. C'est arrivé au
 premier fichier de la série.
 
+**Deux emplacements, un seul composant de style** :
+`styles/components/_chapter-illustration.scss`. La classe `chapter-illustration`
+s'ajoute à un bloc qui porte l'URL en variable (`--chapter-illus`) ; sans elle,
+rien n'est dessiné. Les réglages sont exposés en variables
+(`--illus-taille`, `--illus-flou`, `--illus-opacite`, `--illus-depart`,
+`--illus-fin`) car ils diffèrent d'un emplacement à l'autre : la carte du
+tableau de bord est large et basse (85 %, masque 15→70 %), l'en-tête de
+chapitre plus haut et plus large (45 %, masque 45→75 %).
+
+⚠️ **L'en-tête de chapitre n'était utilisable qu'à une condition** : borner la
+mesure de sa description. Elle courait sur toute la largeur du conteneur —
+près de 140 caractères par ligne, bien au-delà du confort de lecture — et
+aucune illustration ne pouvait tenir à droite sans passer sous le texte. Le
+`max-width: 68ch` sert donc deux fins, et c'est la lisibilité qui prime : ne
+pas le retirer pour agrandir l'illustration.
+
+Sous 768 px, l'illustration **disparaît** : un bloc étroit n'a pas de tiers
+droit libre, et c'est une décoration — elle n'a rien à défendre.
+
 Côté tableau de bord, l'illustration se pose **dans** la carte « Continuer
 l'apprentissage », jamais derrière le bloc : la carte a son propre aplat, qui
 la masquerait. Trois réglages tiennent ensemble et se règlent à l'œil :

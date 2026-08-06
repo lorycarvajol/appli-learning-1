@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, Link } from 'react-router-dom';
 import { fetchChapterDetails, clearCurrentChapter } from './chaptersSlice';
+import { chapterIllustration } from './illustrations';
 import { fetchMyProgress, selectAllProgress } from '../progression/progressionSlice';
 
 export default function ChapterDetail() {
@@ -40,6 +41,14 @@ export default function ChapterDetail() {
     return null;
   }
 
+  // Même illustration, même principe qu'au tableau de bord : posée en fond du
+  // bloc, floutée, effacée du côté du texte. L'en-tête est plus haut et moins
+  // large que la carte du tableau de bord — le dessin y est donc un peu plus
+  // grand et le dégradé démarre plus tard, pour qu'il reste lisible.
+  // Le slug vient de la route, pas de la charge utile : c'est la même valeur,
+  // mais elle est disponible sans dépendre des champs exposés par l'API.
+  const illustration = chapterIllustration(slug);
+
   const getLessonTypeInfo = (type) => {
     const types = {
       THEORY: { label: 'Théorie', class: 'lesson-card__badge--theory' },
@@ -65,7 +74,10 @@ export default function ChapterDetail() {
       <div className="chapter-detail-container">
 
         {/* Chapter Header */}
-        <div className="chapter-detail-header">
+        <div
+          className={`chapter-detail-header ${illustration ? 'chapter-illustration' : ''}`}
+          style={illustration ? { '--chapter-illus': `url(${illustration})` } : undefined}
+        >
           <h1 className="chapter-detail-header__title">{currentChapter.title}</h1>
 
           <p className="chapter-detail-header__description">

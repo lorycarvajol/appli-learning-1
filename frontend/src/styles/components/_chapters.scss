@@ -241,6 +241,16 @@
   margin-bottom: $spacing-2xl;
   @include slide-up;
 
+  // Illustration du chapitre (composant partagé avec la carte « Continuer
+  // l'apprentissage » du tableau de bord). L'en-tête est plus large et plus
+  // haut que cette carte : le dessin y tient dans le tiers droit, laissé libre
+  // par la mesure bornée de la description.
+  &.chapter-illustration {
+    --illus-taille: 45%;
+    --illus-depart: 45%;
+    --illus-fin: 75%;
+  }
+
   &__title {
     @include heading-1;
     margin-bottom: $spacing-lg;
@@ -250,6 +260,11 @@
     @include body-text;
     color: $text-secondary;
     margin-bottom: $spacing-xl;
+    // Mesure lisible : la description courait sur toute la largeur du
+    // conteneur, soit près de 140 caractères par ligne — l'œil perd la ligne
+    // suivante bien avant. Effet de bord voulu : le tiers droit se libère pour
+    // l'illustration du chapitre.
+    max-width: 68ch;
   }
 
   &__meta {

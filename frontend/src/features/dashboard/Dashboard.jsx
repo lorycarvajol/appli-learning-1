@@ -212,7 +212,7 @@ export default function Dashboard() {
                 derrière le bouton.
               */
               <div
-                className={`learning-card ${illustration ? 'learning-card--illustrated' : ''}`}
+                className={`learning-card ${illustration ? 'chapter-illustration' : ''}`}
                 style={illustration ? { '--chapter-illus': `url(${illustration})` } : undefined}
               >
                 <div className="learning-card__content">
