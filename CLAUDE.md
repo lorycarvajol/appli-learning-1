@@ -575,7 +575,14 @@ dominante suivant le chapitre :
 | `quest-ce-que-le-html` | Le document et ses balises, chevrons | ✅ |
 | `structure-base-page-html` | L'imbrication : tête et corps, et l'arbre qu'ils forment | ✅ |
 | `html-texte-titres-paragraphes` | La hiérarchie typographique, et l'échelle des titres | ✅ |
-| *les 65 autres* | — | ❌ |
+| `exercice-texte-titres-paragraphes` | L'éditeur et le panneau de tests | ✅ |
+| *les 64 autres* | — | ❌ |
+
+⚠️ **Le vert est réservé au type « exercice »** (le panneau de tests réussis).
+C'est le seul écart de couleur de la série, et il ne dit pas le sujet mais le
+type : il se repère au premier coup d'œil dans le parcours, même flouté. Les
+illustrations d'exercice suivantes doivent le reprendre — et les autres s'en
+abstenir.
 
 Le parcours compte **68 leçons** : la table se remplit au fil des dessins, et
 une leçon sans entrée s'affiche simplement sans illustration.

@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" width="1200" height="675" role="img" aria-label="Illustration de la leçon : exercice sur les titres et paragraphes">
+  <!--
+    Leçon 4 — Exercice rapide : titres et paragraphes.
+
+    Motif : faire, et vérifier. À gauche l'éditeur — des lignes de code
+    indentées, ouvertes par de petits chevrons ; à droite le panneau de tests,
+    trois lignes validées et une encore en attente.
+
+    C'est la première illustration d'un exercice, et elle introduit le seul
+    écart de couleur de la série : le vert des tests réussis. Il ne dit pas le
+    sujet mais le **type** de leçon, et se repère au premier coup d'œil dans le
+    parcours. Les leçons d'exercice suivantes le reprendront.
+
+    Grammaire commune à la série (voir les autres fichiers de ce dossier) :
+    même format, mêmes halos de fond, un objet central, des signes flottants.
+    La dominante violette est celle du chapitre HTML.
+
+    ATTENTION en modifiant ce cartouche : deux tirets consécutifs sont
+    interdits dans un commentaire XML. Écrire les noms de variables CSS avec
+    leur préfixe rend le fichier entier mal formé, et le navigateur n'affiche
+    alors rien du tout, sans le moindre message.
+  -->
+  <defs>
+    <linearGradient id="exo-fond" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f6f5fb"/>
+      <stop offset="100%" stop-color="#e7e1fc"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="675" fill="url(#exo-fond)"/>
+
+  <!-- Masses de fond : ce sont elles qui portent l'image une fois floutée. -->
+  <circle cx="965" cy="330" r="230" fill="#5b3df0" opacity="0.13"/>
+  <circle cx="250" cy="600" r="180" fill="#f5a623" opacity="0.16"/>
+  <circle cx="1090" cy="90" r="90" fill="#f5a623" opacity="0.20"/>
+
+  <!-- L'éditeur. -->
+  <g transform="rotate(-3.5 450 340)">
+    <rect x="130" y="115" width="640" height="450" rx="30" fill="#ffffff" stroke="#e3e0f0" stroke-width="3"/>
+
+    <circle cx="182" cy="167" r="10" fill="#f5a623"/>
+    <circle cx="214" cy="167" r="10" fill="#c9c2e6"/>
+    <circle cx="246" cy="167" r="10" fill="#e3e0f0"/>
+    <rect x="300" y="155" width="180" height="24" rx="12" fill="#efeafe"/>
+    <line x1="150" y1="205" x2="750" y2="205" stroke="#efeafe" stroke-width="3"/>
+
+    <!-- Gouttière des numéros de ligne -->
+    <g fill="#e3e0f0">
+      <rect x="178" y="243" width="16" height="10" rx="5"/>
+      <rect x="178" y="285" width="16" height="10" rx="5"/>
+      <rect x="178" y="327" width="16" height="10" rx="5"/>
+      <rect x="178" y="369" width="16" height="10" rx="5"/>
+      <rect x="178" y="411" width="16" height="10" rx="5"/>
+      <rect x="178" y="453" width="16" height="10" rx="5"/>
+      <rect x="178" y="495" width="16" height="10" rx="5"/>
+    </g>
+
+    <!-- Le code : l'indentation dit l'imbrication, les chevrons disent les
+         balises. -->
+    <g stroke="#7c5cff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <polyline points="232,240 224,248 232,256"/>
+      <polyline points="264,324 256,332 264,340"/>
+      <polyline points="264,408 256,416 264,424"/>
+      <polyline points="232,492 224,500 232,508"/>
+    </g>
+
+    <rect x="246" y="241" width="150" height="14" rx="7" fill="#5b3df0" opacity="0.55"/>
+    <rect x="278" y="283" width="264" height="14" rx="7" fill="#e3e0f0"/>
+    <rect x="278" y="325" width="118" height="14" rx="7" fill="#5b3df0" opacity="0.4"/>
+    <rect x="412" y="325" width="196" height="14" rx="7" fill="#e3e0f0"/>
+    <rect x="278" y="367" width="230" height="14" rx="7" fill="#e3e0f0"/>
+    <rect x="278" y="409" width="132" height="14" rx="7" fill="#f5a623" opacity="0.6"/>
+    <rect x="426" y="409" width="172" height="14" rx="7" fill="#e3e0f0"/>
+    <rect x="278" y="451" width="286" height="14" rx="7" fill="#e3e0f0"/>
+    <rect x="246" y="493" width="150" height="14" rx="7" fill="#5b3df0" opacity="0.55"/>
+  </g>
+
+  <!-- Le panneau de tests. Le vert est le signe du type « exercice ». -->
+  <rect x="855" y="222" width="282" height="228" rx="24" fill="#ffffff" stroke="#e3e0f0" stroke-width="3"/>
+
+  <g>
+    <circle cx="902" cy="276" r="17" fill="#16a34a"/>
+    <path d="M894 276 L900 282 L911 270" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <rect x="934" y="269" width="164" height="14" rx="7" fill="#dfe9e2"/>
+  </g>
+  <g>
+    <circle cx="902" cy="336" r="17" fill="#16a34a"/>
+    <path d="M894 336 L900 342 L911 330" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <rect x="934" y="329" width="130" height="14" rx="7" fill="#dfe9e2"/>
+  </g>
+  <g>
+    <circle cx="902" cy="396" r="17" fill="#16a34a"/>
+    <path d="M894 396 L900 402 L911 390" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <rect x="934" y="389" width="150" height="14" rx="7" fill="#dfe9e2"/>
+  </g>
+
+  <!-- Quelques repères libres, pour le rythme. -->
+  <rect x="856" y="492" width="52" height="52" rx="16" fill="#5b3df0" opacity="0.22"/>
+  <rect x="932" y="522" width="32" height="32" rx="10" fill="#f5a623" opacity="0.5"/>
+  <circle cx="1026" cy="518" r="15" fill="#16a34a" opacity="0.35"/>
+</svg>
