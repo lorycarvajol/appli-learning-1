@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" width="1200" height="675" role="img" aria-label="Illustration du chapitre HTML">
+  <!--
+    Chapitre 1 — HTML : la structure.
+
+    Grammaire commune à la série (voir les autres fichiers de ce dossier) :
+    un halo coloré au fond, un objet « document » au centre, des signes
+    flottants. Seuls le motif et la dominante changent d'un chapitre à
+    l'autre.
+
+    Aucune balise <text> : l'illustration ne dépend d'aucune police, donc rend
+    à l'identique partout — y compris posée en `background-image`, où les
+    polices du document ne s'appliquent pas.
+
+    Les couleurs sont figées en dur : un SVG utilisé comme image de fond n'a
+    pas accès aux variables CSS de la page. Elles reprennent les tokens du
+    thème clair (brand, accent, border) ; le thème sombre atténue l'image côté
+    CSS plutôt que d'en charger une seconde version.
+
+    ATTENTION en modifiant ce cartouche : deux tirets consécutifs sont
+    interdits dans un commentaire XML. Écrire les noms de variables CSS avec
+    leur préfixe rend le fichier entier mal formé, et le navigateur n'affiche
+    alors rien du tout, sans le moindre message.
+  -->
+  <defs>
+    <linearGradient id="html-fond" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f6f5fb"/>
+      <stop offset="100%" stop-color="#e7e1fc"/>
+    </linearGradient>
+    <linearGradient id="html-titre" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#5b3df0"/>
+      <stop offset="100%" stop-color="#8b6bff"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="675" fill="url(#html-fond)"/>
+
+  <!-- Premier plan de fond : deux masses colorées. Ce sont elles qui portent
+       l'image une fois floutée — le détail, lui, disparaît. -->
+  <circle cx="965" cy="330" r="230" fill="#5b3df0" opacity="0.13"/>
+  <circle cx="250" cy="600" r="180" fill="#f5a623" opacity="0.16"/>
+  <circle cx="1090" cy="90" r="90" fill="#f5a623" opacity="0.20"/>
+
+  <!-- L'objet central : une page. Légèrement inclinée, pour que la
+       composition ne soit pas strictement orthogonale. -->
+  <g transform="rotate(-3.5 460 340)">
+    <rect x="130" y="115" width="640" height="450" rx="30" fill="#ffffff" stroke="#e3e0f0" stroke-width="3"/>
+
+    <!-- Barre de fenêtre -->
+    <circle cx="182" cy="167" r="10" fill="#f5a623"/>
+    <circle cx="214" cy="167" r="10" fill="#c9c2e6"/>
+    <circle cx="246" cy="167" r="10" fill="#e3e0f0"/>
+    <rect x="300" y="157" width="240" height="20" rx="10" fill="#f2f0fa"/>
+    <line x1="150" y1="205" x2="750" y2="205" stroke="#efeafe" stroke-width="3"/>
+
+    <!-- Un titre, deux paragraphes : la hiérarchie, c'est le sujet du
+         chapitre. -->
+    <rect x="178" y="243" width="300" height="36" rx="12" fill="url(#html-titre)"/>
+    <rect x="178" y="309" width="452" height="15" rx="7.5" fill="#e3e0f0"/>
+    <rect x="178" y="343" width="388" height="15" rx="7.5" fill="#e3e0f0"/>
+    <rect x="178" y="377" width="430" height="15" rx="7.5" fill="#e3e0f0"/>
+
+    <!-- Une image et une liste : les deux autres familles de balises vues
+         dans le chapitre. -->
+    <rect x="178" y="423" width="212" height="118" rx="16" fill="#fef3dc" stroke="#f5a623" stroke-width="3"/>
+    <circle cx="222" cy="463" r="15" fill="#f5a623"/>
+    <path d="M190 528 L246 478 L290 522 L322 496 L378 528 Z" fill="#f5a623" opacity="0.55"/>
+
+    <g fill="#5b3df0">
+      <circle cx="438" cy="440" r="7"/>
+      <circle cx="438" cy="482" r="7"/>
+      <circle cx="438" cy="524" r="7"/>
+    </g>
+    <g fill="#e3e0f0">
+      <rect x="462" y="433" width="168" height="14" rx="7"/>
+      <rect x="462" y="475" width="140" height="14" rx="7"/>
+      <rect x="462" y="517" width="156" height="14" rx="7"/>
+    </g>
+  </g>
+
+  <!-- Les chevrons : le signe du chapitre. Tracés au trait, jamais en texte.
+       Le groupe est décalé vers l'intérieur : au ras du bord, la moitié de
+       l'épaisseur du trait (13 px) et la jointure arrondie sortaient du cadre,
+       et le chevron droit se retrouvait tronqué. -->
+  <g transform="translate(-34 0)" stroke="#4527d6" stroke-width="26"
+     stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9">
+    <polyline points="912,232 838,332 912,432"/>
+    <line x1="1004" y1="452" x2="1064" y2="212"/>
+    <polyline points="1116,232 1190,332 1116,432"/>
+  </g>
+
+  <!-- Quelques repères libres, pour le rythme. -->
+  <rect x="820" y="530" width="58" height="58" rx="18" fill="#5b3df0" opacity="0.22"/>
+  <rect x="906" y="566" width="34" height="34" rx="11" fill="#f5a623" opacity="0.5"/>
+  <circle cx="1010" cy="560" r="16" fill="#5b3df0" opacity="0.3"/>
+</svg>

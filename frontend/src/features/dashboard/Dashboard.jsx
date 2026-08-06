@@ -9,6 +9,7 @@ import {
   selectProgressOverview,
 } from '../progression/progressionSlice';
 import NextObjectives from '../gamification/NextObjectives';
+import { chapterIllustration } from '../chapters/illustrations';
 import {
   selectLevel,
   selectSummary,
@@ -61,6 +62,10 @@ export default function Dashboard() {
     () => pickTip(buildTipContext({ summary, overview, nextLesson })),
     [summary, overview, nextLesson]
   );
+
+  // Illustration du chapitre en cours, posée en fond de la carte. `null` tant
+  // qu'un chapitre n'a pas la sienne : la carte reste alors telle quelle.
+  const illustration = chapterIllustration(nextLesson?.chapter?.slug);
 
   const formatTime = (seconds) => {
     const hours = Math.floor(seconds / 3600);
@@ -199,7 +204,17 @@ export default function Dashboard() {
             </div>
 
             {nextLesson?.lesson ? (
-              <div className="learning-card">
+              /*
+                L'illustration se pose **dans** cette carte, pas derrière le
+                bloc entier : la carte a son propre aplat, qui la masquerait.
+                Floutée et effacée à gauche par un dégradé, elle n'arrive
+                jamais sous le texte — on ne voit que le motif du chapitre,
+                derrière le bouton.
+              */
+              <div
+                className={`learning-card ${illustration ? 'learning-card--illustrated' : ''}`}
+                style={illustration ? { '--chapter-illus': `url(${illustration})` } : undefined}
+              >
                 <div className="learning-card__content">
                   <span className="learning-card__kicker">
                     {nextLesson.chapter.title}

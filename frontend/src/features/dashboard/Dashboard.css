@@ -294,6 +294,46 @@
   gap: 2rem;
 }
 
+/* ---------- Illustration de chapitre en fond de carte ----------
+   La carte est le point le plus vide du tableau de bord : un grand aplat pour
+   trois lignes de texte et un bouton. L'illustration du chapitre en cours
+   l'occupe, sans jamais disputer la lisibilité au texte. */
+.learning-card--illustrated {
+  position: relative;
+  overflow: hidden;
+}
+
+.learning-card--illustrated::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* Posée par le composant, d'après le slug du chapitre. Absente, la règle ne
+     dessine rien — c'est le repli. */
+  background-image: var(--chapter-illus, none);
+  background-repeat: no-repeat;
+  background-position: center right;
+  /* Un peu plus petite que la carte : en `cover`, une illustration 16/9 dans
+     une carte très large et basse se réduit à une bande centrale démesurément
+     agrandie, où le motif n'était plus reconnaissable. */
+  background-size: 85%;
+  filter: blur(7px);
+  opacity: 0.7;
+  /* Le dégradé de masquage est ce qui rend l'idée tenable : l'image s'efface
+     complètement du côté du texte, il n'y a donc aucun contraste à défendre. */
+  -webkit-mask-image: linear-gradient(to right, transparent 15%, #000 70%);
+  mask-image: linear-gradient(to right, transparent 15%, #000 70%);
+  pointer-events: none;
+}
+
+/* Sur fond sombre, la même image éclaircirait la carte : elle s'efface. */
+[data-theme='dark'] .learning-card--illustrated::before {
+  opacity: 0.3;
+}
+
+.learning-card--illustrated > * {
+  position: relative;
+}
+
 /* États sans leçon à reprendre : plus sobres que la carte d'invitation */
 .learning-card--done {
   background-color: var(--ok-soft);

@@ -559,6 +559,55 @@ qu'un chapitre sur quatre — ou une panne de plateforme à celui qui attend
 simplement son formateur. Couvert par `apps/progression/tests/test_next_lesson.py`
 (11 tests, validés par sabotage).
 
+### Illustrations de chapitre — une série, une grammaire
+
+`frontend/src/assets/chapters/*.svg`, indexées par
+`features/chapters/illustrations.js` (clé = **slug du chapitre en base**).
+
+Même format 16/9, même fond dégradé clair, mêmes teintes de marque et
+d'accent, et une composition en trois plans — un halo coloré, un objet
+central, des signes flottants. Seuls le motif et la dominante changent :
+
+| Chapitre | Motif | État |
+|---|---|---|
+| HTML | Le document et ses balises, chevrons | ✅ |
+| CSS | La mise en forme — palette, boîtes | ❌ |
+| JavaScript | Le comportement — événements, flux | ❌ |
+| Site vitrine | La mise en ligne — écran, ondes | ❌ |
+
+**Du SVG écrit à la main**, pas du PNG : net à toute taille (quelques centaines
+de pixels en fond de carte, plus de mille en tête de chapitre), quelques
+kilo-octets, relisible en diff, aucune dépendance ni question de licence. Et
+comme ce sont des ressources d'interface, elles vivent dans `src/assets/` —
+donc hachées par Vite — et **non** dans `backend/media/`, qui n'est servi par
+personne en production et dont le contenu doit être cité par une règle
+d'`illustrations.py` (un fichier orphelin y fait rougir un test).
+
+⚠️ **Aucun texte dans ces fichiers.** Une illustration posée en
+`background-image` n'hérite d'aucune police du document : un `<text>` rendrait
+n'importe quoi selon la machine. Tout est tracé en formes.
+
+⚠️ **`--` est interdit dans un commentaire XML.** Citer une variable CSS avec
+son préfixe dans le cartouche d'un SVG rend le fichier **entier** mal formé :
+le navigateur n'affiche alors *rien*, sans le moindre message. C'est arrivé au
+premier fichier de la série.
+
+Côté tableau de bord, l'illustration se pose **dans** la carte « Continuer
+l'apprentissage », jamais derrière le bloc : la carte a son propre aplat, qui
+la masquerait. Trois réglages tiennent ensemble et se règlent à l'œil :
+
+- **un dégradé de masquage** efface l'image du côté du texte — c'est ce qui
+  rend l'idée tenable, il n'y a aucun contraste à défendre ;
+- **`background-size: 85 %`**, pas `cover` : dans une carte très large et
+  basse, une image 16/9 en `cover` se réduit à une bande centrale démesurément
+  agrandie où le motif n'est plus reconnaissable ;
+- **opacité réduite en thème sombre** (0,3 contre 0,7) : ces illustrations sont
+  claires, elles éclairciraient la carte.
+
+Un chapitre sans illustration n'a simplement pas la classe modificatrice.
+⚠️ Renommer un slug de chapitre fait disparaître l'illustration **en
+silence** — le repli est volontairement discret.
+
 ### Le conseil du jour est calculé, plus écrit en dur
 
 Le bloc affichait une phrase unique, la même pour tout le monde et tous les
