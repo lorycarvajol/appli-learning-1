@@ -5,7 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import ChapterAccess, UserProgress, ActivityLog
-from .services import can_access_lesson, complete_lesson
+from .services import accessible_chapter_ids, can_access_lesson, complete_lesson
 from .serializers import (
     ChapterAccessSerializer,
     UserProgressSerializer,
@@ -473,6 +473,111 @@ class UserProgressViewSet(viewsets.ModelViewSet):
             {'lesson': str(lesson.id), 'time_spent': progress.time_spent},
             status=status.HTTP_200_OK
         )
+
+    @action(detail=False, methods=['get'])
+    def overview(self, request):
+        """Avancement réel : terminé **sur l'ensemble du programme**.
+
+        Le tableau de bord calculait sa « progression globale » côté client, à
+        partir des seules leçons déjà touchées
+        (`terminées / (terminées + en cours)`). Une leçon terminée et aucune en
+        cours affichait donc **100 %** dès la première leçon lue — le chiffre
+        montait quand on ouvrait une leçon et redescendait quand on la
+        finissait. Le dénominateur manquant (le nombre de leçons publiées)
+        n'était tout simplement pas dans le magasin du client.
+
+        Il est calculé ici parce que le serveur est le seul à connaître le
+        périmètre exact : `is_published` sur la leçon **et** sur son chapitre —
+        le même filtre que `next_lesson`, sans quoi les deux blocs du tableau
+        de bord se contrediraient. (`Chapter.lesson_count`, lui, compte aussi
+        les leçons non publiées : ne pas s'en servir pour un pourcentage.)
+
+        Le détail par chapitre accompagne le total : « 12 sur 68 » ne dit pas
+        où l'on en est, « chapitre 2 à moitié fait » si.
+
+        Coût : trois requêtes, indépendantes du volume.
+        """
+        lessons = list(
+            Lesson.objects
+            .filter(is_published=True, chapter__is_published=True)
+            .values(
+                'id', 'chapter_id',
+                'chapter__title', 'chapter__slug', 'chapter__order_index',
+            )
+            .order_by('chapter__order_index', 'order_index')
+        )
+
+        progress_by_lesson = {
+            row['lesson_id']: row
+            for row in UserProgress.objects
+            .filter(user=request.user)
+            .values('lesson_id', 'status', 'score', 'time_spent')
+        }
+
+        accessible = accessible_chapter_ids(request.user)
+
+        completed = in_progress = time_spent = 0
+        scores = []
+        chapters = {}
+
+        for lesson in lessons:
+            chapter_id = lesson['chapter_id']
+            chapter = chapters.setdefault(chapter_id, {
+                'title': lesson['chapter__title'],
+                'slug': lesson['chapter__slug'],
+                'order_index': lesson['chapter__order_index'],
+                'is_accessible': chapter_id in accessible,
+                'total': 0,
+                'completed': 0,
+            })
+            chapter['total'] += 1
+
+            row = progress_by_lesson.get(lesson['id'])
+            if row is None:
+                continue
+
+            time_spent += row['time_spent'] or 0
+
+            # `score` est nul sur une leçon de théorie : elle n'a rien à noter.
+            # Les compter comme des zéros écrasait la moyenne — un apprenant
+            # avec deux quiz parfaits et huit leçons lues affichait 20 %.
+            if row['score'] is not None:
+                scores.append(row['score'])
+
+            if row['status'] == UserProgress.ProgressStatus.COMPLETED:
+                completed += 1
+                chapter['completed'] += 1
+            elif row['status'] == UserProgress.ProgressStatus.IN_PROGRESS:
+                in_progress += 1
+
+        total = len(lessons)
+
+        return Response({
+            'lessons': {
+                'total': total,
+                'completed': completed,
+                'in_progress': in_progress,
+                'percent': round(completed / total * 100) if total else 0,
+            },
+            'chapters': [
+                {
+                    **chapter,
+                    'percent': (
+                        round(chapter['completed'] / chapter['total'] * 100)
+                        if chapter['total'] else 0
+                    ),
+                }
+                for chapter in sorted(
+                    chapters.values(), key=lambda c: c['order_index']
+                )
+            ],
+            'time_spent_seconds': time_spent,
+            # `None` — et non `0` — quand rien n'est encore noté : le client
+            # affiche un tiret plutôt qu'un score nul, qui se lirait comme un
+            # échec.
+            'average_score': round(sum(scores) / len(scores)) if scores else None,
+            'graded_count': len(scores),
+        })
 
     @action(detail=False, methods=['get'])
     def my_progress(self, request):

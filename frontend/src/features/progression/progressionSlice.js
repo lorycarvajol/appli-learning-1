@@ -37,6 +37,24 @@ export const fetchNextLesson = createAsyncThunk(
   }
 );
 
+/**
+ * Avancement réel, calculé par le serveur.
+ *
+ * Le client ne connaît que les leçons qu'il a déjà touchées : il lui manque le
+ * dénominateur (le nombre de leçons publiées) pour dire quoi que ce soit de
+ * juste sur une « progression globale ».
+ */
+export const fetchProgressOverview = createAsyncThunk(
+  'progression/fetchOverview',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await progressionApi.getOverview();
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 export const updateProgress = createAsyncThunk(
   'progression/updateProgress',
   async ({ progressId, data }, { rejectWithValue }) => {
@@ -56,6 +74,8 @@ const progressionSlice = createSlice({
     progressByLesson: {},
     // Leçon à reprendre (bloc « Continuer l'apprentissage »)
     nextLesson: null,
+    // Totaux du programme (bloc « Vue d'ensemble »)
+    overview: null,
     loading: false,
     error: null,
     markingCompleted: false,
@@ -106,6 +126,11 @@ const progressionSlice = createSlice({
         state.nextLesson = action.payload;
       })
 
+      // Vue d'ensemble
+      .addCase(fetchProgressOverview.fulfilled, (state, action) => {
+        state.overview = action.payload;
+      })
+
       // Update Progress
       .addCase(updateProgress.fulfilled, (state, action) => {
         // Mettre à jour la progression dans le map
@@ -123,6 +148,8 @@ export const selectProgressByLesson = (lessonId) => (state) =>
 export const selectAllProgress = (state) => state.progression.progressByLesson;
 
 export const selectNextLesson = (state) => state.progression.nextLesson;
+
+export const selectProgressOverview = (state) => state.progression.overview;
 
 export const selectProgressLoading = (state) => state.progression.loading;
 

@@ -1,11 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import {
   fetchMyProgress,
   fetchNextLesson,
-  selectAllProgress,
+  fetchProgressOverview,
   selectNextLesson,
+  selectProgressOverview,
 } from '../progression/progressionSlice';
 import NextObjectives from '../gamification/NextObjectives';
 import {
@@ -13,6 +14,7 @@ import {
   selectSummary,
   syncGamification,
 } from '../gamification/gamificationSlice';
+import { buildTipContext, pickTip } from './dailyTips';
 import './Dashboard.css';
 
 const LESSON_TYPE_LABELS = {
@@ -24,27 +26,41 @@ const LESSON_TYPE_LABELS = {
 export default function Dashboard() {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
-  const progressByLesson = useSelector(selectAllProgress);
   const summary = useSelector(selectSummary);
   const level = useSelector(selectLevel);
   const nextLesson = useSelector(selectNextLesson);
+  const overview = useSelector(selectProgressOverview);
 
   useEffect(() => {
     dispatch(fetchMyProgress());
     dispatch(fetchNextLesson());
+    dispatch(fetchProgressOverview());
     // `sync` est idempotent côté serveur : il rattrape un éventuel badge
     // manqué (session interrompue, onglet fermé) sans rien redistribuer.
     dispatch(syncGamification());
   }, [dispatch]);
 
-  // Calculer les statistiques
-  const progressArray = Object.values(progressByLesson);
-  const completedLessons = progressArray.filter((p) => p.status === 'COMPLETED').length;
-  const inProgressLessons = progressArray.filter((p) => p.status === 'IN_PROGRESS').length;
-  const totalTimeSpent = progressArray.reduce((sum, p) => sum + (p.time_spent || 0), 0);
-  const avgScore = progressArray.length > 0
-    ? progressArray.reduce((sum, p) => sum + (p.score || 0), 0) / progressArray.length
-    : 0;
+  /*
+    Les compteurs viennent du serveur, plus d'un calcul local.
+
+    ⚠️ Ils étaient dérivés des seules leçons déjà touchées, ce qui donnait deux
+    chiffres faux : une « progression globale » à 100 % dès la première leçon
+    terminée (le programme entier n'était pas au dénominateur), et un score
+    moyen qui comptait les leçons de théorie — non notées, donc `score: null` —
+    comme des zéros. Le client ne peut pas les corriger : il ignore combien de
+    leçons existent.
+  */
+  const lessons = overview?.lessons;
+  const completedLessons = lessons?.completed ?? 0;
+  const inProgressLessons = lessons?.in_progress ?? 0;
+  const totalLessons = lessons?.total ?? 0;
+  const globalPercent = lessons?.percent ?? 0;
+  const totalTimeSpent = overview?.time_spent_seconds ?? 0;
+
+  const tip = useMemo(
+    () => pickTip(buildTipContext({ summary, overview, nextLesson })),
+    [summary, overview, nextLesson]
+  );
 
   const formatTime = (seconds) => {
     const hours = Math.floor(seconds / 3600);
@@ -96,7 +112,12 @@ export default function Dashboard() {
           <div className="stat-card stat-card--green">
             <div className="stat-card__icon" aria-hidden="true">✅</div>
             <div className="stat-card__content">
-              <div className="stat-card__value">{completedLessons}</div>
+              <div className="stat-card__value">
+                {completedLessons}
+                {totalLessons > 0 && (
+                  <span className="stat-card__value-total">/{totalLessons}</span>
+                )}
+              </div>
               <div className="stat-card__label">Leçons complétées</div>
             </div>
             <div className="stat-card__progress">{inProgressLessons} en cours</div>
@@ -113,8 +134,21 @@ export default function Dashboard() {
           <div className="stat-card stat-card--orange">
             <div className="stat-card__icon" aria-hidden="true">📊</div>
             <div className="stat-card__content">
-              <div className="stat-card__value">{Math.round(avgScore)}%</div>
+              {/*
+                Un tiret, pas « 0 % » : rien de noté ne veut pas dire zéro, et
+                un débutant lit un zéro comme un échec.
+              */}
+              <div className="stat-card__value">
+                {overview?.average_score === null || overview?.average_score === undefined
+                  ? '—'
+                  : `${overview.average_score}%`}
+              </div>
               <div className="stat-card__label">Score moyen</div>
+              <div className="stat-card__sublabel">
+                {overview?.graded_count
+                  ? `sur ${overview.graded_count} évaluation(s)`
+                  : 'quiz et exercices notés'}
+              </div>
             </div>
           </div>
 
@@ -256,24 +290,66 @@ export default function Dashboard() {
               <h3 className="sidebar-card__title"><span aria-hidden="true">🎯</span> Vue d’ensemble</h3>
               <div className="progress-overview">
                 <div className="progress-overview__item">
-                  <div className="progress-overview__label" id="global-progress-label">Progression globale</div>
+                  <div className="progress-overview__label" id="global-progress-label">
+                    Progression globale
+                    {totalLessons > 0 && (
+                      <span className="progress-overview__count">
+                        {completedLessons} / {totalLessons} leçons
+                      </span>
+                    )}
+                  </div>
                   <div
                     className="progress-overview__bar"
                     role="progressbar"
                     aria-labelledby="global-progress-label"
-                    aria-valuenow={completedLessons > 0 ? Math.round((completedLessons / (completedLessons + inProgressLessons)) * 100) : 0}
+                    aria-valuenow={globalPercent}
                     aria-valuemin={0}
                     aria-valuemax={100}
                   >
                     <div
                       className="progress-overview__fill"
-                      style={{ width: `${completedLessons > 0 ? (completedLessons / (completedLessons + inProgressLessons)) * 100 : 0}%` }}
+                      style={{ width: `${globalPercent}%` }}
                     ></div>
                   </div>
-                  <div className="progress-overview__value">
-                    {completedLessons > 0 ? Math.round((completedLessons / (completedLessons + inProgressLessons)) * 100) : 0}%
-                  </div>
+                  <div className="progress-overview__value">{globalPercent}%</div>
                 </div>
+
+                {/*
+                  Le détail par chapitre est ce qui rend le bloc utile : « 12 sur
+                  68 » ne dit pas où l'on en est, « chapitre 2 à moitié fait » si.
+                  Les chapitres verrouillés restent affichés, comme dans le
+                  sommaire — on montre la suite du parcours, on ne l'ouvre pas.
+                */}
+                {overview?.chapters?.map((chapter) => (
+                  <div className="chapter-progress" key={chapter.slug}>
+                    <div className="chapter-progress__head">
+                      <span className="chapter-progress__title">
+                        {!chapter.is_accessible && (
+                          <span aria-label="Chapitre verrouillé" title="Chapitre verrouillé">
+                            🔒{' '}
+                          </span>
+                        )}
+                        {chapter.title}
+                      </span>
+                      <span className="chapter-progress__count">
+                        {chapter.completed}/{chapter.total}
+                      </span>
+                    </div>
+                    <div
+                      className="chapter-progress__bar"
+                      role="progressbar"
+                      aria-label={`Avancement du chapitre ${chapter.title}`}
+                      aria-valuenow={chapter.percent}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    >
+                      <div
+                        className="chapter-progress__fill"
+                        style={{ width: `${chapter.percent}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -283,13 +359,22 @@ export default function Dashboard() {
               <NextObjectives />
             </div>
 
-            {/* Tips */}
-            <div className="sidebar-card sidebar-card--highlight">
-              <h3 className="sidebar-card__title">💡 Conseil du jour</h3>
-              <p className="sidebar-card__text">
-                Pratiquez régulièrement ! Même 15 minutes par jour peuvent faire une grande différence dans votre apprentissage.
-              </p>
-            </div>
+            {/*
+              Conseil du jour : choisi d'après le comportement réel (série,
+              leçons laissées ouvertes, scores, chapitre à portée…), pas écrit
+              en dur. Voir `dailyTips.js` pour les règles.
+            */}
+            {tip && (
+              <div className="sidebar-card sidebar-card--highlight">
+                <h3 className="sidebar-card__title">💡 Conseil du jour</h3>
+                <p className="sidebar-card__text">{tip.texte}</p>
+                {tip.lien && (
+                  <Link to={tip.lien.to} className="sidebar-card__link">
+                    {tip.lien.label} →
+                  </Link>
+                )}
+              </div>
+            )}
           </aside>
         </div>
       </div>

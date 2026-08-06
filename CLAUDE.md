@@ -25,7 +25,7 @@ Le chantier en cours est la **mise en production**, pas le produit.
 | Backend | 7 apps : `accounts`, `administration`, `cohorts`, `courses`, `gamification`, `progression`, `validation` |
 | Frontend | 12 features, 18 routes |
 | Contenu | 4 chapitres, 68 leçons, 25 exercices, 5 quiz, 31 illustrations |
-| Tests | **305 backend** (+7 marqués `docker`, hors CI), **91 frontend**, 12 bout-en-bout |
+| Tests | **317 backend** (+7 marqués `docker`, hors CI), **113 frontend**, 12 bout-en-bout |
 | CI | Verte sur `main` et sur chaque *pull request* |
 
 ### Reprendre en trois commandes
@@ -485,6 +485,77 @@ Le bouton est remplacé par une région `role="status"` nommée « Statut de la
 leçon » qui dit ce qui reste à faire. ⚠️ Le nom accessible n'est pas décoratif :
 `PageLoader` porte lui aussi `role="status"`, et sans lui les requêtes de test
 trouvent deux régions.
+
+## Tableau de bord — vue d'ensemble et conseil du jour
+
+### Le pourcentage ne mesurait pas ce qu'il annonçait
+
+⚠️ La « progression globale » valait `terminées / (terminées + en cours)`,
+calculée **côté client sur les seules leçons déjà touchées**. Deux
+conséquences, visibles dès le premier jour :
+
+- une première leçon terminée affichait **100 %** — le programme entier
+  n'était pas au dénominateur ;
+- **ouvrir une leçon faisait *baisser* la barre** : elle entrait au
+  dénominateur sans entrer au numérateur. Le chiffre reculait au moment précis
+  où l'apprenant se remettait au travail.
+
+Le client ne pouvait pas corriger ça seul : **il ignore combien de leçons
+existent**. D'où `GET /api/progression/progress/overview/`, qui renvoie les
+totaux, le détail par chapitre, le temps cumulé et la moyenne des notes.
+
+Trois décisions, chacune couverte par un test
+(`apps/progression/tests/test_overview.py`, 12 tests, validés par sabotage) :
+
+- **Le périmètre est exactement celui de `next_lesson`** : `is_published` sur
+  la leçon *et* sur son chapitre. Deux blocs voisins du même écran se
+  contrediraient sinon. ⚠️ **Ne pas utiliser `Chapter.lesson_count` pour un
+  pourcentage** : il compte aussi les leçons non publiées.
+- **Les leçons non notées sortent de la moyenne.** `UserProgress.score` est
+  `null` sur une leçon de théorie — il n'y a rien à y noter. Le tableau de bord
+  les comptait comme des zéros : deux quiz parfaits et huit leçons lues
+  affichaient « 20 % de score moyen », ce qu'un débutant lit comme un échec.
+- **`average_score` vaut `null`, jamais `0`, quand rien n'est noté**, et le
+  client affiche un tiret. Zéro et « pas encore évalué » ne veulent pas dire la
+  même chose.
+
+Le détail par chapitre accompagne le total, chapitres verrouillés compris
+(même règle que le sommaire : on montre la suite du parcours, on ne l'ouvre
+pas). « 12 sur 68 » ne dit pas où l'on en est ; « chapitre 2 à moitié fait »,
+si.
+
+### Le conseil du jour est calculé, plus écrit en dur
+
+Le bloc affichait une phrase unique, la même pour tout le monde et tous les
+jours. Un conseil qui ne regarde ni ce que vous avez fait ni où vous en êtes
+n'est pas un conseil : on cesse de le lire au deuxième jour.
+
+`features/dashboard/dailyTips.js` est un **module pur** — un contexte entre, un
+conseil sort. Aucun appel réseau (tout est déjà chargé par le tableau de bord),
+aucun accès au store, donc testable sans monter un composant.
+
+- Chaque règle porte une **priorité** ; la plus prioritaire des règles
+  applicables gagne. **L'urgence prime sur l'encouragement** : trois leçons
+  laissées ouvertes se disent avant qu'on félicite une belle série.
+- **À priorité égale, rotation selon le jour** — sinon le premier déclaré
+  gagnerait pour toujours. La rotation est *déterministe* : un tirage au sort
+  changerait le texte à chaque rendu de React, et la page semblerait clignoter.
+- Un conseil dit **quoi faire ensuite, avec les chiffres de la personne**.
+  « Bravo, continuez » n'aide personne.
+- Un **filet de conseils toujours applicables** garantit qu'il y a toujours
+  quelque chose à afficher, et une règle qui trébuche sur un contexte partiel
+  s'efface au lieu de casser la page.
+
+⚠️ **`streak.active_today` ne sert à rien comme signal ici.** Le tableau de
+bord appelle `syncGamification()` à son montage, qui appelle `touch_streak` :
+**ouvrir la page suffit à rendre le drapeau vrai**. Les règles s'appuient donc
+sur la longueur de la série et sur le record, jamais sur « a été actif
+aujourd'hui ». Même piège pour toute règle future.
+
+Ajouter un conseil : une entrée dans `TIP_RULES` (`id` unique, `priorite`,
+`quand`, `texte`, `lien` optionnel). Les tests vérifient l'unicité des `id`,
+qu'aucune règle ne lève sur un contexte brut, et qu'aucun conseil général
+n'est inatteignable dans la rotation.
 
 ## Comptes, Rôles et Classes
 
@@ -1336,7 +1407,7 @@ request*. Deux jobs indépendants qui échouent séparément.
 | `makemigrations --check --dry-run` | Un modèle modifié sans migration |
 | `migrate` sur base vierge | Une migration qui ne s'applique pas dans l'ordre |
 | `manage.py check` | Erreurs de configuration |
-| `pytest --create-db` | Les 305 tests |
+| `pytest --create-db` | Les 317 tests |
 
 ⚠️ Les deux premières étapes ne sont pas décoratives. `pytest.ini` fixe
 **`--nomigrations`** : le schéma de test est bâti directement depuis les
@@ -1976,6 +2047,8 @@ dans ce document**, pas la couverture de ligne :
 | `features/profile/avatars.test.js` | Chaque clé du catalogue sait se dessiner ; une clé inconnue retombe sur les initiales |
 | `features/profile/ProfilePage.test.jsx` | Le formulaire n'envoie ni `role` ni les points ; les erreurs DRF imbriquées restent lisibles ; le retrait du classement part bien au serveur |
 | `features/gamification/LeaderboardPage.test.jsx` | Aucun email à l'écran ; sa propre ligne est repérable ; le rang personnel survit hors du tableau ; « retiré » ≠ « pas encore classé » |
+| `features/dashboard/Dashboard.test.jsx` | La progression se compte sur tout le programme ; un tiret, pas « 0 % », quand rien n'est noté |
+| `features/dashboard/dailyTips.test.js` | Le conseil suit le comportement ; stable dans la journée, tournant d'un jour à l'autre ; jamais vide |
 
 Écrire les tests **en français**, comme le reste des commentaires du dépôt.
 

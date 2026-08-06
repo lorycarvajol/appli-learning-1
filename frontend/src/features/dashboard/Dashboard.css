@@ -479,6 +479,68 @@
   font-weight: 700;
 }
 
+/* Le compte brut à côté du pourcentage : « 40 % » se comprend mieux quand on
+   voit « 12 / 30 leçons » juste à côté. */
+.progress-overview__count {
+  float: right;
+  font-weight: 400;
+  color: var(--ink-faint);
+}
+
+/* Détail par chapitre */
+.chapter-progress {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+}
+
+.chapter-progress__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.chapter-progress__title {
+  font-size: 0.82rem;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chapter-progress__count {
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.chapter-progress__bar {
+  height: 5px;
+  background-color: var(--surface-2);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.chapter-progress__fill {
+  height: 100%;
+  background-color: var(--brand);
+  border-radius: 10px;
+  transition: width 0.6s ease;
+}
+
+/* Lien d'un conseil : il propose l'action, il ne doit pas voler la vedette
+   au texte qui l'explique. */
+.sidebar-card__link {
+  display: inline-block;
+  margin-top: 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--brand-strong);
+}
+
 /* Achievements */
 .achievements {
   display: flex;

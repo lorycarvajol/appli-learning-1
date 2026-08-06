@@ -61,6 +61,14 @@ const progressionApi = {
     return response.data;
   },
 
+  // Avancement réel : totaux du programme, détail par chapitre, score moyen
+  // sur les seules leçons notées. Le client ne sait pas combien de leçons
+  // existent — il ne peut donc pas calculer ce pourcentage lui-même.
+  getOverview: async () => {
+    const response = await apiService.get('/progression/progress/overview/');
+    return response.data;
+  },
+
   // Leçon à reprendre pour le bloc « Continuer l'apprentissage »
   getNextLesson: async () => {
     const response = await apiService.get('/progression/progress/next_lesson/');
