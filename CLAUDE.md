@@ -1553,24 +1553,40 @@ docker-compose down
 docker-compose down -v
 ```
 
-### L'éditeur, lui aussi, passe par le conteneur
+### L'éditeur a besoin d'un interpréteur, et c'est la seule exception
 
-Corollaire de « Docker pour tout » : **il n'existe aucun Python sur le poste**,
-donc rien à donner à l'extension Python de VS Code. Elle affichait « An invalid
-Python interpreter is selected », et Django, DRF et pytest ressortaient
-introuvables — pas d'auto-complétion, pas d'aller-à-la-définition, pas
-d'exécution de tests depuis l'éditeur.
+Corollaire de « Docker pour tout » : longtemps, **aucun Python n'existait sur
+le poste**. L'extension Python de VS Code affichait « An invalid Python
+interpreter is selected » — `.vscode/settings.json` désignait
+`backend/venv/Scripts/python.exe`, un chemin jamais créé — et Django, DRF et
+pytest ressortaient introuvables : ni auto-complétion, ni aller-à-la-définition,
+ni tests lançables depuis l'éditeur.
 
-`.devcontainer/` rattache VS Code au service `backend` déjà décrit par
-`docker-compose.yml` : F1 → « Dev Containers: Reopen in Container ». L'éditeur
-voit alors **exactement** l'interpréteur de la CI (Python 3.11) et ses
-dépendances.
+Deux réponses, complémentaires plutôt que concurrentes :
 
-⚠️ **Ne pas « corriger » l'alerte en recréant un venv local.** Le conteneur est
-en 3.11 et les versions épinglées (`psycopg2-binary==2.9.9`, `Pillow==10.2.0`)
-n'ont pas de roues pour les Python plus récents : l'installation échouerait sur
-un poste en 3.13. C'est ce chemin mort (`backend/venv/Scripts/python.exe`) que
-`.vscode/settings.json` désignait, et qui n'a jamais existé.
+| | Pour quoi |
+|---|---|
+| **`.devcontainer/`** | La référence. F1 → « Dev Containers: Reopen in Container » : l'éditeur voit **exactement** l'interpréteur et les versions de la CI. |
+| **`backend/venv`** (Python 3.11) | Le dépannage : l'éditeur reste utile Docker éteint. Ignoré par git. |
+
+⚠️ **Le venv doit être en 3.11, comme le conteneur.** Les versions épinglées
+(`psycopg2-binary==2.9.9`, `Pillow==10.2.0`) n'ont **pas de roues** pour un
+Python plus récent : créé avec le 3.13 du PATH, l'installation échoue.
+
+```bash
+py -3.11 -m venv venv                                       # depuis backend/
+venv\Scripts\python.exe -m pip install -r requirements\development.txt
+```
+
+⚠️ **Lancer les tests depuis l'éditeur demande une redirection réseau.**
+`backend/.env` désigne les services par leur nom sur le réseau Docker
+(`DB_HOST=postgres`), qui ne résout pas depuis le poste ; `.vscode/pytest.env`
+les remplace par `localhost`, où la pile publie les mêmes ports.
+**`docker compose exec backend pytest` reste la référence** — c'est ce que fait
+la CI, et le seul environnement où les tests marqués `docker` s'exécutent.
+
+⚠️ `.vscode/` est **ignoré par git** : ces réglages ne voyagent pas avec le
+dépôt, seul `.devcontainer/` est versionné. Les recréer après un clone.
 
 Deux points d'attention dans `.devcontainer/` :
 

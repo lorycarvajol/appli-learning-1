@@ -6,11 +6,16 @@
 // chemin qui n'a jamais existé — d'où l'alerte « invalid Python interpreter »
 // et l'absence totale de résolution de Django, DRF et pytest.
 //
-// ⚠️ Un venv local ne serait de toute façon pas équivalent : le conteneur est
-// en **Python 3.11**, et les versions épinglées (`psycopg2-binary==2.9.9`,
-// `Pillow==10.2.0`) n'ont pas de roues pour les Python plus récents. Ici,
-// l'éditeur voit exactement l'interpréteur et les dépendances qui font
-// tourner les tests et la CI.
+// Un venv local en 3.11 existe aussi désormais (`backend/venv`, cf.
+// `.vscode/settings.json`) : il dépanne quand Docker n'est pas démarré. Ce
+// conteneur reste la référence — mêmes versions que la CI, et les tests
+// marqués `docker` n'y échouent pas faute de démon.
+//
+// ⚠️ Les réglages du **plan de travail** l'emportent sur ceux déclarés ici :
+// `python.defaultInterpreterPath` de `.vscode/settings.json` désigne un chemin
+// Windows, sans objet dans le conteneur. À la première ouverture, choisir une
+// fois l'interpréteur (F1 → « Python: Select Interpreter » →
+// `/usr/local/bin/python`) ; VS Code retient ce choix pour cet hôte distant.
 {
   "name": "appli learning — backend (Python 3.11)",
 
