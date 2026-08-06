@@ -42,6 +42,16 @@ const gamificationApi = {
     const response = await apiService.get('/gamification/points/');
     return response.data;
   },
+
+  // Classement. `scope` vaut 'global' ou 'cohort' (sa classe). Les noms
+  // arrivent déjà réduits à « Prénom N. » et aucun email n'est transmis :
+  // rien à masquer côté client.
+  getLeaderboard: async ({ scope = 'global', limit } = {}) => {
+    const response = await apiService.get('/gamification/leaderboard/', {
+      params: limit ? { scope, limit } : { scope },
+    });
+    return response.data;
+  },
 };
 
 export default gamificationApi;

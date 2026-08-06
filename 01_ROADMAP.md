@@ -217,9 +217,11 @@ frontend et CI/CD — sont faits.)*
 
 **Livrables :**
 - ✅ Models : Badge, UserBadge, PointTransaction, UserStreak
-- ⏸️ **Leaderboard écarté volontairement** — choix produit : privilégier la
-  progression personnelle, moins décourageante pour un débutant. Le grand
-  livre de points rend l'ajout trivial si besoin.
+- ✅ **Classement** (2026-08-06) — écarté à l'origine par crainte de
+  décourager les débutants ; l'objection est traitée dans le produit plutôt
+  que par l'absence : retrait volontaire possible à tout moment, noms réduits
+  à « Prénom N. », et personne n'est classé tant qu'il n'a pas marqué de
+  point. Voir « Classement » dans CLAUDE.md.
 - ✅ Règles d'attribution automatique (23 badges, dont 8 objectifs secrets)
 - ✅ API endpoints gamification
 - ✅ Composants React : page trophées, prochains objectifs, série de jours
@@ -389,7 +391,7 @@ c'est lui qui pilote le bac à sable. Les tests réels ne tournent donc que là
 ### Phase 3
 - [x] 10 badges différents — **23 implémentés**, dont 8 objectifs secrets
 - [x] Validation automatique des exercices (sandbox Docker)
-- [ ] ~~Leaderboard~~ — écarté volontairement (voir sprint 3.1)
+- [x] Leaderboard — livré le 2026-08-06, avec retrait volontaire (voir sprint 3.1)
 
 ### Phase 4
 - [ ] Upload projets < 50MB — sprint non commencé

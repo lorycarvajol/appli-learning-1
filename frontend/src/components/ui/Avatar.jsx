@@ -19,7 +19,12 @@ import {
  */
 export default function Avatar({ user, size = 40, label, className = '' }) {
   const parsed = parseAvatarKey(user?.profile?.avatar_key)
-  const palette = parsed ? parsed.palette : initialsPalette(user?.email || '')
+  // La graine de couleur retombe sur le nom d'affichage quand il n'y a pas
+  // d'email : c'est le cas du classement, qui n'en transmet aucun. Sans ce
+  // repli, toutes les lignes à initiales partageraient la même couleur.
+  const palette = parsed
+    ? parsed.palette
+    : initialsPalette(user?.email || user?.display_name || '')
   const colors = paletteColors(palette)
   const gradientId = `av-${palette}-${parsed ? parsed.visage : 'initials'}`
 

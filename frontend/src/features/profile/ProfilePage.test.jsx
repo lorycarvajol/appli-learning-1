@@ -52,8 +52,16 @@ describe('ProfilePage', () => {
 
     // Les points sont un solde dérivé du grand livre : ils s'affichent, mais
     // aucun champ de saisie ne doit les exposer.
+    //
+    // On vise les rôles de saisie de valeur plutôt que « tout libellé
+    // contenant "points" » : la case « apparaître dans le classement »
+    // mentionne légitimement les points dans sa légende, et la version large
+    // la comptait comme une violation. C'est bien un champ éditant le solde
+    // qu'il s'agit d'interdire, pas le mot.
     expect(await screen.findByText('120')).toBeInTheDocument()
-    expect(screen.queryByLabelText(/points/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: /points/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('spinbutton', { name: /points/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('slider', { name: /points/i })).not.toBeInTheDocument()
   })
 
   it('enregistre l’avatar choisi dans la galerie', async () => {
@@ -83,6 +91,30 @@ describe('ProfilePage', () => {
       expect(authApi.updateProfile).toHaveBeenCalledWith(
         expect.objectContaining({
           profile: expect.objectContaining({ avatar_key: '' }),
+        })
+      )
+    })
+  })
+
+  it('permet de se retirer du classement', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    // Coché par défaut : un profil qui ne mentionne pas le réglage vaut
+    // « visible », sinon l'enregistrement d'un tout autre champ retirerait du
+    // classement quelqu'un qui n'a rien demandé.
+    const caseAcocher = await screen.findByRole('checkbox', {
+      name: /Apparaître dans le classement/i,
+    })
+    expect(caseAcocher).toBeChecked()
+
+    await user.click(caseAcocher)
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => {
+      expect(authApi.updateProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          profile: expect.objectContaining({ show_in_leaderboard: false }),
         })
       )
     })

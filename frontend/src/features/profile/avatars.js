@@ -112,5 +112,17 @@ export function initialsOf(user) {
   const last = user?.last_name?.trim()?.[0] || ''
   const initials = `${first}${last}`.toUpperCase()
   if (initials) return initials
+
+  // Le classement ne transmet ni prénom ni nom séparés — et surtout aucun
+  // email : uniquement un nom d'affichage déjà réduit (« Lory C. »). On en
+  // tire les initiales plutôt que d'afficher un « ? » pour toute la liste.
+  const fromDisplayName = String(user?.display_name || '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+  if (fromDisplayName) return fromDisplayName.toUpperCase()
+
   return (user?.email?.[0] || '?').toUpperCase()
 }

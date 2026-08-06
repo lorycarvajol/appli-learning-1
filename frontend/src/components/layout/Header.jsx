@@ -16,6 +16,7 @@ const NAV_LINKS = [
   { path: '/chapters', label: 'Chapitres' },
   { path: '/progression', label: 'Ma progression' },
   { path: '/badges', label: 'Trophées' },
+  { path: '/classement', label: 'Classement' },
   { path: '/trainer', label: 'Espace formateur', roles: STAFF_ROLES },
   { path: '/administration', label: 'Administration', roles: [ROLES.ADMIN] },
 ];

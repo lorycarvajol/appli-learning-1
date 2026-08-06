@@ -45,6 +45,24 @@ export const syncGamification = createAsyncThunk(
   }
 );
 
+/**
+ * Classement, par portée ('global' ou 'cohort').
+ *
+ * Les deux portées sont conservées côté store sous leur propre clé : basculer
+ * de l'une à l'autre ne doit pas vider l'écran le temps d'un aller-retour
+ * réseau, sinon la bascule clignote.
+ */
+export const fetchLeaderboard = createAsyncThunk(
+  'gamification/fetchLeaderboard',
+  async ({ scope = 'global', limit } = {}, { rejectWithValue }) => {
+    try {
+      return await gamificationApi.getLeaderboard({ scope, limit });
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 /** Acquitte les révélations affichées pour qu'elles ne rejouent pas. */
 export const acknowledgeBadges = createAsyncThunk(
   'gamification/acknowledge',
@@ -64,6 +82,10 @@ const initialState = {
   badgeStats: { earned_count: 0, total_count: 0, secret_total: 0, secret_found: 0 },
   revealQueue: [],
   celebrated: [], // ids déjà passés dans la file, pour ne jamais les rejouer
+  // Une entrée par portée : la bascule global ↔ classe n'efface pas ce qui
+  // était déjà affiché.
+  leaderboards: {},
+  leaderboardLoading: false,
   loading: false,
   badgesLoading: false,
   error: null,
@@ -139,6 +161,18 @@ const gamificationSlice = createSlice({
       .addCase(fetchBadges.rejected, (state, action) => {
         state.badgesLoading = false;
         state.error = action.payload;
+      })
+
+      .addCase(fetchLeaderboard.pending, (state) => {
+        state.leaderboardLoading = true;
+      })
+      .addCase(fetchLeaderboard.fulfilled, (state, action) => {
+        state.leaderboardLoading = false;
+        state.leaderboards[action.payload.scope] = action.payload;
+      })
+      .addCase(fetchLeaderboard.rejected, (state, action) => {
+        state.leaderboardLoading = false;
+        state.error = action.payload;
       });
   },
 });
@@ -161,5 +195,10 @@ export const selectNextObjectives = (state) =>
 export const selectStreak = (state) => state.gamification.summary?.streak || null;
 export const selectLevel = (state) => state.gamification.summary?.level || null;
 export const selectPendingReveal = (state) => state.gamification.revealQueue[0] || null;
+
+export const selectLeaderboard = (scope) => (state) =>
+  state.gamification.leaderboards[scope] || null;
+export const selectLeaderboardLoading = (state) =>
+  state.gamification.leaderboardLoading;
 
 export default gamificationSlice.reducer;

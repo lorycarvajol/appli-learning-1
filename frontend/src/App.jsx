@@ -28,6 +28,7 @@ const LessonView = lazy(() => import('./features/chapters/LessonView'))
 const TrainerDashboard = lazy(() => import('./features/trainer/TrainerDashboard'))
 const ProgressionPage = lazy(() => import('./features/progression/ProgressionPage'))
 const BadgesPage = lazy(() => import('./features/gamification/BadgesPage'))
+const LeaderboardPage = lazy(() => import('./features/gamification/LeaderboardPage'))
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage'))
 const AdminSpace = lazy(() => import('./features/administration/AdminSpace'))
 
@@ -129,6 +130,16 @@ function App() {
           <PrivateRoute>
             <Layout>
               <BadgesPage />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/classement"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <LeaderboardPage />
             </Layout>
           </PrivateRoute>
         }

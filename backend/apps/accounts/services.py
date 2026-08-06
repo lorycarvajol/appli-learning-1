@@ -141,6 +141,7 @@ def build_user_export(user):
             'avatar_key': profile.avatar_key,
             'total_points': profile.total_points,
             'level': profile.level,
+            'visible_au_classement': profile.show_in_leaderboard,
             'classe': profile.cohort.name if profile.cohort else None,
             'consentement_accepte_le': iso(profile.terms_accepted_at),
             'cree_le': iso(profile.created_at),

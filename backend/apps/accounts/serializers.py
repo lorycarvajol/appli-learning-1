@@ -14,7 +14,10 @@ from .models import User, Profile
 #: et `level` sont des soldes dérivés du grand livre, `cohort` relève du
 #: formateur, `anonymized_at` du RGPD. Aucun ne doit pouvoir bouger depuis un
 #: formulaire de profil.
-EDITABLE_PROFILE_FIELDS = ('bio', 'avatar_key', 'theme', 'timezone', 'github_username')
+EDITABLE_PROFILE_FIELDS = (
+    'bio', 'avatar_key', 'theme', 'timezone', 'github_username',
+    'show_in_leaderboard',
+)
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -24,7 +27,8 @@ class ProfileSerializer(serializers.ModelSerializer):
         model = Profile
         fields = [
             'bio', 'avatar_key', 'theme', 'total_points', 'level',
-            'timezone', 'github_username', 'created_at', 'updated_at'
+            'timezone', 'github_username', 'show_in_leaderboard',
+            'created_at', 'updated_at'
         ]
         read_only_fields = [
             'total_points', 'level', 'created_at', 'updated_at'

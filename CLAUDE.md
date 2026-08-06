@@ -23,9 +23,9 @@ Le chantier en cours est la **mise en production**, pas le produit.
 | | |
 |---|---|
 | Backend | 7 apps : `accounts`, `administration`, `cohorts`, `courses`, `gamification`, `progression`, `validation` |
-| Frontend | 12 features, 17 routes |
+| Frontend | 12 features, 18 routes |
 | Contenu | 4 chapitres, 68 leçons, 25 exercices, 5 quiz, 31 illustrations |
-| Tests | **270 backend** (+7 marqués `docker`, hors CI), **65 frontend**, 12 bout-en-bout |
+| Tests | **305 backend** (+7 marqués `docker`, hors CI), **91 frontend**, 12 bout-en-bout |
 | CI | Verte sur `main` et sur chaque *pull request* |
 
 ### Reprendre en trois commandes
@@ -46,7 +46,7 @@ Puis http://localhost:5173 et http://localhost:8000/admin/.
    qui contient aussi la confrontation de `guide-hebergement-ovh.md` au code réel.
 2. **CI qui construit les images** — elle n'en construit aucune aujourd'hui.
 3. **Produit, après ouverture** : WebSockets (rien n'existe, voir la section
-   dédiée), soumission de projets, forum, leaderboard.
+   dédiée), soumission de projets, forum.
 
 ### Les pièges qui coûtent le plus cher
 
@@ -346,6 +346,57 @@ lecture d'une leçon de théorie compte désormais comme activité.
   consomme la file `revealQueue` du store. La file est dédupliquée par id et
   chaque fermeture appelle `mark_seen` : une célébration ne rejoue jamais.
 - Route `/badges`, lien « Trophées » dans le header.
+
+## Classement — ✅ Fait
+
+`apps/gamification/leaderboard.py`, `GET /api/gamification/leaderboard/`, route
+front `/classement`. **Aucun modèle, aucune écriture** : le grand livre
+garantissait déjà l'exactitude des soldes, il ne restait qu'à les ordonner.
+
+L'enjeu n'était donc pas le calcul mais la **discrétion**. C'est la seule page
+où un apprenant voit les autres, donc la seule qui puisse transformer une
+plateforme scolaire en annuaire. Quatre décisions en découlent, chacune
+couverte par un test (`apps/gamification/tests/test_leaderboard.py`, 18 tests,
+validés par sabotage) :
+
+- **Rien d'identifiant ne sort de l'API.** Le nom est réduit à « Prénom N. »
+  **côté serveur**, y compris pour soi-même — le client repère sa ligne par
+  `is_me`, pas par son nom. Aucun email n'est transmis, même en repli : un
+  compte sans identité renseignée est « Apprenant ». Un test lit la réponse
+  brute et refuse le moindre `@`.
+- **Le retrait est possible** (`Profile.show_in_leaderboard`, défaut `True`,
+  éditable depuis `/profil`). Se comparer motive les uns et décourage les
+  autres. Un compte retiré garde points et badges ; il ne voit **plus non plus
+  son propre rang**, sinon le retrait serait cosmétique.
+- **Qui n'a aucun point n'est pas classé.** Un compte neuf n'arrive pas 57ᵉ ex
+  æquo avec quarante autres — on lui dit qu'il n'est pas encore entré.
+- **Les ex æquo partagent leur rang** (1, 2, 2, 4). Départager deux soldes
+  identiques sur la date d'inscription afficherait une hiérarchie qui n'existe
+  pas. Le rang personnel suit la même règle (nombre d'apprenants strictement
+  devant, plus un), donc reste cohérent avec le tableau.
+
+⚠️ **`leaderboard.participants()` est le point unique de filtrage** — le
+tableau, le rang personnel et le total sont tous construits dessus. Une règle
+ajoutée d'un seul côté produirait un rang incohérent avec la liste affichée.
+Exclus : comptes inactifs, non-`LEARNER` (un formateur qui parcourt son propre
+cours trusterait la tête), anonymisés RGPD, retirés, à zéro point.
+
+Le **rang personnel est renvoyé même hors du top** : un palmarès qui ne parle
+qu'à ses vingt premiers ne sert à rien au vingt-et-unième — c'est pourtant lui
+qu'il devrait motiver.
+
+Coût : **cinq requêtes quel que soit le nombre d'apprenants**. Comme ailleurs,
+le test compare deux volumes et exige l'égalité plutôt que de fixer un plafond
+chiffré. C'est la page que toute une promo ouvre en même temps.
+
+Deux portées : `?scope=global` (défaut) et `?scope=cohort`. Sans classe, la
+seconde répond `available: false` **avec une raison** plutôt qu'un tableau
+vide, qui se lirait comme une panne. Côté front, le store garde une entrée par
+portée : la bascule ne vide pas l'écran le temps d'un aller-retour réseau.
+
+⚠️ `Avatar` retombe sur `display_name` — pour les initiales *et* pour la graine
+de couleur — puisque le classement ne transmet aucun email. Sans ce repli,
+toutes les lignes à initiales auraient la même couleur.
 
 ## Le verrou de chapitre s'applique aussi aux écritures
 
@@ -1242,8 +1293,6 @@ Voir « Le drapeau `CODE_EXECUTION_ENABLED` ».
 - **Soumission et correction de projets** — le modèle `Project` existe dans
   `courses`, mais aucun modèle de soumission nulle part.
 - **Forum** — l'app n'existe pas, ni dans `INSTALLED_APPS` ni sur le disque.
-- **Leaderboard** — reporté volontairement (progression personnelle d'abord).
-  Le grand livre de points le rend trivial à ajouter.
 - **CI qui construit les images** — elle n'en construit aucune.
 - **Chapitre 3 JavaScript en version d'auteur** — il n'a pas de
   `load_section_3` d'origine, seulement le contenu promu en commande.
@@ -1276,7 +1325,7 @@ request*. Deux jobs indépendants qui échouent séparément.
 | `makemigrations --check --dry-run` | Un modèle modifié sans migration |
 | `migrate` sur base vierge | Une migration qui ne s'applique pas dans l'ordre |
 | `manage.py check` | Erreurs de configuration |
-| `pytest --create-db` | Les 270 tests |
+| `pytest --create-db` | Les 305 tests |
 
 ⚠️ Les deux premières étapes ne sont pas décoratives. `pytest.ini` fixe
 **`--nomigrations`** : le schéma de test est bâti directement depuis les
@@ -1914,7 +1963,8 @@ dans ce document**, pas la couverture de ligne :
 | `constants/activity.test.js` | La table des types d'activité couvre tous ceux du backend ; aucune clé technique n'atteint l'écran |
 | `features/administration/AdminSpace.test.jsx` | L'anonymisation exige une confirmation ; le journal affiche l'identité **figée**, pas l'identité courante |
 | `features/profile/avatars.test.js` | Chaque clé du catalogue sait se dessiner ; une clé inconnue retombe sur les initiales |
-| `features/profile/ProfilePage.test.jsx` | Le formulaire n'envoie ni `role` ni les points ; les erreurs DRF imbriquées restent lisibles |
+| `features/profile/ProfilePage.test.jsx` | Le formulaire n'envoie ni `role` ni les points ; les erreurs DRF imbriquées restent lisibles ; le retrait du classement part bien au serveur |
+| `features/gamification/LeaderboardPage.test.jsx` | Aucun email à l'écran ; sa propre ligne est repérable ; le rang personnel survit hors du tableau ; « retiré » ≠ « pas encore classé » |
 
 Écrire les tests **en français**, comme le reste des commentaires du dépôt.
 

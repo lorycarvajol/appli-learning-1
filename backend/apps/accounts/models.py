@@ -188,6 +188,18 @@ class Profile(models.Model):
 
     total_points = models.IntegerField(default=0)
     level = models.IntegerField(default=1)
+
+    # Le classement expose un nom (« Prénom N. ») à d'autres apprenants. Sur
+    # une plateforme scolaire, figurer dans un palmarès ne va pas de soi : la
+    # comparaison motive les uns et décourage les autres. D'où un retrait
+    # possible à tout moment, sans perdre ni points ni badges — seule la ligne
+    # publique disparaît. Défaut à True : le classement n'aurait aucun sens
+    # s'il fallait s'y inscrire.
+    show_in_leaderboard = models.BooleanField(
+        default=True,
+        help_text="Décoché, le compte n'apparaît plus dans le classement "
+                  "(sa progression et ses points sont conservés)."
+    )
     anonymized_at = models.DateTimeField(
         null=True,
         blank=True,

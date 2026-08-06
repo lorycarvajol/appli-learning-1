@@ -7,6 +7,7 @@ API de gamification.
 - ``GET  /api/gamification/summary/``           tableau de bord gamifié
 - ``POST /api/gamification/sync/``              resynchronise (auto-réparation)
 - ``GET  /api/gamification/points/``            grand livre personnel
+- ``GET  /api/gamification/leaderboard/``       classement (global ou classe)
 """
 from django.utils import timezone
 from rest_framework import status, viewsets
@@ -14,6 +15,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from .leaderboard import DEFAULT_LIMIT, build_leaderboard
 from .models import Badge, PointTransaction, UserBadge, UserStreak
 from .rules import build_user_stats, evaluate_badge
 from .serializers import (
@@ -102,6 +104,30 @@ class GamificationSummaryViewSet(viewsets.ViewSet):
         summary = build_summary(request.user)
         summary['newly_earned'] = UserBadgeSerializer(new_badges, many=True).data
         return Response(summary)
+
+
+class LeaderboardViewSet(viewsets.ViewSet):
+    """Classement, en lecture seule.
+
+    Deux portées : ``?scope=global`` (défaut) et ``?scope=cohort`` — sa
+    classe. Le filtrage réel, la règle de rang et le masquage des noms vivent
+    dans ``leaderboard.py`` ; la vue ne fait que lire les paramètres.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        try:
+            limit = int(request.query_params.get('limit', DEFAULT_LIMIT))
+        except (TypeError, ValueError):
+            # Un `?limit=abc` est une faute de frappe, pas une erreur à
+            # remonter : le classement s'affiche avec sa longueur habituelle.
+            limit = DEFAULT_LIMIT
+
+        return Response(build_leaderboard(
+            request.user,
+            scope=request.query_params.get('scope'),
+            limit=limit,
+        ))
 
 
 class PointTransactionViewSet(viewsets.ReadOnlyModelViewSet):

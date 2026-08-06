@@ -38,6 +38,10 @@ export default function ProfilePage() {
         github_username: user.profile?.github_username || '',
         avatar_key: user.profile?.avatar_key || '',
         theme: user.profile?.theme || 'AUTO',
+        // Absent de la réponse (vieux client, compte tout juste créé) vaut
+        // « visible » : c'est le défaut du modèle, et l'inverse retirerait
+        // silencieusement du classement quelqu'un qui n'a rien demandé.
+        show_in_leaderboard: user.profile?.show_in_leaderboard !== false,
       })
     }
   }, [user, form])
@@ -76,6 +80,7 @@ export default function ProfilePage() {
         github_username: form.github_username,
         avatar_key: form.avatar_key,
         theme: form.theme,
+        show_in_leaderboard: form.show_in_leaderboard,
       },
     }))
 
@@ -159,6 +164,30 @@ export default function ProfilePage() {
               value={form.bio} onChange={set('bio')}
               placeholder="Quelques mots sur vous, votre parcours, vos objectifs…" />
           </Field>
+
+          {/*
+            Se comparer motive les uns et décourage les autres : le classement
+            ne peut pas être imposé. Se retirer n'a aucun effet sur les points,
+            les trophées ni la progression — seule la ligne publique disparaît.
+          */}
+          <div className="profile__check">
+            <input
+              id="show_in_leaderboard"
+              type="checkbox"
+              checked={form.show_in_leaderboard}
+              onChange={(event) =>
+                setForm((c) => ({ ...c, show_in_leaderboard: event.target.checked }))
+              }
+            />
+            <label className="profile__check-label" htmlFor="show_in_leaderboard">
+              Apparaître dans le classement
+              <span className="profile__field-hint">
+                Sous la forme « Prénom N. ». Décoché, vous n’y figurez plus et
+                n’y voyez plus votre rang ; vos points et vos trophées sont
+                conservés.
+              </span>
+            </label>
+          </div>
 
           <button type="submit" className="profile__submit" disabled={saving}>
             {saving ? 'Enregistrement…' : 'Enregistrer'}

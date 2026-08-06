@@ -248,7 +248,7 @@ Volontairement **après** : rien de tout cela n'empêche d'ouvrir le site.
 | D4.1 | WebSockets — `asgi.py` a un routeur vide, aucun consumer, `wsService.js` n'existe pas. Rien n'en dépend | ❌ |
 | D4.2 | Soumission et correction de projets — modèle `Project` seul, aucun modèle de soumission | ❌ |
 | D4.3 | Forum — l'app n'existe pas | ❌ |
-| D4.4 | Leaderboard — reporté par choix produit, trivial grâce au grand livre de points | ⏸️ |
+| D4.4 | Classement — livré le 2026-08-06 (`gamification/leaderboard.py`, route `/classement`), avec retrait volontaire | ✅ |
 | D4.5 | Chapitre 3 JavaScript en version riche — il n'a pas de `load_section_3` d'auteur, seulement le contenu promu en commande | 🟡 |
 | D4.6 | Régénérer les illustrations en double résolution (elles s'adoucissent en plein écran) | ❌ |
 

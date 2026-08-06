@@ -1,12 +1,18 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import BadgeViewSet, GamificationSummaryViewSet, PointTransactionViewSet
+from .views import (
+    BadgeViewSet,
+    GamificationSummaryViewSet,
+    LeaderboardViewSet,
+    PointTransactionViewSet,
+)
 
 router = DefaultRouter()
 router.register(r'badges', BadgeViewSet, basename='badge')
 router.register(r'summary', GamificationSummaryViewSet, basename='gamification-summary')
 router.register(r'points', PointTransactionViewSet, basename='point-transaction')
+router.register(r'leaderboard', LeaderboardViewSet, basename='leaderboard')
 
 urlpatterns = [
     path('', include(router.urls)),
