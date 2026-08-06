@@ -15,16 +15,32 @@ This is a **web-based learning platform** for teaching web development, featurin
 **Target Users:** 3 roles - Learner (students), Trainer (instructors), Admin
 **Tech Stack:** Django 5.0+ (backend), React 18+ (frontend), PostgreSQL, Redis, Celery, Django Channels
 
-## Où en est le projet (2026-08-04)
+## Où en est le projet (2026-08-06)
 
 **La plateforme est fonctionnellement complète pour un premier usage réel.**
-Le chantier en cours est la **mise en production**, pas le produit.
+Deux chantiers ouverts en parallèle : la **mise en production** (bloquée sur des
+étapes serveur) et une **série d'illustrations de leçon**, en cours.
+
+> ⏩ **Reprise du 2026-08-06.** Le chantier actif à la reprise est la série
+> d'illustrations : **4 leçons sur 68** sont dessinées, toutes dans le
+> chapitre 1. La prochaine est `quiz-structure-html`, le premier **quiz** — il
+> doit recevoir un signe de type qui lui soit propre, comme le vert des
+> exercices : carte de question et pastilles de réponse, dans le violet `quiz`
+> du thème. Voir « Illustrations de leçon — une série, une grammaire ».
+>
+> Chaque illustration est **validée une par une** par l'exploitant avant d'être
+> intégrée. Méthode de travail éprouvée sur les six dernières : dessiner, poser
+> une page d'aperçu jetable dans `frontend/public/` (servie par Vite sans
+> authentification, elle charge les vraies feuilles de style), **regarder**,
+> corriger, supprimer la page. Elle a attrapé une dizaine de défauts
+> invisibles à la lecture du code.
 
 | | |
 |---|---|
 | Backend | 7 apps : `accounts`, `administration`, `cohorts`, `courses`, `gamification`, `progression`, `validation` |
 | Frontend | 12 features, 18 routes |
-| Contenu | 4 chapitres, 68 leçons, 25 exercices, 5 quiz, 31 illustrations |
+| Contenu | 4 chapitres, 68 leçons, 25 exercices, 5 quiz, 31 figures de cours |
+| Illustrations de leçon | 4 sur 68 (chapitre 1), série en cours |
 | Tests | **328 backend** (+7 marqués `docker`, hors CI), **114 frontend**, 12 bout-en-bout |
 | CI | Verte sur `main` et sur chaque *pull request* |
 
@@ -40,13 +56,19 @@ Puis http://localhost:5173 et http://localhost:8000/admin/.
 
 ### Ce qui reste, par ordre de priorité
 
-1. **Mise en production** — c'est le sujet actif. Tout le code est prêt et
-   éprouvé par une répétition locale ; ne restent que les étapes sur le
-   serveur. **Point d'entrée : [`06_ROADMAP_DEPLOIEMENT.md`](06_ROADMAP_DEPLOIEMENT.md)**,
-   qui contient aussi la confrontation de `guide-hebergement-ovh.md` au code réel.
-2. **CI qui construit les images** — elle n'en construit aucune aujourd'hui.
-3. **Produit, après ouverture** : WebSockets (rien n'existe, voir la section
+1. **Illustrations de leçon** — le chantier en cours, 4 sur 68. Validation une
+   par une, la suivante est le premier quiz.
+2. **Mise en production** — tout le code est prêt et éprouvé par une répétition
+   locale ; ne restent que les étapes sur le serveur, qui demandent les secrets
+   de l'exploitant. **Point d'entrée :
+   [`06_ROADMAP_DEPLOIEMENT.md`](06_ROADMAP_DEPLOIEMENT.md)**, qui contient
+   aussi la confrontation de `guide-hebergement-ovh.md` au code réel.
+3. **CI qui construit les images** — elle n'en construit aucune aujourd'hui.
+4. **Produit, après ouverture** : WebSockets (rien n'existe, voir la section
    dédiée), soumission de projets, forum.
+
+⚠️ La branche `chore/fusion-monpc-design` porte **treize commits locaux non
+poussés** au 2026-08-06, et aucune *pull request* n'est ouverte vers `main`.
 
 ### Les pièges qui coûtent le plus cher
 
@@ -63,6 +85,8 @@ section, cette liste sert d'index.
 | Supprimer un chapitre reverrouille les apprenants en classe | « Contenu des cours — architecture » |
 | `VITE_*` est figée à la construction, pas lue à l'exécution | « Ressources statiques » |
 | `--reuse-db` de pytest masque une migration manquante | « Testing Strategy » |
+| `--` dans un commentaire XML rend un SVG entier muet | « Illustrations de leçon » |
+| `next_lesson` proposait une leçon de chapitre verrouillé | « Continuer l'apprentissage suit l'ordre du parcours » |
 
 ### Conventions non négociables
 
@@ -1505,7 +1529,26 @@ Voir « Le drapeau `CODE_EXECUTION_ENABLED` ».
   `load_section_3` d'origine, seulement le contenu promu en commande.
 - **Illustrations en double résolution** — elles s'adoucissent en plein écran.
 
-### Ce qui vient d'être fait (session du 2026-08-04)
+### Ce qui vient d'être fait (session du 2026-08-06)
+
+Treize commits, sur la branche `chore/fusion-monpc-design`, **non poussés**.
+
+- [x] **Classement** des apprenants, avec retrait volontaire — la dernière
+      fonctionnalité produit jamais commencée qui restait bon marché
+- [x] Re-suppression des **18 fichiers vestiges** de `backend/`, ressuscités
+      par la fusion des copies OneDrive
+- [x] Tableau de bord : **avancement réel** (le pourcentage ne mesurait pas ce
+      qu'il annonçait) et **conseil du jour contextuel** (16 règles)
+- [x] « Continuer l'apprentissage » suit l'**ordre du parcours** et respecte le
+      verrou de chapitre — il proposait « mettre son site en ligne » sur un
+      compte vierge, et une leçon sur deux menait à un 403
+- [x] Grille du tableau de bord réorganisée en trois colonnes, conseil du jour
+      habillé
+- [x] **4 illustrations de leçon** et leur intégration (fond de carte, en-tête
+      de leçon), composant de style partagé
+- [x] Outillage éditeur : `.devcontainer/` et venv local en Python 3.11
+
+### Session du 2026-08-04
 
 - [x] Contenu des cours restauré et réorganisé — 27 → **68 leçons**, 17 scripts
       supprimés, une commande par chapitre, illustrations rattachées au
