@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" width="1200" height="675" role="img" aria-label="Illustration de la leçon : le texte, titres, paragraphes et mise en forme">
+  <!--
+    Leçon 3 — Le texte : titres, paragraphes et mise en forme.
+
+    Motif : la hiérarchie. À gauche une page composée — trois niveaux de titre
+    qui décroissent, des paragraphes entre eux, un passage en gras, un en
+    italique, un surligné. À droite, la même hiérarchie réduite à son échelle :
+    trois barres qui rapetissent, puis du texte courant.
+
+    Le gras est rendu par un bloc plus haut et plus dense, l'italique par un
+    parallélogramme penché, le surlignage par le seul aplat ambré de la page.
+    Trois procédés visuels pour trois procédés typographiques, sans une lettre.
+
+    Grammaire commune à la série (voir les autres fichiers de ce dossier) :
+    même format, mêmes halos de fond, un objet central, des signes flottants.
+    La dominante violette est celle du chapitre HTML.
+
+    ATTENTION en modifiant ce cartouche : deux tirets consécutifs sont
+    interdits dans un commentaire XML. Écrire les noms de variables CSS avec
+    leur préfixe rend le fichier entier mal formé, et le navigateur n'affiche
+    alors rien du tout, sans le moindre message.
+  -->
+  <defs>
+    <linearGradient id="texte-fond" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f6f5fb"/>
+      <stop offset="100%" stop-color="#e7e1fc"/>
+    </linearGradient>
+    <linearGradient id="texte-titre" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#5b3df0"/>
+      <stop offset="100%" stop-color="#8b6bff"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="675" fill="url(#texte-fond)"/>
+
+  <!-- Masses de fond : ce sont elles qui portent l'image une fois floutée. -->
+  <circle cx="965" cy="330" r="230" fill="#5b3df0" opacity="0.13"/>
+  <circle cx="250" cy="600" r="180" fill="#f5a623" opacity="0.16"/>
+  <circle cx="1090" cy="90" r="90" fill="#f5a623" opacity="0.20"/>
+
+  <!-- La page composée. -->
+  <g transform="rotate(-3.5 450 340)">
+    <rect x="130" y="115" width="640" height="450" rx="30" fill="#ffffff" stroke="#e3e0f0" stroke-width="3"/>
+
+    <!-- Titre de premier niveau -->
+    <rect x="178" y="158" width="340" height="36" rx="12" fill="url(#texte-titre)"/>
+
+    <!-- Texte courant -->
+    <g fill="#e3e0f0">
+      <rect x="178" y="216" width="496" height="14" rx="7"/>
+      <rect x="178" y="246" width="430" height="14" rx="7"/>
+    </g>
+
+    <!-- Titre de deuxième niveau -->
+    <rect x="178" y="294" width="252" height="28" rx="10" fill="#7c5cff"/>
+
+    <!-- Une ligne dont le début est en gras : plus haut, plus dense. -->
+    <rect x="178" y="344" width="140" height="22" rx="8" fill="#5b3df0" opacity="0.5"/>
+    <rect x="334" y="348" width="304" height="14" rx="7" fill="#e3e0f0"/>
+
+    <!-- Une ligne dont le début est en italique : le même bloc, penché. -->
+    <path d="M192 386 L326 386 L312 406 L178 406 Z" fill="#5b3df0" opacity="0.32"/>
+    <rect x="344" y="390" width="280" height="14" rx="7" fill="#e3e0f0"/>
+
+    <!-- Titre de troisième niveau -->
+    <rect x="178" y="438" width="186" height="22" rx="9" fill="#b9aef0"/>
+
+    <!-- Un passage surligné : le seul aplat ambré de la page. -->
+    <rect x="178" y="486" width="130" height="24" rx="7" fill="#fef3dc" stroke="#f5a623" stroke-width="2.5"/>
+    <rect x="324" y="491" width="300" height="14" rx="7" fill="#e3e0f0"/>
+  </g>
+
+  <!-- La même hiérarchie, réduite à son échelle. -->
+  <rect x="880" y="232" width="232" height="42" rx="15" fill="#4527d6"/>
+  <rect x="880" y="296" width="176" height="32" rx="12" fill="#7c5cff"/>
+  <rect x="880" y="352" width="124" height="24" rx="9" fill="#b9aef0"/>
+  <g fill="#cfc7ee">
+    <rect x="880" y="404" width="210" height="12" rx="6"/>
+    <rect x="880" y="428" width="180" height="12" rx="6"/>
+    <rect x="880" y="452" width="196" height="12" rx="6"/>
+  </g>
+
+  <!-- Quelques repères libres, pour le rythme. -->
+  <rect x="828" y="530" width="52" height="52" rx="16" fill="#5b3df0" opacity="0.22"/>
+  <rect x="906" y="560" width="32" height="32" rx="10" fill="#f5a623" opacity="0.5"/>
+  <circle cx="1000" cy="556" r="15" fill="#5b3df0" opacity="0.3"/>
+</svg>

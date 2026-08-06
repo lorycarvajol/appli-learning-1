@@ -1,5 +1,6 @@
 import questCeQueLeHtml from '@/assets/lessons/quest-ce-que-le-html.svg'
 import structureBasePageHtml from '@/assets/lessons/structure-base-page-html.svg'
+import htmlTexteTitresParagraphes from '@/assets/lessons/html-texte-titres-paragraphes.svg'
 
 /**
  * Illustration d'ouverture de chaque **leçon**.
@@ -36,6 +37,7 @@ import structureBasePageHtml from '@/assets/lessons/structure-base-page-html.svg
 const ILLUSTRATIONS = {
   'quest-ce-que-le-html': questCeQueLeHtml,
   'structure-base-page-html': structureBasePageHtml,
+  'html-texte-titres-paragraphes': htmlTexteTitresParagraphes,
 }
 
 /** URL de l'illustration d'une leçon, ou `null` si elle n'en a pas encore. */

@@ -574,7 +574,8 @@ dominante suivant le chapitre :
 |---|---|---|
 | `quest-ce-que-le-html` | Le document et ses balises, chevrons | ✅ |
 | `structure-base-page-html` | L'imbrication : tête et corps, et l'arbre qu'ils forment | ✅ |
-| *les 66 autres* | — | ❌ |
+| `html-texte-titres-paragraphes` | La hiérarchie typographique, et l'échelle des titres | ✅ |
+| *les 65 autres* | — | ❌ |
 
 Le parcours compte **68 leçons** : la table se remplit au fil des dessins, et
 une leçon sans entrée s'affiche simplement sans illustration.
