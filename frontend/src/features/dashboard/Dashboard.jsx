@@ -215,6 +215,27 @@ export default function Dashboard() {
                     {nextLesson.is_resuming ? 'Reprendre' : 'Commencer'}
                   </Link>
                 </div>
+              ) : nextLesson?.locked ? (
+                /*
+                  Rien d'ouvert n'est pas « rien de publié ». Un apprenant en
+                  classe qui a fini ce que son formateur lui a ouvert attend
+                  la suite : lui annoncer un contenu absent lui ferait croire
+                  à une panne de la plateforme.
+                */
+                <div className="learning-card learning-card--empty">
+                  <div className="learning-card__content">
+                    <h3 className="learning-card__title">
+                      La suite viendra de votre formateur
+                    </h3>
+                    <p className="learning-card__description">
+                      Vous avez terminé tout ce qui vous est ouvert. Le prochain
+                      chapitre s’ouvrira quand votre formateur le décidera.
+                    </p>
+                  </div>
+                  <Link to="/chapters" className="learning-card__button">
+                    Voir le programme
+                  </Link>
+                </div>
               ) : nextLesson?.all_completed ? (
                 <div className="learning-card learning-card--done">
                   <div className="learning-card__content">

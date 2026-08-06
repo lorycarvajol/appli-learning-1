@@ -330,11 +330,37 @@ class UserProgressViewSet(viewsets.ModelViewSet):
     def next_lesson(self, request):
         """Leçon à afficher dans le bloc « Continuer l'apprentissage ».
 
-        Priorité à la leçon **entamée la plus récemment** : c'est le sens de
-        « continuer ». À défaut, la première leçon non terminée dans l'ordre
-        du programme. Si tout est terminé, on le signale au client plutôt que
-        de renvoyer une leçon déjà faite.
+        **La première leçon non terminée du programme, parmi les chapitres
+        ouverts.** L'ordre du parcours fait autorité : on n'apprend pas à
+        mettre un site en ligne avant d'avoir écrit une balise.
+
+        ⚠️ Deux défauts corrigés ici, tous deux constatés sur la base de
+        développement.
+
+        **1. La leçon la plus récemment entamée gagnait sur l'ordre du
+        programme.** Un compte qui avait ouvert une leçon du dernier chapitre —
+        ce que fait tout auteur ou formateur qui relit son contenu — se voyait
+        proposer « Mettre son site en ligne » alors que le chapitre 1 était
+        intact. L'intention (« reprendre où l'on en était ») était bonne, mais
+        « où l'on en était » ne peut pas être plus loin que le premier trou du
+        parcours : c'est ce trou qu'il faut combler d'abord. On reprend donc la
+        première leçon inachevée, et `is_resuming` dit simplement si elle était
+        déjà entamée.
+
+        **2. Le verrou de chapitre n'était pas consulté.** La vue proposait la
+        première leçon non terminée *tous chapitres confondus*, y compris
+        verrouillés : le bouton « Commencer » menait droit à un 403. Passer par
+        `accessible_chapter_ids` corrige ça et, effet voulu, ouvre au passage
+        le chapitre 1 d'un apprenant au rythme libre qui n'a encore rien fait
+        (`ensure_self_paced_access`) — le tableau de bord d'un compte neuf a
+        donc toujours quelque chose à proposer, et c'est le début du parcours.
+
+        Trois absences distinctes, que le client doit pouvoir distinguer :
+        aucun contenu publié, rien d'ouvert (`locked`), et tout est terminé
+        (`all_completed`).
         """
+        accessible = accessible_chapter_ids(request.user)
+
         lessons = list(
             Lesson.objects.filter(is_published=True, chapter__is_published=True)
             .select_related('chapter')
@@ -342,7 +368,7 @@ class UserProgressViewSet(viewsets.ModelViewSet):
         )
 
         if not lessons:
-            return Response({'lesson': None, 'all_completed': False})
+            return Response({'lesson': None, 'all_completed': False, 'locked': False})
 
         progress_by_lesson = {
             p.lesson_id: p for p in UserProgress.objects.filter(user=request.user)
@@ -352,22 +378,29 @@ class UserProgressViewSet(viewsets.ModelViewSet):
             progress = progress_by_lesson.get(lesson.id)
             return progress.status if progress else UserProgress.ProgressStatus.NOT_STARTED
 
-        started = [
-            lesson for lesson in lessons
-            if status_of(lesson) == UserProgress.ProgressStatus.IN_PROGRESS
-        ]
-        if started:
-            target = max(started, key=lambda l: progress_by_lesson[l.id].updated_at)
-            is_resuming = True
-        else:
-            unfinished = [
-                lesson for lesson in lessons
+        def unfinished(candidates):
+            return [
+                lesson for lesson in candidates
                 if status_of(lesson) != UserProgress.ProgressStatus.COMPLETED
             ]
-            if not unfinished:
-                return Response({'lesson': None, 'all_completed': True})
-            target = unfinished[0]
-            is_resuming = False
+
+        ouvertes = [lesson for lesson in lessons if lesson.chapter_id in accessible]
+        restantes = unfinished(ouvertes)
+
+        if not restantes:
+            # Deux situations très différentes derrière la même liste vide :
+            # avoir fini le parcours, ou avoir fini tout ce qui est ouvert et
+            # attendre son formateur. Les confondre ferait annoncer « parcours
+            # terminé » à un apprenant qui n'a vu qu'un chapitre sur quatre.
+            en_attente = bool(unfinished(lessons))
+            return Response({
+                'lesson': None,
+                'all_completed': not en_attente,
+                'locked': en_attente,
+            })
+
+        target = restantes[0]
+        is_resuming = status_of(target) == UserProgress.ProgressStatus.IN_PROGRESS
 
         chapter_lessons = [l for l in lessons if l.chapter_id == target.chapter_id]
         completed_in_chapter = sum(
@@ -377,6 +410,7 @@ class UserProgressViewSet(viewsets.ModelViewSet):
 
         return Response({
             'all_completed': False,
+            'locked': False,
             'is_resuming': is_resuming,
             'lesson': {
                 'id': str(target.id),

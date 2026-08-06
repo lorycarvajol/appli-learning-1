@@ -25,7 +25,7 @@ Le chantier en cours est la **mise en production**, pas le produit.
 | Backend | 7 apps : `accounts`, `administration`, `cohorts`, `courses`, `gamification`, `progression`, `validation` |
 | Frontend | 12 features, 18 routes |
 | Contenu | 4 chapitres, 68 leçons, 25 exercices, 5 quiz, 31 illustrations |
-| Tests | **317 backend** (+7 marqués `docker`, hors CI), **113 frontend**, 12 bout-en-bout |
+| Tests | **328 backend** (+7 marqués `docker`, hors CI), **114 frontend**, 12 bout-en-bout |
 | CI | Verte sur `main` et sur chaque *pull request* |
 
 ### Reprendre en trois commandes
@@ -523,6 +523,41 @@ Le détail par chapitre accompagne le total, chapitres verrouillés compris
 (même règle que le sommaire : on montre la suite du parcours, on ne l'ouvre
 pas). « 12 sur 68 » ne dit pas où l'on en est ; « chapitre 2 à moitié fait »,
 si.
+
+### « Continuer l'apprentissage » suit l'ordre du parcours
+
+⚠️ **Règle inversée le 2026-08-06.** `next_lesson` proposait la leçon **entamée
+la plus récemment**, où qu'elle soit dans le programme. Constaté en usage réel :
+un compte ayant ouvert une leçon du dernier chapitre — ce que fait tout auteur
+ou formateur qui relit son contenu — se voyait proposer « Mettre son site en
+ligne » avec un chapitre 1 intact, et le conseil du jour reprenait le même
+titre.
+
+L'intention (« reprendre où l'on en était ») était bonne, mais **« où l'on en
+était » ne peut pas être plus loin que le premier trou du parcours**. La vue
+rend donc la **première leçon non terminée dans l'ordre du programme**, et
+`is_resuming` dit seulement si elle était déjà entamée.
+
+⚠️ **Second défaut, corrigé en même temps : le verrou de chapitre n'était pas
+consulté.** La vue proposait la première leçon non terminée *tous chapitres
+confondus* — le bouton « Commencer » pouvait mener droit à un 403. Elle passe
+maintenant par `accessible_chapter_ids`, ce qui a un effet de bord voulu :
+`ensure_self_paced_access` ouvre le chapitre 1 d'un apprenant au rythme libre
+qui n'a encore rien fait. Le tableau de bord d'un compte neuf a donc toujours
+quelque chose à proposer, et c'est le début du parcours.
+
+Trois absences que le client doit distinguer, et qui ne s'affichent pas pareil :
+
+| Réponse | Situation | Ce que dit l'écran |
+|---|---|---|
+| `all_completed: true` | Tout le programme est fait | Félicitations + trophées |
+| `locked: true` | Tout ce qui est **ouvert** est fait, la suite est verrouillée | « La suite viendra de votre formateur » |
+| ni l'un ni l'autre, `lesson: null` | Aucun contenu publié | « Aucune leçon disponible » |
+
+Les confondre ferait annoncer « parcours terminé » à un apprenant qui n'a vu
+qu'un chapitre sur quatre — ou une panne de plateforme à celui qui attend
+simplement son formateur. Couvert par `apps/progression/tests/test_next_lesson.py`
+(11 tests, validés par sabotage).
 
 ### Le conseil du jour est calculé, plus écrit en dur
 
@@ -1407,7 +1442,7 @@ request*. Deux jobs indépendants qui échouent séparément.
 | `makemigrations --check --dry-run` | Un modèle modifié sans migration |
 | `migrate` sur base vierge | Une migration qui ne s'applique pas dans l'ordre |
 | `manage.py check` | Erreurs de configuration |
-| `pytest --create-db` | Les 317 tests |
+| `pytest --create-db` | Les 328 tests |
 
 ⚠️ Les deux premières étapes ne sont pas décoratives. `pytest.ini` fixe
 **`--nomigrations`** : le schéma de test est bâti directement depuis les

@@ -103,6 +103,17 @@ describe('pickTip — le conseil suit le comportement', () => {
     expect(tip.lien).toEqual({ to: '/chapters/css', label: 'Reprendre ce chapitre' })
   })
 
+  it('ne conseille pas de « continuer » quand plus rien n’est ouvert', () => {
+    const tip = pickTip(buildTipContext({
+      overview: { lessons: { total: 68, completed: 18, in_progress: 0, percent: 26 } },
+      summary: { badges: { secret_total: 8, secret_found: 6 } },
+      nextLesson: { lesson: null, locked: true, all_completed: false },
+    }), 0)
+
+    expect(tip.id).toBe('en-attente-du-formateur')
+    expect(tip.texte).toMatch(/formateur/i)
+  })
+
   it('renvoie vers les objectifs cachés quand tout est terminé', () => {
     const tip = pickTip(buildTipContext({
       overview: { lessons: { total: 30, completed: 30, in_progress: 0, percent: 100 } },

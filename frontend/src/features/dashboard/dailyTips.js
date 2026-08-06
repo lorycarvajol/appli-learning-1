@@ -76,6 +76,9 @@ export function buildTipContext({ summary, overview, nextLesson } = {}) {
       .sort((a, b) => b.percent - a.percent)[0] ?? null,
 
     allCompleted: Boolean(nextLesson?.all_completed),
+    // Tout ce qui est ouvert est fait, mais le parcours continue derrière un
+    // chapitre verrouillé : conseiller de « continuer » n'aurait aucun sens.
+    waitingForTrainer: Boolean(nextLesson?.locked),
     isResuming: Boolean(nextLesson?.is_resuming),
     nextLessonTitle: nextLesson?.lesson?.title ?? null,
     nextLessonType: nextLesson?.lesson?.lesson_type ?? null,
@@ -100,6 +103,19 @@ export const TIP_RULES = [
           + `caché(s) : personne ne vous dira comment les décrocher.`
         : 'Tout le programme est bouclé, objectifs cachés compris. Chapeau.',
     lien: { to: '/badges', label: 'Voir mes trophées' },
+  },
+  {
+    id: 'en-attente-du-formateur',
+    priorite: 95,
+    quand: (c) => c.waitingForTrainer,
+    texte: (c) =>
+      c.secretsLeft > 0
+        ? `Tout ce qui vous est ouvert est terminé — la suite dépend de votre `
+          + `formateur. En attendant, ${c.secretsLeft} objectif(s) caché(s) `
+          + `restent à débusquer.`
+        : 'Tout ce qui vous est ouvert est terminé. Le prochain chapitre '
+          + 'arrivera quand votre formateur l\'ouvrira.',
+    lien: { to: '/badges', label: 'Voir mes objectifs' },
   },
   {
     id: 'premier-pas',

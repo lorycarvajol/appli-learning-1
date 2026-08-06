@@ -307,8 +307,19 @@ def test_saute_les_lecons_deja_terminees(api, learner, parcours):
     assert data['chapter_progress']['completed'] == 1
 
 
-def test_privilegie_la_lecon_entamee_meme_si_elle_est_plus_loin(api, learner, parcours):
-    """« Continuer » doit ramener où l'on s'est arrêté, pas en arrière."""
+def test_comble_le_premier_trou_avant_la_lecon_entamee_plus_loin(api, learner, parcours):
+    """⚠️ Règle inversée le 2026-08-06, volontairement.
+
+    Ce test exigeait l'inverse : « continuer » ramenait à la leçon entamée la
+    plus récente, où qu'elle soit dans le parcours. Constaté en usage réel : un
+    compte ayant ouvert une leçon du dernier chapitre — ce que fait tout auteur
+    ou formateur qui relit son contenu — se voyait proposer « Mettre son site
+    en ligne » avec un chapitre 1 intact.
+
+    « Où l'on en était » ne peut pas être plus loin que le premier trou du
+    parcours : c'est ce trou qu'il faut combler d'abord. `is_resuming` dit
+    seulement si la leçon proposée était déjà entamée.
+    """
     UserProgress.objects.create(
         user=learner, lesson=parcours[2],
         status=UserProgress.ProgressStatus.IN_PROGRESS,
@@ -316,8 +327,8 @@ def test_privilegie_la_lecon_entamee_meme_si_elle_est_plus_loin(api, learner, pa
 
     data = api.get('/api/progression/progress/next_lesson/').json()
 
-    assert data['lesson']['slug'] == 'lecon-2'
-    assert data['is_resuming'] is True
+    assert data['lesson']['slug'] == 'lecon-0'
+    assert data['is_resuming'] is False
 
 
 def test_signale_un_parcours_entierement_termine(api, learner, parcours):
