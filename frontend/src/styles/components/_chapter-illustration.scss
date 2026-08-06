@@ -22,7 +22,9 @@
 //   --illus-taille   : `background-size`. ⚠️ Pas `cover` : dans un bloc large
 //                      et bas, une image 16/9 s'y réduit à une bande centrale
 //                      démesurément agrandie où le motif n'est plus lisible.
-//   --illus-flou     : rayon du flou.
+//   --illus-flou     : rayon du flou. Comparé à l'œil de 7 à 2 px : au-delà de
+//                      5 px le motif n'est plus identifiable, en deçà il
+//                      cesse d'être un fond et concurrence le texte.
 //   --illus-opacite  : opacité en thème clair.
 //   --illus-depart   : où commence le dégradé de masquage. C'est lui qui rend
 //                      l'idée tenable — l'image disparaît complètement du côté
@@ -40,7 +42,7 @@
     background-repeat: no-repeat;
     background-position: center right;
     background-size: var(--illus-taille, 85%);
-    filter: blur(var(--illus-flou, 7px));
+    filter: blur(var(--illus-flou, 5px));
     opacity: var(--illus-opacite, 0.7);
     -webkit-mask-image: linear-gradient(
       to right,
