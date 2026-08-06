@@ -4,12 +4,31 @@
 
 @use 'variables' as *;
 
+// ==========================================
+// ⚠️ REPRISE DE PREFLIGHT (reset de Tailwind)
+//
+// Tailwind a été retiré du projet. Son reset « Preflight » neutralisait
+// silencieusement le style natif des boutons, des champs et des bordures —
+// et TOUTES les feuilles de ce dépôt ont été écrites en le supposant actif.
+// Les règles marquées « [preflight] » ci-dessous le remplacent à l'identique.
+//
+// Ne pas les retirer en les prenant pour des redondances : sans elles, les
+// boutons sans `background` explicite reprennent le chrome gris du système,
+// et les champs de formulaire leurs marges natives.
+// ==========================================
+
 *,
 *::before,
 *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+
+  // [preflight] Bordure éteinte par défaut, mais de style `solid` : une règle
+  // qui ne pose qu'une couleur ou qu'une épaisseur se comporte comme avant.
+  border-width: 0;
+  border-style: solid;
+  border-color: $border-color;
 }
 
 html {
@@ -53,25 +72,74 @@ a {
   }
 }
 
-button {
+// [preflight] Les contrôles de formulaire n'héritent de rien par défaut :
+// sans ça, chacun repart sur la police, la taille et la couleur du système.
+:where(button, input, optgroup, select, textarea) {
   font-family: inherit;
-  font-size: inherit;
+  font-size: 100%;
+  font-weight: inherit;
+  line-height: inherit;
+  color: inherit;
+  margin: 0;
+  padding: 0;
+}
+
+// [preflight] Le point le plus important du lot : sans cette remise à plat,
+// tout bouton qui ne pose pas explicitement son fond réaffiche le bouton gris
+// natif — les boutons icônes en premier.
+//
+// ⚠️ `:where()` n'est pas cosmétique : il force la spécificité à ZÉRO.
+// Sans lui, `[type='button']` pèse autant qu'une classe (0,1,0) et fait donc
+// jeu égal avec `.scroll-to-top`, `.admin-tab`, `.badge-card`… Or `main.scss`
+// est importé en dernier dans `main.jsx` : à égalité, c'est ce reset qui
+// gagnait, et tout `<button type="button">` stylé par une feuille de feature
+// perdait son fond. Symptôme observé : la flèche « remonter » devenue une
+// flèche blanche sur fond transparent, invisible en thème clair.
+// Un reset ne doit jamais pouvoir battre le style d'un composant.
+:where(button, [type='button'], [type='reset'], [type='submit']) {
+  appearance: button;
+  background-color: transparent;
+  background-image: none;
   cursor: pointer;
 }
 
-img {
+:where(button, [type='button'], [type='reset'], [type='submit']):disabled {
+  cursor: not-allowed;
+}
+
+// [preflight] Un placeholder lisible : Firefox l'atténue par défaut.
+::placeholder {
+  opacity: 1;
+  color: $text-muted;
+}
+
+// [preflight] Le redimensionnement horizontal casse les mises en page.
+textarea {
+  resize: vertical;
+}
+
+// [preflight] Les médias se comportent en blocs : sinon un `<svg>` inline
+// traîne l'espace de la ligne de base sous lui.
+img,
+svg,
+video,
+canvas,
+audio,
+iframe,
+embed,
+object {
+  display: block;
+  vertical-align: middle;
+}
+
+img,
+video {
   max-width: 100%;
   height: auto;
-  display: block;
 }
 
 ul, ol {
   list-style: none;
-}
-
-input, textarea, select {
-  font-family: inherit;
-  font-size: inherit;
 }
 
 code {

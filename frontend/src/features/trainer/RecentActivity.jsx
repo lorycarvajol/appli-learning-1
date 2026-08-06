@@ -1,81 +1,69 @@
 import PropTypes from 'prop-types';
 
-const RecentActivity = ({ activities }) => {
-  const getActivityIcon = (activityType) => {
-    const icons = {
-      LESSON_STARTED: '▶️',
-      LESSON_COMPLETED: '✅',
-      EXERCISE_SUBMITTED: '💻',
-      QUIZ_COMPLETED: '📝',
-      CHAPTER_UNLOCKED: '🔓',
-      BADGE_EARNED: '🏆'
-    };
-    return icons[activityType] || '📌';
-  };
+const ACTIVITY_ICONS = {
+  LESSON_STARTED: '▶️',
+  LESSON_COMPLETED: '✅',
+  EXERCISE_SUBMITTED: '💻',
+  QUIZ_COMPLETED: '📝',
+  CHAPTER_UNLOCKED: '🔓',
+  BADGE_EARNED: '🏆'
+};
 
-  const getActivityColor = (activityType) => {
-    const colors = {
-      LESSON_STARTED: 'bg-blue-50 border-blue-200',
-      LESSON_COMPLETED: 'bg-green-50 border-green-200',
-      EXERCISE_SUBMITTED: 'bg-purple-50 border-purple-200',
-      QUIZ_COMPLETED: 'bg-yellow-50 border-yellow-200',
-      CHAPTER_UNLOCKED: 'bg-indigo-50 border-indigo-200',
-      BADGE_EARNED: 'bg-pink-50 border-pink-200'
-    };
-    return colors[activityType] || 'bg-gray-50 border-gray-200';
+// Le type d'activité choisit un modificateur BEM ; les teintes elles-mêmes
+// vivent dans styles/components/_trainer.scss, adossées aux tokens de thème.
+const ACTIVITY_MODIFIERS = {
+  LESSON_STARTED: 'lesson-started',
+  LESSON_COMPLETED: 'lesson-completed',
+  EXERCISE_SUBMITTED: 'exercise-submitted',
+  QUIZ_COMPLETED: 'quiz-completed',
+  CHAPTER_UNLOCKED: 'chapter-unlocked',
+  BADGE_EARNED: 'badge-earned'
+};
+
+const RecentActivity = ({ activities }) => {
+  const cardClass = (activityType) => {
+    const modifier = ACTIVITY_MODIFIERS[activityType];
+    return modifier ? `activity-card activity-card--${modifier}` : 'activity-card';
   };
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-xl font-semibold">Activité Récente</h2>
+    <div className="trainer-panel">
+      <div className="trainer-panel__header">
+        <h2 className="trainer-panel__title">Activité récente</h2>
       </div>
-      <div className="p-4">
-        <div className="space-y-3 max-h-[700px] overflow-y-auto">
+      <div className="trainer-panel__body">
+        <div className="activity-feed trainer-panel__scroll trainer-panel__scroll--tall">
           {activities.map((activity) => (
-            <div
-              key={activity.id}
-              className={`border rounded-lg p-4 ${getActivityColor(activity.activity_type)}`}
-            >
-              <div className="flex items-start space-x-3">
-                <span className="text-2xl">{getActivityIcon(activity.activity_type)}</span>
-                <div className="flex-1">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-medium text-gray-900">{activity.user_full_name}</p>
-                      <p className="text-sm text-gray-600">
-                        {activity.activity_type.replace('_', ' ').toLowerCase()}
-                      </p>
-                      {activity.lesson_title && (
-                        <p className="text-sm text-gray-700 mt-1">
-                          📖 {activity.lesson_title}
-                        </p>
-                      )}
-                      {activity.chapter_title && !activity.lesson_title && (
-                        <p className="text-sm text-gray-700 mt-1">
-                          📚 {activity.chapter_title}
-                        </p>
-                      )}
-                    </div>
-                    <span className="text-xs text-gray-500 whitespace-nowrap">
-                      {new Date(activity.created_at).toLocaleString('fr-FR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  </div>
+            <div key={activity.id} className={cardClass(activity.activity_type)}>
+              <span className="activity-card__icon" aria-hidden="true">
+                {ACTIVITY_ICONS[activity.activity_type] || '📌'}
+              </span>
+              <div className="activity-card__body">
+                <div>
+                  <p className="activity-card__user">{activity.user_full_name}</p>
+                  <p className="activity-card__type">
+                    {activity.activity_type.replace('_', ' ').toLowerCase()}
+                  </p>
+                  {activity.lesson_title && (
+                    <p className="activity-card__context">📖 {activity.lesson_title}</p>
+                  )}
+                  {activity.chapter_title && !activity.lesson_title && (
+                    <p className="activity-card__context">📚 {activity.chapter_title}</p>
+                  )}
                 </div>
+                <span className="activity-card__date">
+                  {new Date(activity.created_at).toLocaleString('fr-FR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span>
               </div>
             </div>
           ))}
 
-          {activities.length === 0 && (
-            <div className="text-center text-gray-500 py-12">
-              Aucune activité récente
-            </div>
-          )}
+          {activities.length === 0 && <p className="trainer-empty">Aucune activité récente</p>}
         </div>
       </div>
     </div>

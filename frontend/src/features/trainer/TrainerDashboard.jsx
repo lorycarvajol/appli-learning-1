@@ -19,8 +19,11 @@ const TrainerDashboard = () => {
 
   if (loading && !learnersSummary.length) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-gray-600">Chargement...</div>
+      <div className="trainer">
+        <div className="trainer__loading">
+          <div className="loading-spinner"></div>
+          <p>Chargement…</p>
+        </div>
       </div>
     );
   }
@@ -31,111 +34,103 @@ const TrainerDashboard = () => {
     const message =
       typeof error === 'string' ? error : error?.detail || JSON.stringify(error);
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-800">Erreur : {message}</p>
+      <div className="trainer">
+        <div className="trainer__error" role="alert">
+          Erreur : {message}
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Dashboard Trainer</h1>
+  const averageCompletion =
+    learnersSummary.length > 0
+      ? Math.round(
+          learnersSummary.reduce(
+            (acc, learner) =>
+              acc +
+              (learner.total_lessons > 0
+                ? (learner.completed_lessons / learner.total_lessons) * 100
+                : 0),
+            0
+          ) / learnersSummary.length
+        )
+      : 0;
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-gray-500 text-sm font-medium mb-2">Total Apprenants</h3>
-          <p className="text-3xl font-bold text-blue-600">{learnersSummary.length}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-gray-500 text-sm font-medium mb-2">Activités Récentes</h3>
-          <p className="text-3xl font-bold text-green-600">{recentActivity.length}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-gray-500 text-sm font-medium mb-2">Taux de Complétion Moyen</h3>
-          <p className="text-3xl font-bold text-purple-600">
-            {learnersSummary.length > 0
-              ? Math.round(
-                  learnersSummary.reduce(
-                    (acc, learner) =>
-                      acc +
-                      (learner.total_lessons > 0
-                        ? (learner.completed_lessons / learner.total_lessons) * 100
-                        : 0),
-                    0
-                  ) / learnersSummary.length
-                )
-              : 0}
-            %
+  return (
+    <div className="trainer">
+      <div className="trainer__hero">
+        <div className="trainer__hero-content">
+          <h1 className="trainer__title">Espace formateur</h1>
+          <p className="trainer__subtitle">
+            Suivez la progression de vos apprenants et ouvrez-leur les chapitres.
           </p>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab('learners')}
-              className={`${
-                activeTab === 'learners'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-            >
-              Apprenants ({learnersSummary.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('activity')}
-              className={`${
-                activeTab === 'activity'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-            >
-              Activité Récente
-            </button>
-            <button
-              onClick={() => setActiveTab('cohorts')}
-              className={`${
-                activeTab === 'cohorts'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-            >
-              Mes classes
-            </button>
-          </nav>
+      <div className="trainer__container">
+        <div className="trainer-stats">
+          <div className="trainer-stat trainer-stat--learners">
+            <span className="trainer-stat__label">Total apprenants</span>
+            <span className="trainer-stat__value">{learnersSummary.length}</span>
+          </div>
+          <div className="trainer-stat trainer-stat--activity">
+            <span className="trainer-stat__label">Activités récentes</span>
+            <span className="trainer-stat__value">{recentActivity.length}</span>
+          </div>
+          <div className="trainer-stat trainer-stat--completion">
+            <span className="trainer-stat__label">Taux de complétion moyen</span>
+            <span className="trainer-stat__value">{averageCompletion} %</span>
+          </div>
         </div>
-      </div>
 
-      {/* Content */}
-      {activeTab === 'learners' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div>
+        <div className="trainer__tabs">
+          <button
+            type="button"
+            onClick={() => setActiveTab('learners')}
+            className={`trainer-tab${activeTab === 'learners' ? ' trainer-tab--active' : ''}`}
+            aria-pressed={activeTab === 'learners'}
+          >
+            Apprenants ({learnersSummary.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('activity')}
+            className={`trainer-tab${activeTab === 'activity' ? ' trainer-tab--active' : ''}`}
+            aria-pressed={activeTab === 'activity'}
+          >
+            Activité récente
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('cohorts')}
+            className={`trainer-tab${activeTab === 'cohorts' ? ' trainer-tab--active' : ''}`}
+            aria-pressed={activeTab === 'cohorts'}
+          >
+            Mes classes
+          </button>
+        </div>
+
+        {activeTab === 'learners' && (
+          <div className="trainer__split">
             <LearnersList
               learners={learnersSummary}
               selectedLearnerId={selectedLearnerId}
               onSelectLearner={setSelectedLearnerId}
             />
-          </div>
-          <div>
             {selectedLearnerId ? (
               <LearnerDetail learnerId={selectedLearnerId} />
             ) : (
-              <div className="bg-gray-50 rounded-lg p-8 text-center">
-                <p className="text-gray-500">
-                  Sélectionnez un apprenant pour voir ses détails
-                </p>
+              <div className="trainer__placeholder">
+                <p>Sélectionnez un apprenant pour voir ses détails</p>
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
 
-      {activeTab === 'activity' && <RecentActivity activities={recentActivity} />}
+        {activeTab === 'activity' && <RecentActivity activities={recentActivity} />}
 
-      {activeTab === 'cohorts' && <CohortsPanel />}
+        {activeTab === 'cohorts' && <CohortsPanel />}
+      </div>
     </div>
   );
 };

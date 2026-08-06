@@ -10,94 +10,82 @@ const LearnersList = ({ learners, selectedLearnerId, onSelectLearner }) => {
     return `${minutes}min`;
   };
 
+  const ratio = (part, total) => (total > 0 ? (part / total) * 100 : 0);
+
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-xl font-semibold">Liste des Apprenants</h2>
+    <div className="trainer-panel">
+      <div className="trainer-panel__header">
+        <h2 className="trainer-panel__title">Liste des apprenants</h2>
       </div>
-      <div className="divide-y divide-gray-200 max-h-[600px] overflow-y-auto">
+      <div className="trainer-panel__scroll">
         {learners.map((learner) => (
-          <div
+          <button
+            type="button"
             key={learner.user.id}
             onClick={() => onSelectLearner(learner.user.id)}
-            className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
-              selectedLearnerId === learner.user.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+            aria-pressed={selectedLearnerId === learner.user.id}
+            className={`learner-row${
+              selectedLearnerId === learner.user.id ? ' learner-row--selected' : ''
             }`}
           >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h3 className="font-medium text-gray-900">
-                  {learner.user.first_name} {learner.user.last_name}
-                </h3>
-                <p className="text-sm text-gray-500">{learner.user.email}</p>
+            <span className="learner-row__name">
+              {learner.user.first_name} {learner.user.last_name}
+            </span>
+            <span className="learner-row__email">{learner.user.email}</span>
 
-                {/* Progress bars */}
-                <div className="mt-3 space-y-2">
-                  <div>
-                    <div className="flex justify-between text-xs text-gray-600 mb-1">
-                      <span>Chapitres débloqués</span>
-                      <span>
-                        {learner.unlocked_chapters}/{learner.total_chapters}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-500 h-2 rounded-full transition-all"
-                        style={{
-                          width: `${
-                            learner.total_chapters > 0
-                              ? (learner.unlocked_chapters / learner.total_chapters) * 100
-                              : 0
-                          }%`
-                        }}
-                      ></div>
-                    </div>
-                  </div>
+            <span className="learner-row__meters">
+              <span className="meter">
+                <span className="meter__head">
+                  <span>Chapitres débloqués</span>
+                  <span>
+                    {learner.unlocked_chapters}/{learner.total_chapters}
+                  </span>
+                </span>
+                <span className="meter__track">
+                  <span
+                    className="meter__fill"
+                    style={{
+                      width: `${ratio(learner.unlocked_chapters, learner.total_chapters)}%`
+                    }}
+                  />
+                </span>
+              </span>
 
-                  <div>
-                    <div className="flex justify-between text-xs text-gray-600 mb-1">
-                      <span>Leçons complétées</span>
-                      <span>
-                        {learner.completed_lessons}/{learner.total_lessons}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-green-500 h-2 rounded-full transition-all"
-                        style={{
-                          width: `${
-                            learner.total_lessons > 0
-                              ? (learner.completed_lessons / learner.total_lessons) * 100
-                              : 0
-                          }%`
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
+              <span className="meter">
+                <span className="meter__head">
+                  <span>Leçons complétées</span>
+                  <span>
+                    {learner.completed_lessons}/{learner.total_lessons}
+                  </span>
+                </span>
+                <span className="meter__track">
+                  <span
+                    className="meter__fill meter__fill--lessons"
+                    style={{
+                      width: `${ratio(learner.completed_lessons, learner.total_lessons)}%`
+                    }}
+                  />
+                </span>
+              </span>
+            </span>
 
-                {/* Stats */}
-                <div className="mt-3 flex items-center space-x-4 text-xs text-gray-500">
-                  <span>⏱️ {formatTime(learner.total_time_spent)}</span>
-                  {learner.average_score && (
-                    <span>📊 Moy: {Math.round(learner.average_score)}%</span>
-                  )}
-                </div>
+            <span className="learner-row__stats">
+              <span>⏱️ {formatTime(learner.total_time_spent)}</span>
+              {learner.average_score && (
+                <span>📊 Moy : {Math.round(learner.average_score)} %</span>
+              )}
+            </span>
 
-                {learner.current_lesson && (
-                  <div className="mt-2 text-xs text-blue-600">
-                    📖 En cours: {learner.current_lesson}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+            {learner.current_lesson && (
+              <span className="learner-row__current">
+                📖 En cours : {learner.current_lesson}
+              </span>
+            )}
+          </button>
         ))}
 
         {learners.length === 0 && (
-          <div className="p-8 text-center text-gray-500">
-            Aucun apprenant inscrit pour le moment
-          </div>
+          <p className="trainer-empty">Aucun apprenant inscrit pour le moment</p>
         )}
       </div>
     </div>

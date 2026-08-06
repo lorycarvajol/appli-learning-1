@@ -1,0 +1,592 @@
+// ==========================================
+// TRAINER SPACE STYLES
+//
+// Espace formateur : tableau de bord, suivi des apprenants, flux d'activité.
+// Ces quatre écrans étaient les derniers du projet en Tailwind brut ; ils
+// n'avaient donc aucune feuille propre et ne suivaient le thème sombre que par
+// le remappage de couleurs du `tailwind.config.js`, aujourd'hui supprimé.
+//
+// Le vocabulaire visuel reprend celui de `AdminSpace.css` (bandeau dégradé,
+// onglets en pastilles, cartes à tokens) : les deux espaces de pilotage se
+// reconnaissent au premier coup d'œil.
+// ==========================================
+
+@use '../base/variables' as *;
+@use '../base/mixins' as *;
+
+// === PAGE ===
+
+.trainer {
+  min-height: 100vh;
+  background-color: $bg-light;
+
+  &__hero {
+    background: linear-gradient(135deg, $text-primary, $primary-dark);
+    padding: $spacing-2xl $spacing-xl;
+    margin-bottom: $spacing-xl;
+
+    // ⚠️ `$text-primary` (var(--ink)) s'inverse entre les thèmes : presque noir
+    // en clair, presque blanc en sombre. Le dégradé tel quel devient donc pâle
+    // en thème sombre, et le titre blanc posé dessus passe sous le seuil de
+    // lisibilité. On repart d'une base sombre fixe.
+    [data-theme='dark'] & {
+      background: linear-gradient(135deg, $bg-dark, $primary-light);
+    }
+  }
+
+  &__hero-content {
+    @include container;
+  }
+
+  &__title {
+    font-family: $font-family-heading;
+    font-size: clamp(#{$font-size-2xl}, 3.5vw, #{$font-size-4xl});
+    font-weight: $font-weight-bold;
+    color: $text-white;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__subtitle {
+    color: rgba(255, 255, 255, 0.82);
+    font-size: $font-size-sm;
+    margin-bottom: 0;
+  }
+
+  &__container {
+    @include container;
+    padding-bottom: $spacing-3xl;
+  }
+
+  // Écrans d'attente et d'erreur
+
+  &__loading {
+    @include flex-center;
+    flex-direction: column;
+    gap: $spacing-md;
+    min-height: 50vh;
+    color: $text-secondary;
+
+    p {
+      margin: 0;
+    }
+  }
+
+  &__error {
+    @include container;
+    margin-top: $spacing-xl;
+    margin-bottom: $spacing-xl;
+    padding: $spacing-md $spacing-lg;
+    border: $border-width solid color-mix(in srgb, var(--danger) 35%, transparent);
+    border-radius: $border-radius-lg;
+    background-color: var(--danger-soft);
+    color: $error-color;
+    font-weight: $font-weight-medium;
+  }
+
+  // Deux colonnes : la liste à gauche, le détail de l'apprenant choisi à droite
+
+  &__split {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: $spacing-lg;
+
+    @include respond-to('lg') {
+      grid-template-columns: 1fr 1fr;
+      align-items: start;
+    }
+  }
+
+  &__placeholder {
+    @include flex-center;
+    min-height: 12rem;
+    padding: $spacing-xl;
+    border: $border-width dashed $border-color-strong;
+    border-radius: $border-radius-xl;
+    background-color: $bg-gray;
+    color: $text-muted;
+    text-align: center;
+
+    p {
+      margin: 0;
+    }
+  }
+
+  &__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-lg;
+  }
+}
+
+// === CHIFFRES DE TÊTE ===
+
+.trainer-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $spacing-md;
+  margin-bottom: $spacing-xl;
+
+  @media (max-width: $breakpoint-md) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trainer-stat {
+  @include flex-column;
+  gap: $spacing-xs;
+  padding: $spacing-lg;
+  background-color: $bg-white;
+  border: $border-width solid $border-color;
+  border-radius: $border-radius-lg;
+  box-shadow: $shadow-sm;
+
+  &__label {
+    font-size: $font-size-xs;
+    color: $text-secondary;
+  }
+
+  &__value {
+    font-family: $font-family-heading;
+    font-size: $font-size-3xl;
+    font-weight: $font-weight-bold;
+    line-height: 1;
+    color: $text-primary;
+  }
+
+  // Chaque chiffre garde sa teinte : elle sert de repère de lecture entre les
+  // trois cartes, jamais de porteuse d'information à elle seule.
+  &--learners &__value {
+    color: $primary-color;
+  }
+
+  &--activity &__value {
+    color: $exercise-text;
+  }
+
+  &--completion &__value {
+    color: $quiz-text;
+  }
+}
+
+// === ONGLETS ===
+
+.trainer-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+  border: $border-width solid $border-color;
+  border-radius: $border-radius-full;
+  background-color: $bg-white;
+  color: $text-secondary;
+  font-family: $font-family-base;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  transition: background-color $transition-fast, border-color $transition-fast,
+    color $transition-fast;
+
+  &:hover {
+    border-color: $primary-color;
+    color: $text-primary;
+  }
+
+  &--active,
+  &--active:hover {
+    background-color: $primary-color;
+    border-color: $primary-color;
+    color: $text-white;
+  }
+}
+
+// === PANNEAU GÉNÉRIQUE (liste, détail, activité) ===
+
+.trainer-panel {
+  background-color: $bg-white;
+  border: $border-width solid $border-color;
+  border-radius: $border-radius-xl;
+  box-shadow: $shadow-sm;
+  overflow: hidden;
+
+  &__header {
+    padding: $spacing-md $spacing-lg;
+    border-bottom: $border-width solid $border-color;
+  }
+
+  &__title {
+    font-family: $font-family-heading;
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $text-primary;
+    margin-bottom: 0;
+  }
+
+  &__subtitle {
+    margin: $spacing-xs 0 0;
+    font-size: $font-size-sm;
+    color: $text-secondary;
+  }
+
+  &__body {
+    padding: $spacing-lg;
+  }
+
+  // Le défilement est borné pour que les deux colonnes restent côte à côte
+  // quelle que soit la taille de la promo.
+  &__scroll {
+    max-height: 600px;
+    overflow-y: auto;
+
+    &--tall {
+      max-height: 700px;
+    }
+  }
+}
+
+.trainer-empty {
+  margin: 0;
+  padding: $spacing-2xl $spacing-lg;
+  text-align: center;
+  color: $text-muted;
+}
+
+// === LIGNE D'APPRENANT ===
+// C'est un <button> : la ligne entière sélectionne, au clavier comme à la souris.
+
+.learner-row {
+  display: block;
+  width: 100%;
+  padding: $spacing-md $spacing-lg;
+  border-bottom: $border-width solid $border-color;
+  border-left: 4px solid transparent;
+  background-color: transparent;
+  font-family: $font-family-base;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color $transition-fast, border-left-color $transition-fast;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  &:hover {
+    background-color: $bg-gray;
+  }
+
+  &--selected,
+  &--selected:hover {
+    background-color: $primary-light;
+    border-left-color: $primary-color;
+  }
+
+  // La ligne étant un <button>, son contenu ne peut être fait que d'éléments
+  // « phrasing » : ce sont des <span> qu'on repasse en bloc ici.
+  &__name {
+    display: block;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: $text-primary;
+  }
+
+  &__email {
+    display: block;
+    font-size: $font-size-sm;
+    color: $text-muted;
+  }
+
+  &__meters {
+    @include flex-column;
+    gap: $spacing-sm;
+    margin-top: $spacing-md;
+  }
+
+  &__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-md;
+    margin-top: $spacing-md;
+    font-size: $font-size-xs;
+    color: $text-muted;
+  }
+
+  &__current {
+    display: block;
+    margin-top: $spacing-sm;
+    font-size: $font-size-xs;
+    color: $primary-color;
+  }
+}
+
+// === JAUGE DE PROGRESSION ===
+// Partagée entre la liste des apprenants et le détail par chapitre.
+
+.meter {
+  display: block;
+
+  &__head {
+    @include flex-between;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-xs;
+    font-size: $font-size-xs;
+    color: $text-secondary;
+  }
+
+  &__track {
+    display: block;
+    height: $spacing-sm;
+    border-radius: $border-radius-full;
+    background-color: $bg-gray;
+    overflow: hidden;
+
+    // En thème sombre, les surfaces s'éclaircissent : sans ce renfort, la
+    // piste de la jauge se confondrait avec le fond de la carte.
+    [data-theme='dark'] & {
+      background-color: color-mix(in srgb, var(--ink) 14%, transparent);
+    }
+  }
+
+  &__fill {
+    display: block;
+    height: 100%;
+    border-radius: $border-radius-full;
+    background-color: $primary-color;
+    transition: width $transition-slow;
+
+    &--lessons {
+      background-color: $success-color;
+    }
+  }
+}
+
+// === DÉTAIL D'UN APPRENANT ===
+
+.learner-detail {
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-md;
+    margin-top: $spacing-sm;
+    font-size: $font-size-sm;
+  }
+
+  &__level {
+    color: $primary-color;
+    font-weight: $font-weight-medium;
+  }
+
+  &__points {
+    color: $quiz-text;
+    font-weight: $font-weight-medium;
+  }
+
+  &__section-title {
+    font-family: $font-family-heading;
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    color: $text-primary;
+    margin-bottom: $spacing-md;
+  }
+
+  &__chapters {
+    @include flex-column;
+    gap: $spacing-md;
+  }
+
+  &__activities {
+    margin-top: $spacing-xl;
+  }
+}
+
+.chapter-progress {
+  padding: $spacing-md;
+  border: $border-width solid $border-color;
+  border-radius: $border-radius-lg;
+  background-color: $bg-white;
+
+  &__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: $spacing-md;
+    margin-bottom: $spacing-md;
+  }
+
+  &__title {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: $text-primary;
+  }
+
+  &__count {
+    margin: $spacing-xs 0 0;
+    font-size: $font-size-sm;
+    color: $text-muted;
+  }
+
+  &__rate {
+    margin: $spacing-sm 0 0;
+    font-size: $font-size-xs;
+    color: $text-muted;
+  }
+}
+
+// Bascule verrou/déverrou — l'état courant est écrit dans le bouton, la
+// couleur ne porte donc jamais l'information seule.
+.chapter-lock {
+  @include button-base;
+  flex-shrink: 0;
+  padding: $spacing-sm $spacing-md;
+  border-radius: $border-radius-full;
+  font-size: $font-size-sm;
+  color: $text-white;
+
+  &--unlocked {
+    background-color: $exercise-text;
+
+    &:hover:not(:disabled) {
+      background-color: color-mix(in srgb, var(--ok-text) 85%, #000);
+    }
+  }
+
+  &--locked {
+    background-color: $text-muted;
+
+    &:hover:not(:disabled) {
+      background-color: $text-secondary;
+    }
+  }
+
+  // Réutilise le @keyframes spin déclaré dans main.scss
+  &__spinner {
+    width: 0.9rem;
+    height: 0.9rem;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: $text-white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+}
+
+// === ACTIVITÉ CONDENSÉE (dans le détail apprenant) ===
+
+.activity-mini {
+  @include flex-column;
+  gap: $spacing-sm;
+
+  &__item {
+    display: flex;
+    align-items: flex-start;
+    gap: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    border-radius: $border-radius-md;
+    background-color: $bg-gray;
+  }
+
+  &__label {
+    margin: 0;
+    font-size: $font-size-sm;
+    color: $text-primary;
+  }
+
+  &__date {
+    margin: 0;
+    font-size: $font-size-xs;
+    color: $text-muted;
+  }
+}
+
+// === FLUX D'ACTIVITÉ RÉCENTE ===
+
+.activity-feed {
+  @include flex-column;
+  gap: $spacing-sm;
+}
+
+.activity-card {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-md;
+  padding: $spacing-md;
+  border: $border-width solid $border-color;
+  border-left-width: 4px;
+  border-radius: $border-radius-lg;
+  background-color: $bg-gray;
+
+  // Le type d'activité se lit à la tranche colorée, mais l'icône reste le
+  // repère principal : la couleur seule ne distingue rien pour un daltonien.
+  &--lesson-started {
+    border-left-color: $info-color;
+    background-color: $theory-bg;
+  }
+
+  &--lesson-completed {
+    border-left-color: $success-color;
+    background-color: $exercise-bg;
+  }
+
+  &--exercise-submitted {
+    border-left-color: $quiz-text;
+    background-color: $quiz-bg;
+  }
+
+  &--quiz-completed {
+    border-left-color: $warning-color;
+    background-color: $medium-bg;
+  }
+
+  &--chapter-unlocked {
+    border-left-color: $primary-color;
+    background-color: $primary-light;
+  }
+
+  &--badge-earned {
+    border-left-color: $secondary-color;
+    background-color: $secondary-light;
+  }
+
+  &__icon {
+    font-size: $font-size-2xl;
+    line-height: 1;
+  }
+
+  &__body {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: $spacing-md;
+    flex: 1;
+    min-width: 0;
+
+    @media (max-width: $breakpoint-md) {
+      flex-direction: column;
+      gap: $spacing-xs;
+    }
+  }
+
+  &__user {
+    margin: 0;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: $text-primary;
+  }
+
+  &__type {
+    margin: 0;
+    font-size: $font-size-sm;
+    color: $text-secondary;
+  }
+
+  &__context {
+    margin: $spacing-xs 0 0;
+    font-size: $font-size-sm;
+    color: $text-primary;
+  }
+
+  &__date {
+    flex-shrink: 0;
+    font-size: $font-size-xs;
+    color: $text-muted;
+    white-space: nowrap;
+  }
+}

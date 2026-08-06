@@ -47,6 +47,15 @@
 
   @include respond-to('lg') {
     grid-template-columns: repeat(3, 1fr);
+
+    // Un chapitre resté seul sur la dernière rangée s'étire sur toute la
+    // largeur, au lieu de flotter dans la première colonne. `3n + 1` ne
+    // désigne pas « le 4e » mais « celui qui ouvre une rangée » : combiné à
+    // `:last-child`, il ne matche que la carte orpheline. La règle reste donc
+    // juste si un 5e chapitre est publié (le 4e reprend alors sa place).
+    > :last-child:nth-child(3n + 1) {
+      grid-column: 1 / -1;
+    }
   }
 }
 

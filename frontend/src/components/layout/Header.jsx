@@ -5,6 +5,9 @@ import { logoutUser } from '@/features/auth/authSlice';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import Avatar from '@/components/ui/Avatar';
 import { ROLES, ROLE_LABELS, STAFF_ROLES } from '@/constants/roles';
+// Depuis `src/assets/` : Vite hache le nom de fichier, donc cache long terme
+// et invalidation automatique le jour où le sigle change.
+import logoMark from '@/assets/logo-mark.png';
 import './Header.css';
 
 // Une entrée sans `roles` est visible par tout le monde.
@@ -76,9 +79,20 @@ export default function Header() {
     <header className="header">
       <div className="header__container">
         <Link to="/dashboard" className="header__logo">
-          <span className="header__logo-mark" aria-hidden="true">
-            &lt;/&gt;
-          </span>
+          {/*
+            Le sigle de marque, pas un placeholder : ce bloc dessinait un
+            `</>` en CSS alors que `logo-mark.png` existait. L'image est
+            décorative — le nom est rendu juste à côté en HTML, et le relire
+            ici ferait doublon pour un lecteur d'écran.
+          */}
+          <img
+            src={logoMark}
+            alt=""
+            aria-hidden="true"
+            className="header__logo-mark"
+            width="34"
+            height="34"
+          />
           <span className="header__logo-text">
             <span className="header__logo-name">Code</span>
             <span className="header__logo-suffix">Academy</span>

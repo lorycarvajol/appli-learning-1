@@ -25,19 +25,14 @@
   color: var(--ink);
 }
 
+/* Le sigle porte déjà son fond sombre et ses coins arrondis dans l'image :
+   on ne lui repose ni dégradé ni rayon, seulement son ombre portée. */
 .header__logo-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 34px;
   height: 34px;
-  border-radius: 9px;
-  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
-  color: #fff;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
-  font-weight: 700;
+  object-fit: contain;
   box-shadow: 0 3px 10px color-mix(in srgb, var(--brand) 45%, transparent);
+  border-radius: 9px;
 }
 
 .header__logo-text {

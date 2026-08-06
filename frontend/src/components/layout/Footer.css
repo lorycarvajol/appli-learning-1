@@ -32,18 +32,12 @@
   font-size: 1.05rem;
 }
 
+/* Idem en-tête : le sigle est une image, elle porte son propre fond. */
 .footer__logo-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 24px;
   height: 24px;
+  object-fit: contain;
   border-radius: 6px;
-  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
-  color: #fff;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.6rem;
-  font-weight: 700;
 }
 
 .footer__tagline {
