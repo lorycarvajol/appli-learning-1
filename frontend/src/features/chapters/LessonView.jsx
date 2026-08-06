@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { fetchLesson, fetchChapterDetails, clearCurrentLesson } from './chaptersSlice';
+import { lessonIllustration } from './illustrations';
 import {
   fetchMyProgress,
   markLessonCompleted,
@@ -101,6 +102,10 @@ export default function LessonView() {
     return null;
   }
 
+  // Le slug vient de la route : c'est la même valeur que celle de la leçon
+  // chargée, mais disponible sans dépendre des champs exposés par l'API.
+  const illustration = lessonIllustration(slug);
+
   const getLessonTypeInfo = (type) => {
     const types = {
       THEORY: { label: 'Théorie', class: 'lesson-header__badge--theory' },
@@ -171,8 +176,15 @@ export default function LessonView() {
 
       <div className="lesson-container">
 
-        {/* Lesson Header */}
-        <div className="lesson-header">
+        {/*
+          Lesson Header — l'illustration de la leçon s'y pose en fond, floutée
+          et effacée du côté du texte (composant `lesson-illustration`). Une
+          leçon sans illustration n'a pas la classe : l'en-tête reste tel quel.
+        */}
+        <div
+          className={`lesson-header ${illustration ? 'lesson-illustration' : ''}`}
+          style={illustration ? { '--lesson-illus': `url(${illustration})` } : undefined}
+        >
           <div className="lesson-header__meta">
             <span className={`lesson-header__badge ${typeInfo.class}`}>
               {typeInfo.label}

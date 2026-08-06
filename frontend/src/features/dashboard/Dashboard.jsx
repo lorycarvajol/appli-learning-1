@@ -9,7 +9,7 @@ import {
   selectProgressOverview,
 } from '../progression/progressionSlice';
 import NextObjectives from '../gamification/NextObjectives';
-import { chapterIllustration } from '../chapters/illustrations';
+import { lessonIllustration } from '../chapters/illustrations';
 import {
   selectLevel,
   selectSummary,
@@ -63,9 +63,11 @@ export default function Dashboard() {
     [summary, overview, nextLesson]
   );
 
-  // Illustration du chapitre en cours, posée en fond de la carte. `null` tant
-  // qu'un chapitre n'a pas la sienne : la carte reste alors telle quelle.
-  const illustration = chapterIllustration(nextLesson?.chapter?.slug);
+  // Illustration de la leçon proposée, posée en fond de la carte — la même que
+  // celle qui ouvrira la leçon, pour que la carte annonce ce qu'on va voir.
+  // `null` tant qu'une leçon n'a pas la sienne : la carte reste alors telle
+  // quelle.
+  const illustration = lessonIllustration(nextLesson?.lesson?.slug);
 
   const formatTime = (seconds) => {
     const hours = Math.floor(seconds / 3600);
@@ -205,15 +207,15 @@ export default function Dashboard() {
 
             {nextLesson?.lesson ? (
               /*
-                L'illustration se pose **dans** cette carte, pas derrière le
+                L'illustration de la leçon se pose **dans** cette carte, pas derrière le
                 bloc entier : la carte a son propre aplat, qui la masquerait.
                 Floutée et effacée à gauche par un dégradé, elle n'arrive
                 jamais sous le texte — on ne voit que le motif du chapitre,
                 derrière le bouton.
               */
               <div
-                className={`learning-card ${illustration ? 'chapter-illustration' : ''}`}
-                style={illustration ? { '--chapter-illus': `url(${illustration})` } : undefined}
+                className={`learning-card ${illustration ? 'lesson-illustration' : ''}`}
+                style={illustration ? { '--lesson-illus': `url(${illustration})` } : undefined}
               >
                 <div className="learning-card__content">
                   <span className="learning-card__kicker">

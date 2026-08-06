@@ -559,24 +559,27 @@ qu'un chapitre sur quatre — ou une panne de plateforme à celui qui attend
 simplement son formateur. Couvert par `apps/progression/tests/test_next_lesson.py`
 (11 tests, validés par sabotage).
 
-### Illustrations de chapitre — une série, une grammaire
+### Illustrations de leçon — une série, une grammaire
 
-`frontend/src/assets/chapters/*.svg`, indexées par
-`features/chapters/illustrations.js` (clé = **slug du chapitre en base**).
+`frontend/src/assets/lessons/*.svg`, indexées par
+`features/chapters/illustrations.js` (clé = **slug de la leçon en base**,
+reprise telle quelle comme nom de fichier).
 
 Même format 16/9, même fond dégradé clair, mêmes teintes de marque et
 d'accent, et une composition en trois plans — un halo coloré, un objet
-central, des signes flottants. Seuls le motif et la dominante changent :
+central, des signes flottants. Seuls le motif et la dominante changent, la
+dominante suivant le chapitre :
 
-| Chapitre | Motif | État |
+| Leçon | Motif | État |
 |---|---|---|
-| HTML | Le document et ses balises, chevrons | ✅ |
-| CSS | La mise en forme — palette, boîtes | ❌ |
-| JavaScript | Le comportement — événements, flux | ❌ |
-| Site vitrine | La mise en ligne — écran, ondes | ❌ |
+| `quest-ce-que-le-html` | Le document et ses balises, chevrons | ✅ |
+| *les 67 autres* | — | ❌ |
+
+Le parcours compte **68 leçons** : la table se remplit au fil des dessins, et
+une leçon sans entrée s'affiche simplement sans illustration.
 
 **Du SVG écrit à la main**, pas du PNG : net à toute taille (quelques centaines
-de pixels en fond de carte, plus de mille en tête de chapitre), quelques
+de pixels en fond de carte, plus de mille en tête de leçon), quelques
 kilo-octets, relisible en diff, aucune dépendance ni question de licence. Et
 comme ce sont des ressources d'interface, elles vivent dans `src/assets/` —
 donc hachées par Vite — et **non** dans `backend/media/`, qui n'est servi par
@@ -593,39 +596,42 @@ le navigateur n'affiche alors *rien*, sans le moindre message. C'est arrivé au
 premier fichier de la série.
 
 **Deux emplacements, un seul composant de style** :
-`styles/components/_chapter-illustration.scss`. La classe `chapter-illustration`
-s'ajoute à un bloc qui porte l'URL en variable (`--chapter-illus`) ; sans elle,
-rien n'est dessiné. Les réglages sont exposés en variables
-(`--illus-taille`, `--illus-flou`, `--illus-opacite`, `--illus-depart`,
-`--illus-fin`) car ils diffèrent d'un emplacement à l'autre : la carte du
-tableau de bord est large et basse (85 %, masque 15→70 %), l'en-tête de
-chapitre plus haut et plus large (45 %, masque 45→75 %).
+`styles/components/_lesson-illustration.scss`. La classe `lesson-illustration`
+s'ajoute à un bloc qui porte l'URL en variable (`--lesson-illus`) ; sans elle,
+rien n'est dessiné.
 
-⚠️ **L'en-tête de chapitre n'était utilisable qu'à une condition** : borner la
-mesure de sa description. Elle courait sur toute la largeur du conteneur —
-près de 140 caractères par ligne, bien au-delà du confort de lecture — et
-aucune illustration ne pouvait tenir à droite sans passer sous le texte. Le
-`max-width: 68ch` sert donc deux fins, et c'est la lisibilité qui prime : ne
-pas le retirer pour agrandir l'illustration.
+| Emplacement | Réglages |
+|---|---|
+| Carte « Continuer l'apprentissage » | 85 %, masque 15→70 % (défauts) |
+| En-tête de leçon (`.lesson-header`) | 55 %, masque 40→75 % |
+
+Les réglages passent par des variables (`--illus-taille`, `--illus-flou`,
+`--illus-opacite`, `--illus-depart`, `--illus-fin`) parce qu'ils dépendent des
+proportions du bloc, pas de l'illustration. Trois d'entre eux tiennent
+ensemble et se règlent **à l'œil**, jamais au raisonnement :
+
+- **un dégradé de masquage** efface l'image du côté du texte — c'est ce qui
+  rend l'idée tenable, il n'y a alors aucun contraste à défendre ;
+- **une taille en pourcentage, pas `cover`** : dans un bloc très large et bas,
+  une image 16/9 en `cover` se réduit à une bande centrale démesurément
+  agrandie, où le motif n'est plus reconnaissable ;
+- **un flou de 5 px** : au-delà le motif n'est plus identifiable, en deçà il
+  cesse d'être un fond et concurrence le texte.
+- **opacité réduite en thème sombre** (0,3 contre 0,7) : ces illustrations sont
+  claires, elles éclairciraient le bloc.
 
 Sous 768 px, l'illustration **disparaît** : un bloc étroit n'a pas de tiers
 droit libre, et c'est une décoration — elle n'a rien à défendre.
 
-Côté tableau de bord, l'illustration se pose **dans** la carte « Continuer
-l'apprentissage », jamais derrière le bloc : la carte a son propre aplat, qui
-la masquerait. Trois réglages tiennent ensemble et se règlent à l'œil :
+Une leçon sans illustration n'a simplement pas la classe. ⚠️ Renommer un slug
+de leçon la fait disparaître **en silence** — le repli est volontairement
+discret, rien ne le signalera.
 
-- **un dégradé de masquage** efface l'image du côté du texte — c'est ce qui
-  rend l'idée tenable, il n'y a aucun contraste à défendre ;
-- **`background-size: 85 %`**, pas `cover` : dans une carte très large et
-  basse, une image 16/9 en `cover` se réduit à une bande centrale démesurément
-  agrandie où le motif n'est plus reconnaissable ;
-- **opacité réduite en thème sombre** (0,3 contre 0,7) : ces illustrations sont
-  claires, elles éclairciraient la carte.
-
-Un chapitre sans illustration n'a simplement pas la classe modificatrice.
-⚠️ Renommer un slug de chapitre fait disparaître l'illustration **en
-silence** — le repli est volontairement discret.
+⚠️ **Un `max-width: 68ch` a été posé sur la description d'un chapitre**
+(`.chapter-detail-header__description`) en chemin. Il ne sert plus
+l'illustration — l'en-tête de chapitre n'en porte pas — mais il reste : la
+description courait sur toute la largeur du conteneur, près de 140 caractères
+par ligne, bien au-delà du confort de lecture.
 
 ### Le conseil du jour est calculé, plus écrit en dur
 

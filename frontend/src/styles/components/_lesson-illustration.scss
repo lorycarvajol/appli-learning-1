@@ -1,19 +1,19 @@
 // ==========================================
-// ILLUSTRATION DE CHAPITRE EN FOND DE BLOC
+// ILLUSTRATION DE LEÇON EN FOND DE BLOC
 // ==========================================
 //
-// Pose l'illustration du chapitre derrière le contenu d'un bloc, floutée et
+// Pose l'illustration de la leçon derrière le contenu d'un bloc, floutée et
 // effacée du côté du texte. Utilisée à deux endroits — la carte « Continuer
-// l'apprentissage » du tableau de bord et l'en-tête d'un chapitre — d'où cette
+// l'apprentissage » du tableau de bord et l'en-tête d'une leçon — d'où cette
 // définition partagée plutôt que deux copies qui divergeraient.
 //
 // S'ajoute à la classe du bloc, qui doit porter l'URL :
 //
-//   <div class="learning-card chapter-illustration"
-//        style="--chapter-illus: url(…)">
+//   <div class="learning-card lesson-illustration"
+//        style="--lesson-illus: url(…)">
 //
 // Sans la variable, la règle ne dessine rien : c'est le repli d'un chapitre
-// qui n'a pas encore son illustration.
+// qui n'a pas encore la sienne.
 //
 // Trois réglages se règlent à l'œil et changent d'un emplacement à l'autre :
 // ils sont donc exposés en variables, avec les valeurs du tableau de bord par
@@ -30,7 +30,7 @@
 //                      l'idée tenable — l'image disparaît complètement du côté
 //                      du texte, il n'y a donc aucun contraste à défendre.
 
-.chapter-illustration {
+.lesson-illustration {
   position: relative;
   overflow: hidden;
 
@@ -38,7 +38,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background-image: var(--chapter-illus, none);
+    background-image: var(--lesson-illus, none);
     background-repeat: no-repeat;
     background-position: center right;
     background-size: var(--illus-taille, 85%);
@@ -64,7 +64,7 @@
 }
 
 // Sur fond sombre, la même image éclaircirait le bloc : elle s'efface.
-[data-theme='dark'] .chapter-illustration::before {
+[data-theme='dark'] .lesson-illustration::before {
   opacity: var(--illus-opacite-sombre, 0.3);
 }
 
@@ -72,7 +72,7 @@
 // toute la largeur et l'illustration passerait dessous. Elle disparaît — c'est
 // une décoration, elle n'a rien à défendre.
 @media (max-width: 768px) {
-  .chapter-illustration::before {
+  .lesson-illustration::before {
     display: none;
   }
 }

@@ -294,8 +294,8 @@
   gap: 2rem;
 }
 
-/* L'illustration de chapitre en fond de carte est un composant partagé avec
-   l'en-tête de chapitre : `styles/components/_chapter-illustration.scss`.
+/* L'illustration de leçon en fond de carte est un composant partagé avec
+   l'en-tête de leçon : `styles/components/_lesson-illustration.scss`.
    La carte l'utilise avec les réglages par défaut. */
 
 /* États sans leçon à reprendre : plus sobres que la carte d'invitation */

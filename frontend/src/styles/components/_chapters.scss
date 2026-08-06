@@ -241,15 +241,6 @@
   margin-bottom: $spacing-2xl;
   @include slide-up;
 
-  // Illustration du chapitre (composant partagé avec la carte « Continuer
-  // l'apprentissage » du tableau de bord). L'en-tête est plus large et plus
-  // haut que cette carte : le dessin y tient dans le tiers droit, laissé libre
-  // par la mesure bornée de la description.
-  &.chapter-illustration {
-    --illus-taille: 45%;
-    --illus-depart: 45%;
-    --illus-fin: 75%;
-  }
 
   &__title {
     @include heading-1;
