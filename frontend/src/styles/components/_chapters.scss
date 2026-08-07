@@ -209,10 +209,13 @@
 
 // === PAGE DÉTAILS DU CHAPITRE ===
 
+// ⚠️ Aucun remplissage en haut : le fil d'Ariane est le premier enfant, et un
+// `padding-top` l'aurait décollé de l'en-tête — l'espace vide signalé. Le
+// contenu qui le suit garde son air grâce au `margin-bottom` du fil d'Ariane.
 .chapter-detail-page {
   min-height: 100vh;
   background-color: $bg-light;
-  padding: $spacing-2xl 0;
+  padding: 0 0 $spacing-2xl;
 }
 
 .chapter-detail-container {
@@ -221,10 +224,14 @@
 
 // === BREADCRUMB ===
 
+// Le fil d'Ariane se colle **sous** l'en-tête, pas en haut de la fenêtre.
+// À `top: 0` il glissait derrière lui au défilement ; et à `$z-index-dropdown`
+// il valait autant que l'en-tête, donc lui passait dessus (à égalité, le
+// dernier du document gagne).
 .chapter-breadcrumb {
   position: sticky;
-  top: 0;
-  z-index: $z-index-dropdown;
+  top: var(--header-hauteur, 0);
+  z-index: $z-index-dropdown - 100;
   background-color: $bg-white;
   padding: $spacing-lg 0;
   margin-bottom: $spacing-2xl;

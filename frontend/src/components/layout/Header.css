@@ -1,6 +1,27 @@
+/* Hauteur réelle de l'en-tête, republiée pour les barres collantes des pages
+   (les fils d'Ariane des chapitres et des leçons). Elles étaient posées à
+   `top: 0`, donc **sous** l'en-tête au défilement, alors qu'elles doivent
+   s'arrêter juste en dessous de lui.
+   ⚠️ Valeurs mesurées, pas calculées : la hauteur dépend du bouton
+   utilisateur autant que du remplissage. Les revérifier si l'un des deux
+   change. */
+:root {
+  --header-hauteur: 74px;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --header-hauteur: 69px;
+  }
+}
+
 .header {
   position: sticky;
   top: 0;
+  /* ⚠️ Doit rester **au-dessus** des fils d'Ariane collants, qui étaient à la
+     même valeur (`$z-index-dropdown`, 1000) : à égalité, c'est le dernier
+     dans le document qui l'emporte, donc le fil d'Ariane passait par-dessus
+     l'en-tête. */
   z-index: 1000;
   background-color: var(--surface);
   border-bottom: 1px solid var(--border);

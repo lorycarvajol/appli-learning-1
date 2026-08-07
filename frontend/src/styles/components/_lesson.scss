@@ -7,10 +7,12 @@
 
 // === CONTENEUR PRINCIPAL ===
 
+// Même règle que la page de chapitre : pas de remplissage en haut, sinon le
+// fil d'Ariane se décolle de l'en-tête.
 .lesson-page {
   min-height: 100vh;
   background-color: $bg-light;
-  padding: $spacing-2xl 0;
+  padding: 0 0 $spacing-2xl;
 }
 
 .lesson-container {
@@ -19,10 +21,12 @@
 
 // === BREADCRUMB ===
 
+// Voir `_chapters.scss` : collé sous l'en-tête, et en dessous de lui dans
+// l'ordre d'empilement.
 .lesson-breadcrumb {
   position: sticky;
-  top: 0;
-  z-index: $z-index-dropdown;
+  top: var(--header-hauteur, 0);
+  z-index: $z-index-dropdown - 100;
   background-color: $bg-white;
   padding: $spacing-lg 0;
   margin-bottom: $spacing-2xl;
