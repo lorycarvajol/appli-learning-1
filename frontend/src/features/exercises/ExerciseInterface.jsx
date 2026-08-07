@@ -223,13 +223,6 @@ export default function ExerciseInterface({ exercise, onSubmit }) {
           )}
         </div>
       )}
-
-      {/* Note pour l'utilisateur */}
-      <div className="exercise-note">
-        <strong>💻 Validation automatique :</strong> Votre code est exécuté dans un environnement
-        Docker sécurisé et isolé. Les tests définis pour l’exercice vérifient automatiquement
-        la validité de votre solution.
-      </div>
     </div>
   );
 }

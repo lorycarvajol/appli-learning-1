@@ -412,21 +412,6 @@
   color: var(--danger);
 }
 
-/* Note */
-.exercise-note {
-  padding: 1rem;
-  background-color: var(--theory-soft);
-  border-left: 4px solid var(--theory);
-  border-radius: 8px;
-  color: var(--ink);
-  font-size: 0.875rem;
-  line-height: 1.6;
-}
-
-.exercise-note strong {
-  font-weight: 700;
-}
-
 /* Responsive */
 @media (max-width: 768px) {
   .exercise-interface {
