@@ -1696,9 +1696,13 @@ Il contient l'état détaillé de chaque tâche, la procédure de mise en servic
 les contrôles d'ouverture, et la confrontation de `guide-hebergement-ovh.md` au
 code réel — quatre de ses hypothèses sont fausses pour ce dépôt.
 
-Décision actée : **l'exécution de code est désactivée à l'ouverture**
-(`CODE_EXECUTION_ENABLED=False`), l'hôte étant partagé avec d'autres projets.
-Voir « Le drapeau `CODE_EXECUTION_ENABLED` ».
+Décision **révisée** le 2026-08-04 : l'exécution de code est **activée**
+(`CODE_EXECUTION_ENABLED=True` dans `.env.production.example`). Elle devait
+d'abord rester coupée, l'hôte étant partagé avec d'autres projets ; deux
+barrières l'ont rendue acceptable — un mandataire de socket limité aux routes
+du bac à sable, et un conteneur d'exécution durci. Voir « Le drapeau
+`CODE_EXECUTION_ENABLED` » et « Le bac à sable sur un hôte mutualisé », y
+compris ce que ces barrières **ne** protègent pas.
 
 ### Fonctionnalités jamais commencées
 
@@ -2162,14 +2166,27 @@ n'est pas garanti d'une image à l'autre (`python:slim` est Debian,
 
 ### Le drapeau `CODE_EXECUTION_ENABLED`
 
-Le bac à sable exige que le worker Celery pilote le démon Docker, donc que
-`/var/run/docker.sock` lui soit monté. Sur une machine dédiée le risque reste
-circonscrit ; sur un **hôte mutualisé** (le VPS héberge d'autres projets),
-qui contrôle ce worker contrôle le démon, donc l'hôte, donc *tous* les projets.
+Le bac à sable exige que le worker Celery pilote un démon Docker. Sur une
+machine dédiée le risque reste circonscrit ; sur un **hôte mutualisé** (le VPS
+héberge d'autres projets), qui contrôle ce worker contrôle le démon, donc
+l'hôte, donc *tous* les projets. C'est pour cette raison que le drapeau existe.
 
-`settings.CODE_EXECUTION_ENABLED` (défaut `True`, mis à `False` par
-`docker-compose.prod.yml`) permet d'ouvrir sans cette exposition. Il a **deux**
-effets, et le second est celui qu'on oublie :
+**État actuel : l'exécution est activée.** `settings.CODE_EXECUTION_ENABLED`
+vaut `True` par défaut (`base.py`) et `.env.production.example` le laisse à
+`True`. La compose de production **ne le pose pas** : la valeur vient du `.env`
+du serveur, par `env_file`. Le durcissement décrit dans « Le bac à sable sur un
+hôte mutualisé » — mandataire de socket, conteneur non privilégié — a levé
+l'objection d'origine ; le worker n'a plus la socket Docker.
+
+⚠️ Ce paragraphe a affirmé le contraire pendant un temps (« désactivée à
+l'ouverture, mise à `False` par `docker-compose.prod.yml` »). C'était faux sur
+les deux points, et dangereux : un exploitant déployait en croyant les
+exercices coupés alors qu'ils tournaient. **Avant de décrire ici la valeur d'un
+réglage, la lire dans `base.py` et dans `.env.production.example`.**
+
+Le drapeau reste le moyen de tout couper proprement en cas de doute sur
+l'isolement. Mis à `False`, il a **deux** effets, et le second est celui qu'on
+oublie :
 
 1. `validation.views.submit_exercise_code` renvoie **503** avec un message
    explicite, *avant* toute mise en file — sinon la tâche partirait vers un

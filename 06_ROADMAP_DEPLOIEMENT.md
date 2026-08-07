@@ -290,8 +290,21 @@ la compose le déclare `external: true` et ne cherche donc pas à le recréer.
 | `https://DOMAIN/media/courses/html/section1/html-css-js-comparison.png` | **200**, `image/png` |
 | `https://DOMAIN/admin/` | l'admin Django |
 | `docker ps --format '{{.Names}}\t{{.Ports}}'` | aucun port publié par ce projet |
+| Soumettre un exercice | les tests s'exécutent et le résultat s'affiche |
+| Terminer un exercice puis toutes les leçons du chapitre 1 | le chapitre 2 s'ouvre |
+
+⚠️ **Ces deux derniers contrôles supposent `CODE_EXECUTION_ENABLED=True`**,
+la valeur de `.env.production.example`. Si vous l'avez mis à `False`, les
+attendus s'inversent — et c'est normal :
+
+| Contrôle | Attendu avec le drapeau à `False` |
+|---|---|
 | Soumettre un exercice | **503** avec le message d'indisponibilité, pas une erreur générique |
-| Terminer les leçons de théorie du chapitre 1 | le chapitre 2 s'ouvre malgré les exercices non faits |
+| Terminer les leçons de théorie du chapitre 1 | le chapitre 2 s'ouvre **malgré** les exercices non faits |
+
+C'est le second effet du drapeau : les leçons d'exercice sortent des conditions
+d'ouverture du chapitre suivant, sinon plus aucun apprenant au rythme libre
+n'atteindrait le chapitre 2 (8 exercices sur les 18 leçons du chapitre 1).
 
 ---
 
@@ -330,6 +343,13 @@ construites, contenu amorcé. Tout est validé **avant** d'avoir touché au VPS.
 | Inscription + connexion via Traefik | 201 puis jeton obtenu |
 | Soumission d'exercice | **503** avec le message d'indisponibilité |
 | Chapitre 2 avec 8 exercices non faits | **ouvert** |
+
+⚠️ **Les deux dernières lignes sont un compte rendu, pas un attendu.** La
+répétition a eu lieu avec `CODE_EXECUTION_ENABLED=False`, avant que D1.2b ne
+réactive les exercices : ce qu'elles mesurent, c'est que le drapeau fonctionne
+dans sa position basse. Sur une instance ouverte avec la valeur de
+`.env.production.example` (`True`), l'attendu est l'inverse — voir la liste des
+contrôles d'ouverture.
 
 ⚠️ **Deux pièges d'environnement local**, sans objet sur l'Ubuntu du VPS :
 

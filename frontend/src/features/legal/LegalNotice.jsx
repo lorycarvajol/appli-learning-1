@@ -2,16 +2,22 @@ import LegalLayout, { Todo } from './LegalLayout'
 
 export default function LegalNotice() {
   return (
-    <LegalLayout title="Mentions légales" updated="22 juillet 2026">
+    <LegalLayout title="Mentions légales" updated="7 août 2026">
       <h2>Éditeur du site</h2>
       <p>
-        Le site CodeAcademy est édité par <Todo>raison sociale / nom</Todo>,{' '}
-        <Todo>forme juridique et capital le cas échéant</Todo>, dont le siège
-        est situé <Todo>adresse</Todo>.
+        Le site est édité par <strong>Lory Carvajol</strong>, personne physique,
+        éditant sous le nom <strong>lorycarvajol.dev</strong>, dont l’adresse
+        est <Todo>adresse postale</Todo>.
       </p>
       <ul>
-        <li>Immatriculation (SIRET / RCS) : <Todo>numéro</Todo></li>
-        <li>Numéro de TVA intracommunautaire : <Todo>numéro</Todo></li>
+        <li>
+          Immatriculation (SIRET / RCS) :{' '}
+          <Todo>numéro, une fois l’activité immatriculée</Todo>
+        </li>
+        <li>
+          Numéro de TVA intracommunautaire :{' '}
+          <Todo>numéro, ou mention de franchise en base</Todo>
+        </li>
         <li>
           Contact :{' '}
           <a href="mailto:lorycarvajolwebdev@gmail.com">
@@ -21,12 +27,16 @@ export default function LegalNotice() {
       </ul>
 
       <h2>Directeur de la publication</h2>
-      <p><Todo>nom du directeur de la publication</Todo></p>
+      <p>Lory Carvajol.</p>
 
       <h2>Hébergement</h2>
       <p>
-        Le site est hébergé par <Todo>nom de l’hébergeur</Todo>,{' '}
-        <Todo>adresse de l’hébergeur</Todo>.
+        Le site est hébergé par <strong>OVH SAS</strong>, 2 rue Kellermann,
+        59100 Roubaix, France —{' '}
+        <a href="https://www.ovhcloud.com/" target="_blank" rel="noreferrer noopener">
+          ovhcloud.com
+        </a>. Les données sont stockées dans ses centres de données situés en
+        France.
       </p>
 
       <h2>Propriété intellectuelle</h2>

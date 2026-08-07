@@ -2,7 +2,7 @@ import LegalLayout, { Todo } from './LegalLayout'
 
 export default function PrivacyPolicy() {
   return (
-    <LegalLayout title="Politique de confidentialité" updated="22 juillet 2026">
+    <LegalLayout title="Politique de confidentialité" updated="7 août 2026">
       <p>
         La présente politique décrit comment la plateforme d’apprentissage
         CodeAcademy (ci-après « la plateforme ») collecte et traite les données
@@ -12,15 +12,23 @@ export default function PrivacyPolicy() {
 
       <h2>Responsable du traitement</h2>
       <p>
-        Le responsable du traitement est <Todo>identité de l’organisme</Todo>,
-        joignable à l’adresse{' '}
+        Le responsable du traitement est <strong>Lory Carvajol</strong>,
+        éditant sous le nom <strong>lorycarvajol.dev</strong>, joignable à
+        l’adresse{' '}
         <a href="mailto:lorycarvajolwebdev@gmail.com">
           lorycarvajolwebdev@gmail.com
         </a>.
       </p>
+      {/*
+        Le DPO n'est obligatoire que dans trois cas (autorité publique, suivi
+        systématique à grande échelle, données sensibles à grande échelle) —
+        aucun ne s'applique ici. Le dire est plus utile qu'un champ vide : un
+        lecteur qui ne voit pas de DPO doit savoir à qui s'adresser.
+      */}
       <p>
-        Délégué à la protection des données (DPO), le cas échéant :{' '}
-        <Todo>nom et contact du DPO</Todo>.
+        Aucun délégué à la protection des données n’est désigné : la structure
+        ne relève d’aucun des cas où le RGPD l’impose. Toute demande relative à
+        vos données se fait à l’adresse ci-dessus.
       </p>
 
       <h2>Données que nous collectons</h2>
@@ -138,9 +146,27 @@ export default function PrivacyPolicy() {
 
       <h2>Hébergement et sous-traitants</h2>
       <p>
-        Les données sont hébergées par <Todo>nom et pays de l’hébergeur</Todo>.
-        Les éventuels services tiers utilisés (envoi d’e-mails transactionnels,
-        stockage) sont listés ici : <Todo>liste des sous-traitants</Todo>.
+        Les données sont hébergées par <strong>OVH SAS</strong> (2 rue
+        Kellermann, 59100 Roubaix, France), dans des centres de données situés
+        en <strong>France</strong>. Aucune donnée n’est transférée hors de
+        l’Union européenne.
+      </p>
+      {/*
+        Cette liste est courte, et c'est un choix technique assumé : aucun
+        traceur, aucune police ni image chargée depuis un tiers, les avatars
+        sont générés à la construction et servis par la plateforme. C'est ce
+        qui permet de se passer de bannière de consentement — cf. la section
+        « Cookies et stockage local » plus haut. Ajouter un service tiers
+        oblige à mettre cette liste à jour **et** à réexaminer cette
+        conclusion.
+      */}
+      <p>
+        En dehors de l’hébergeur, la plateforme ne fait appel à{' '}
+        <strong>aucun service tiers</strong> : ni outil de mesure d’audience,
+        ni réseau de diffusion, ni police ou image chargée depuis un autre
+        domaine. Le seul sous-traitant supplémentaire prévu est le{' '}
+        <Todo>prestataire d’envoi d’e-mails, une fois choisi</Todo>, utilisé
+        uniquement pour la réinitialisation de mot de passe.
       </p>
 
       <h2>Sécurité</h2>
