@@ -1,18 +1,44 @@
+<div align="center">
+
 # CodeAcademy
 
 **Une plateforme d'apprentissage du développement web, du premier `<h1>` à la mise en ligne.**
 
-Les apprenants suivent un parcours de quatre chapitres, écrivent du vrai code
-corrigé automatiquement, et progressent à leur rythme ou au tempo de leur
-formateur. Les formateurs suivent leur classe et ouvrent les chapitres.
+[![CI](https://github.com/lorycarvajol/appli-learning-1/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/lorycarvajol/appli-learning-1/actions/workflows/ci.yml)
+[![En ligne](https://img.shields.io/badge/en_ligne-codelearning.lorycarvajol.dev-5b3df0)](https://codelearning.lorycarvajol.dev/login)
+[![Dernier commit](https://img.shields.io/github/last-commit/lorycarvajol/appli-learning-1?label=dernier%20commit&color=5b3df0)](https://github.com/lorycarvajol/appli-learning-1/commits/main)
+
+[![Django](https://img.shields.io/badge/Django-5.2-092E20?logo=django&logoColor=white)](https://www.djangoproject.com/)
+[![DRF](https://img.shields.io/badge/DRF-3.16-A30000?logo=django&logoColor=white)](https://www.django-rest-framework.org/)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)](https://redis.io/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 
 ### 🌐 [codelearning.lorycarvajol.dev](https://codelearning.lorycarvajol.dev/login)
+
+</div>
 
 ![Le tableau de bord d'un apprenant](docs/images/tableau-de-bord.jpg)
 
 ---
 
-## Ce que c'est, en chiffres
+## Sommaire
+
+[Aperçu](#aperçu) · [Le parcours](#le-parcours) · [Ce que chacun peut faire](#ce-que-chacun-peut-faire) ·
+[Décisions techniques](#décisions-techniques) · [La pile](#la-pile) · [Démarrer](#démarrer-en-local) ·
+[Tests](#tests) · [Structure](#structure-du-dépôt) · [Documentation](#documentation)
+
+---
+
+## Aperçu
+
+Les apprenants suivent un parcours de quatre chapitres, écrivent du vrai code
+corrigé automatiquement dans un bac à sable isolé, et progressent à leur
+rythme ou au tempo de leur formateur. Les formateurs suivent leur classe et
+ouvrent les chapitres. Les administrateurs pilotent les comptes, chaque geste
+étant consigné dans un journal que rien ne peut réécrire.
 
 | | |
 |---|---|
@@ -21,18 +47,18 @@ formateur. Les formateurs suivent leur classe et ouvrent les chapitres.
 | **Personnalisation** | 42 visages d'avatar, 7 familles · thème clair et sombre |
 | **Illustrations** | 31 figures de cours · 4 illustrations de leçon |
 | **Application** | 7 apps Django · 13 features React · 20 routes |
-| **Tests** | **332** backend · **146** frontend · 11 bout-en-bout |
+| **Tests** | 332 backend · 146 frontend · 11 bout-en-bout |
 
 ---
 
 ## Le parcours
 
-| # | Chapitre | Contenu |
-|---|---|---|
-| 1 | Introduction au HTML | 18 leçons, 8 exercices, 2 quiz |
-| 2 | Introduction au CSS | 17 leçons, 8 exercices, 1 quiz |
-| 3 | Introduction à JavaScript | 18 leçons, 9 exercices, 1 quiz |
-| 4 | Créer et mettre en ligne un site vitrine | 15 leçons, 1 quiz |
+| # | Chapitre | Leçons | Exercices | Quiz |
+|---|---|:---:|:---:|:---:|
+| 1 | Introduction au HTML | 18 | 8 | 2 |
+| 2 | Introduction au CSS | 17 | 8 | 1 |
+| 3 | Introduction à JavaScript | 18 | 9 | 1 |
+| 4 | Créer et mettre en ligne un site vitrine | 15 | — | 1 |
 
 Le contenu pédagogique **ne vit pas en base de données** : il vit dans le code,
 sous `backend/apps/courses/content/`. La base n'en est qu'une projection,
@@ -53,15 +79,15 @@ toutes ses données, ou supprimer son compte, sans passer par personne.
 
 ![Un exercice corrigé automatiquement](docs/images/exercice.jpg)
 
-Le code part dans un conteneur jetable, sans réseau ; chaque critère est
-vérifié séparément et le retour dit **quoi corriger**, pas seulement que
-c'est faux.
+> Le code part dans un conteneur jetable, sans réseau. Chaque critère est
+> vérifié séparément et le retour dit **quoi corriger**, pas seulement que
+> c'est faux.
 
 ![Les trophées, dont dix secrets](docs/images/trophees.jpg)
 
-Les objectifs visibles balisent le parcours avec leur barre de progression.
-Les secrets ne montrent qu'une énigme — et le masquage se fait **côté
-serveur** : impossible de les découvrir en inspectant les requêtes réseau.
+> Les objectifs visibles balisent le parcours avec leur barre de progression.
+> Les secrets ne montrent qu'une énigme — et le masquage se fait **côté
+> serveur** : impossible de les découvrir en inspectant les requêtes réseau.
 
 ### 👩‍🏫 Formateur
 
@@ -79,34 +105,39 @@ Le CRUD de contenu reste dans l'admin Django, qui le fait mieux.
 
 ---
 
-## Décisions techniques qui méritent le détour
+## Décisions techniques
 
 Le projet documente ses choix plutôt que ses fonctionnalités. Quelques-uns
 valent d'être lus :
 
-- **Rien ne peut être récompensé deux fois.** Ce n'est pas garanti par du code
-  prudent mais par trois mécanismes cumulés : des contraintes d'unicité en
-  base, des règles monotones, et un grand livre de points où le solde est
-  toujours égal à la somme des transactions. `sync_gamification` peut donc
-  être relancé n'importe quand.
+<table>
+<tr><td width="34%"><b>Rien n'est récompensé deux fois</b></td>
+<td>Garanti non par du code prudent mais par trois mécanismes cumulés : des
+contraintes d'unicité en base, des règles monotones, et un grand livre où le
+solde égale toujours la somme des transactions. La réconciliation peut donc
+être relancée n'importe quand.</td></tr>
 
-- **Le bac à sable est la seule frontière.** La liste noire de motifs a été
-  retirée : elle refusait du code d'apprenant légitime (`evaluer` déclenchait
-  sur `eval`) sans arrêter le moindre contournement. Le conteneur, lui, est
-  sans réseau, non privilégié, sans capacité, en lecture seule, et le worker
-  ne voit le démon Docker qu'à travers un mandataire qui n'ouvre que les
-  routes du bac à sable.
+<tr><td><b>Le conteneur est la seule frontière</b></td>
+<td>La liste noire de motifs a été retirée : elle refusait du code légitime
+(<code>evaluer</code> déclenchait sur <code>eval</code>) sans arrêter le
+moindre contournement. Le conteneur, lui, est sans réseau, non privilégié,
+sans capacité, en lecture seule — et le worker ne voit le démon Docker qu'à
+travers un mandataire limité aux routes du bac à sable.</td></tr>
 
-- **Aucun traceur, donc aucune bannière de consentement.** Les avatars sont
-  pré-générés à la construction, les polices et les images sont servies par
-  la plateforme. C'est ce qui rend la politique de confidentialité tenable.
+<tr><td><b>Aucun traceur, donc aucune bannière</b></td>
+<td>Avatars pré-générés à la construction, polices et images servies par la
+plateforme. Aucune requête ne part chez un tiers — c'est ce qui rend la
+politique de confidentialité tenable.</td></tr>
 
-- **Anonymisation, jamais suppression en cascade.** Effacer un compte
-  fausserait rétroactivement les statistiques de sa classe. L'identité part,
-  la progression reste, rattachée à un compte qui ne désigne plus personne.
+<tr><td><b>Anonymisation, jamais suppression</b></td>
+<td>Effacer un compte fausserait rétroactivement les statistiques de sa
+classe. L'identité part, la progression reste, rattachée à un compte qui ne
+désigne plus personne.</td></tr>
 
-- **On ne reverrouille jamais un chapitre.** Un accès obtenu le reste, qu'on
-  rejoigne une classe ensuite ou qu'on la quitte.
+<tr><td><b>On ne reverrouille jamais</b></td>
+<td>Un chapitre ouvert le reste, qu'on rejoigne une classe ensuite ou qu'on la
+quitte.</td></tr>
+</table>
 
 Le raisonnement complet — y compris les erreurs commises et ce qu'elles ont
 coûté — est dans [`CLAUDE.md`](./CLAUDE.md).
@@ -138,13 +169,17 @@ docker compose exec backend python manage.py create_demo_users     # comptes de 
 Puis [localhost:5173](http://localhost:5173) et
 [localhost:8000/admin](http://localhost:8000/admin/).
 
+> [!NOTE]
 > **Tout passe par Docker.** Seul `npm` s'utilise en local, côté front — le
 > conteneur est en Node 18, la CI et les tests en Node 22.
 
-> ⚠️ `create_demo_users` **refuse de s'exécuter en production** : ses mots de
+> [!WARNING]
+> `create_demo_users` **refuse de s'exécuter en production** : ses mots de
 > passe sont écrits dans le dépôt.
 
-### Les tests
+---
+
+## Tests
 
 ```bash
 docker compose exec backend pytest          # 332 tests
@@ -157,9 +192,13 @@ cd frontend && npm run e2e                  # 11 tests Playwright (pile requise)
 Les tests sont **validés par sabotage** : on casse volontairement le code pour
 vérifier que le test rougit. Un test vert sur du code cassé ne protège rien.
 
+La CI ([`ci.yml`](.github/workflows/ci.yml)) joue à chaque *pull request* et
+sur `main` : migrations manquantes, migrations sur base vierge, contrôles
+Django, pytest — puis ESLint (`--max-warnings 0`), Vitest et le *build*.
+
 ---
 
-## Structure
+## Structure du dépôt
 
 ```
 backend/
@@ -171,6 +210,7 @@ frontend/
                  gamification · legal · profile · progression · quizzes · trainer
   src/styles/    design system SCSS
 scripts/         sauvegarde et restauration PostgreSQL
+docker-compose.prod.yml
 ```
 
 ---
@@ -211,4 +251,8 @@ Visages d'avatar issus de [DiceBear](https://www.dicebear.com/) :
 Ils sont générés à la construction et servis par la plateforme — aucune
 requête vers un tiers.
 
-Édité par **Lory Carvajol** (`lorycarvajol.dev`).
+<div align="center">
+
+Édité par **Lory Carvajol** · `lorycarvajol.dev`
+
+</div>
