@@ -497,7 +497,7 @@ pensé à cliquer.
 
 | Type de leçon | Condition de validation |
 |---|---|
-| **THEORY** | Le bas du contenu reste visible 3 secondes (`useScrollCompletion`) |
+| **THEORY** | Le bas du contenu reste visible 2 secondes (`useScrollCompletion`) |
 | **EXERCISE** | Tous les tests passent (déjà le cas — `onSubmit` d'`ExerciseInterface`) |
 | **QUIZ** | Score requis atteint (déjà le cas — `submit_quiz`, côté serveur) |
 
@@ -516,7 +516,7 @@ pensé à cliquer.
   posée, sans écouteur `scroll` global à amortir, et suit les changements de
   mise en page — les illustrations qui finissent de charger rallongent la page
   après coup.
-- **Le délai de 3 secondes n'est pas cosmétique.** Une leçon courte tient
+- **Le délai de 2 secondes n'est pas cosmétique.** Une leçon courte tient
   entièrement à l'écran : son repère est visible dès l'ouverture, et valider
   aussitôt marquerait la leçon terminée avant qu'elle soit lue. Quitter le bas
   avant la fin du délai annule le compte à rebours.
@@ -667,8 +667,11 @@ ensemble et se règlent **à l'œil**, jamais au raisonnement :
 - **une taille en pourcentage, pas `cover`** : dans un bloc très large et bas,
   une image 16/9 en `cover` se réduit à une bande centrale démesurément
   agrandie, où le motif n'est plus reconnaissable ;
-- **un flou de 5 px** : au-delà le motif n'est plus identifiable, en deçà il
-  cesse d'être un fond et concurrence le texte.
+- **un flou de 3 px** : au-delà de 5 px le motif n'est plus identifiable du
+  tout. Réglé à 3 px après comparaison à l'écran — à 5 px le dessin se
+  devinait à peine. C'est le **dégradé de masquage** qui protège la
+  lisibilité du texte, pas le flou : l'image disparaît complètement du côté
+  où l'on lit.
 - **opacité réduite en thème sombre** (0,3 contre 0,7) : ces illustrations sont
   claires, elles éclairciraient le bloc.
 
@@ -2576,7 +2579,7 @@ dans ce document**, pas la couverture de ligne :
 | `features/auth/PrivateRoute.test.jsx` | La garde attend `initialized` avant de trancher sur le rôle (sinon un formateur est éjecté à chaque rafraîchissement) |
 | `features/gamification/gamificationSlice.test.js` | Une célébration ne rejoue jamais, même si `unseen_badges` et `newly_earned` mentionnent le même badge |
 | `features/progression/useTimeTracker.test.jsx` | Onglet caché ou inactif depuis 90 s ⇒ aucun temps crédité (le compteur alimente des badges) |
-| `features/progression/useScrollCompletion.test.jsx` | Le bas doit rester visible 3 s ; quitter avant annule ; une seule validation par montage |
+| `features/progression/useScrollCompletion.test.jsx` | Le bas doit rester visible `DWELL_MS` ; quitter avant annule ; une seule validation par montage |
 | `features/chapters/LessonView.test.jsx` | Le repère de fin n'existe que sur la théorie — jamais sur un exercice ni un quiz |
 | `constants/activity.test.js` | La table des types d'activité couvre tous ceux du backend ; aucune clé technique n'atteint l'écran |
 | `features/administration/AdminSpace.test.jsx` | L'anonymisation exige une confirmation ; le journal affiche l'identité **figée**, pas l'identité courante |

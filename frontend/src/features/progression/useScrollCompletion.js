@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-/** Durée pendant laquelle le bas doit rester visible avant de valider. */
-export const DWELL_MS = 3000;
+/**
+ * Durée pendant laquelle le bas doit rester visible avant de valider.
+ *
+ * Ramenée de 3 s à 2 s : trois secondes se sentaient sur une leçon courte,
+ * où le repère est visible dès l'ouverture et où l'on attendait donc sans
+ * rien faire. Deux secondes restent assez longues pour qu'un simple passage
+ * en défilement rapide ne valide rien.
+ *
+ * ⚠️ Les tests s'y réfèrent par ce symbole, jamais par une valeur littérale :
+ * changer le délai ne doit pas les faire rougir.
+ */
+export const DWELL_MS = 2000;
 
 /**
  * Valide une leçon quand l'apprenant atteint le bas du contenu.
