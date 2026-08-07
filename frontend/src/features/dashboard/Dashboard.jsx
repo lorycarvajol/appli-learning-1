@@ -78,22 +78,7 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard">
-      {/* Hero Section */}
-      <section className="dashboard__hero">
-        <div className="dashboard__hero-content">
-          <h1 className="dashboard__hero-title">
-            Bonjour {user?.first_name || 'Apprenant'} ! 👋
-          </h1>
-          <p className="dashboard__hero-subtitle">
-            Prêt à continuer votre apprentissage aujourd’hui ?
-          </p>
-        </div>
-        <div className="dashboard__hero-illustration" aria-hidden="true">
-          <div className="dashboard__hero-circle dashboard__hero-circle--1"></div>
-          <div className="dashboard__hero-circle dashboard__hero-circle--2"></div>
-          <div className="dashboard__hero-circle dashboard__hero-circle--3"></div>
-        </div>
-      </section>
+      <DashboardHero user={user} summary={summary} nextLesson={nextLesson} />
 
       <div className="dashboard__container">
         {/* Stats Cards */}
@@ -432,8 +417,17 @@ export default function Dashboard() {
                   parole — le bloc dit une phrase là où ses voisins alignent
                   des chiffres. Décoratif, donc masqué aux lecteurs d'écran.
                 */}
-                <span className="dashboard__tip-mark" aria-hidden="true">“</span>
-                <p className="dashboard__tip-text">{tip.texte}</p>
+                {/*
+                  Le guillemet et la citation sont **solidaires**, dans un même
+                  bloc. Posé sur le corps de carte, il restait accroché en haut
+                  pendant que le texte se centrait dans la hauteur disponible :
+                  les trois blocs de la rangée s'alignent sur le plus haut, et
+                  l'écart se voyait dès que le conseil était court.
+                */}
+                <div className="dashboard__tip-quote">
+                  <span className="dashboard__tip-mark" aria-hidden="true">“</span>
+                  <p className="dashboard__tip-text">{tip.texte}</p>
+                </div>
                 {tip.lien && (
                   <Link to={tip.lien.to} className="dashboard__tip-link">
                     {tip.lien.label}
@@ -446,5 +440,211 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Le fond du bandeau : trois fichiers ouverts, comme dans un éditeur.
+ *
+ * C'est le **signe** de cette plateforme. Un tableau de bord de plateforme
+ * d'apprentissage du code n'a aucune raison d'ouvrir sur des cercles flottants
+ * translucides — on en trouve sur n'importe quel produit. Ces trois fichiers,
+ * eux, ne veulent dire quelque chose qu'ici : ce sont **les trois premiers
+ * chapitres du parcours** (HTML, CSS, JavaScript), et le code qu'on y lit est
+ * celui que l'apprenant écrit vraiment dans les premières leçons — la page
+ * squelette, une règle de style, un écouteur de clic.
+ *
+ * ⚠️ Décoratif, et il doit le rester : `aria-hidden` sur le bloc entier. Un
+ * lecteur d'écran qui énoncerait trente lignes de balisage avant d'atteindre
+ * « Bonsoir » rendrait la page inutilisable.
+ */
+/*
+  Ordre volontaire : **du chapitre 3 au chapitre 1, de gauche à droite.** Le
+  dégradé de masquage efface la gauche — la colonne la plus lointaine est donc
+  la plus effacée. En plaçant `index.html` à droite, c'est le point de départ
+  du parcours qui se lit le plus nettement, et la suite qui se perd dans le
+  fond. L'inverse aurait mis le plus avancé en avant, sur un écran que
+  regardent surtout des débutants.
+*/
+const FICHIERS = [
+  {
+    nom: 'script.js',
+    lignes: [
+      'const bouton =',
+      '  document.querySelector("#go");',
+      '',
+      'bouton.addEventListener("click", () => {',
+      '  const titre =',
+      '    document.querySelector("h1");',
+      '  titre.textContent = "Ça marche !";',
+      '});',
+    ],
+  },
+  {
+    nom: 'style.css',
+    lignes: [
+      'body {',
+      '  font-family: system-ui;',
+      '  background: #f6f5fb;',
+      '  color: #17132a;',
+      '}',
+      '',
+      'h1 {',
+      '  font-size: 2rem;',
+      '  color: #5b3df0;',
+      '}',
+      '',
+      'button:hover {',
+      '  cursor: pointer;',
+      '}',
+    ],
+  },
+  {
+    nom: 'index.html',
+    lignes: [
+      '<!DOCTYPE html>',
+      '<html lang="fr">',
+      '  <head>',
+      '    <meta charset="UTF-8">',
+      '    <title>Ma première page</title>',
+      '    <link rel="stylesheet" href="style.css">',
+      '  </head>',
+      '  <body>',
+      '    <h1>Bonjour le monde</h1>',
+      '    <p>Ma première page web.</p>',
+      '    <button id="go">Cliquez ici</button>',
+      '  </body>',
+      '</html>',
+    ],
+  },
+];
+
+/**
+ * Découpe une ligne pour lui donner du relief : noms de balises et mots-clés
+ * d'un côté, valeurs entre guillemets de l'autre, le reste au milieu.
+ *
+ * ⚠️ Ce n'est **pas** une coloration syntaxique, et il ne faut pas la faire
+ * grandir vers ça — le fond est illisible par construction. Trois niveaux de
+ * blanc suffisent à ce que l'œil reconnaisse « du code » plutôt qu'« un pavé
+ * de texte » ; une vraie palette de couleurs, elle, deviendrait du bruit
+ * derrière le titre.
+ */
+const MOTIF = /("[^"]*")|(<\/?[a-zA-Z][a-zA-Z0-9-]*)|(\b(?:const|document|addEventListener|querySelector)\b)/g;
+
+function segmenter(ligne) {
+  const segments = [];
+  let curseur = 0;
+  for (const found of ligne.matchAll(MOTIF)) {
+    if (found.index > curseur) {
+      segments.push({ ton: 'neutre', texte: ligne.slice(curseur, found.index) });
+    }
+    segments.push({ ton: found[1] ? 'valeur' : 'cle', texte: found[0] });
+    curseur = found.index + found[0].length;
+  }
+  if (curseur < ligne.length) {
+    segments.push({ ton: 'neutre', texte: ligne.slice(curseur) });
+  }
+  return segments;
+}
+
+/** « Bonsoir » à partir de 18 h, « Bonjour » le reste du temps. */
+function salutation(maintenant = new Date()) {
+  return maintenant.getHours() >= 18 ? 'Bonsoir' : 'Bonjour';
+}
+
+/**
+ * Où en est la personne dans **l'arc du parcours** — le chapitre, pas la leçon.
+ *
+ * ⚠️ Volontairement à une autre altitude que la carte « Continuer
+ * l'apprentissage » juste en dessous : celle-ci dit quoi faire maintenant (une
+ * leçon, un bouton), le bandeau dit où l'on se trouve. Répéter le titre de la
+ * leçon ici ferait doublon.
+ *
+ * Les trois absences de `next_lesson` ne s'écrivent pas pareil : parcours
+ * terminé, en attente du formateur, ou rien de publié. Les confondre
+ * annoncerait « bravo, c'est fini » à qui n'a vu qu'un chapitre sur quatre.
+ */
+function orientation(nextLesson) {
+  if (!nextLesson) return 'Votre parcours vous attend.';
+  if (nextLesson.all_completed) return 'Vous avez terminé le parcours. Chapeau.';
+  if (nextLesson.locked) {
+    return 'Vous avez fini tout ce qui est ouvert — la suite viendra de votre formateur.';
+  }
+
+  const chapitre = nextLesson.chapter?.title;
+  const avancee = nextLesson.chapter_progress;
+  if (!chapitre) return 'Votre parcours vous attend.';
+
+  const situation = avancee
+    ? `${chapitre}, leçon ${avancee.position} sur ${avancee.total}`
+    : chapitre;
+
+  return nextLesson.is_resuming
+    ? `Vous reprenez ${situation}.`
+    : `Vous en êtes à ${situation}.`;
+}
+
+/**
+ * Bandeau d'accueil du tableau de bord.
+ *
+ * Sans aucun chiffre de progression : points, leçons, temps, score et trophées
+ * occupent les cinq cartes juste en dessous. La série de jours, elle, n'est
+ * affichée nulle part ailleurs sur cet écran — c'est la seule donnée que le
+ * bandeau porte, et seulement quand elle vaut la peine d'être signalée.
+ */
+function DashboardHero({ user, summary, nextLesson }) {
+  const serie = summary?.streak?.current_streak ?? 0;
+  const jour = new Date().toLocaleDateString('fr-FR', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  });
+
+  return (
+    <section className="dashboard__hero">
+      <div className="dashboard__hero-inner">
+        <div className="dashboard__hero-content">
+          <p className="dashboard__hero-eyebrow">
+            <span className="dashboard__hero-date">{jour}</span>
+            {/* Une série d'un seul jour ne se fête pas : on ne l'annonce
+                qu'à partir du moment où elle est tenue. */}
+            {serie >= 2 && (
+              <span className="dashboard__hero-streak">{serie} jours d’affilée</span>
+            )}
+          </p>
+
+          <h1 className="dashboard__hero-title">
+            {salutation()},{' '}
+            <span className="dashboard__hero-name">
+              {user?.first_name || 'vous'}
+            </span>
+          </h1>
+
+          <p className="dashboard__hero-subtitle">{orientation(nextLesson)}</p>
+        </div>
+
+        <div className="dashboard__hero-listing" aria-hidden="true">
+          {FICHIERS.map((fichier) => (
+            <div className="dashboard__hero-file" key={fichier.nom}>
+              {/* L'onglet nomme le fichier : c'est lui qui fait lire
+                  « éditeur » plutôt que « bloc de texte », et il annonce les
+                  trois premiers chapitres du parcours. */}
+              <span className="dashboard__hero-tab">{fichier.nom}</span>
+              {fichier.lignes.map((ligne, index) => (
+                <span className="dashboard__hero-line" key={`${fichier.nom}-${index}`}>
+                  <span className="dashboard__hero-gutter">{index + 1}</span>
+                  {segmenter(ligne).map((segment, rang) => (
+                    <span
+                      className={`dashboard__hero-tk dashboard__hero-tk--${segment.ton}`}
+                      key={rang}
+                    >
+                      {segment.texte}
+                    </span>
+                  ))}
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }

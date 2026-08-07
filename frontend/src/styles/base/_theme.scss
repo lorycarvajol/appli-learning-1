@@ -3,6 +3,21 @@
 // Pilotées par [data-theme] sur <html> (voir index.html + useTheme hook)
 // ==========================================
 
+@use 'variables';
+
+// Les familles de police sont des variables **Sass**, donc inaccessibles aux
+// feuilles de feature écrites en CSS simple (`features/*/X.css`). On les
+// republie ici en propriétés personnalisées, une seule fois et depuis la même
+// source : recopier une pile de polices dans un fichier de feature, c'est
+// s'assurer qu'elle divergera.
+//
+// Hors des blocs de thème : une police ne change pas avec le thème.
+:root {
+  --font-base: #{variables.$font-family-base};
+  --font-heading: #{variables.$font-family-heading};
+  --font-mono: #{variables.$font-family-mono};
+}
+
 :root,
 [data-theme='light'] {
   // Marque
@@ -34,6 +49,23 @@
   --ink-faint: #8d87a3;
   --border: #e3e0f0;
   --border-strong: #8d87a3;
+
+  // Bandeau de marque (en-tête pleine largeur portant du texte blanc).
+  //
+  // ⚠️ Ces deux teintes doivent rester **sombres dans les deux thèmes** : le
+  // texte posé dessus est blanc, il ne suit pas `--ink`. C'est précisément le
+  // piège dont elles sont nées — le bandeau du profil était dégradé de
+  // `var(--ink)` vers `var(--brand-strong)`, deux tokens qui **s'éclaircissent**
+  // en thème sombre. Le titre blanc s'y retrouvait à 1,2:1 de contraste,
+  // c'est-à-dire invisible.
+  --banner-from: #17132a;
+  --banner-to: #4527d6;
+
+  // Encre posée **sur un aplat de marque** (boutons pleins, onglet actif,
+  // pastille sélectionnée). Séparée de `#fff` parce que `--brand` change de
+  // clarté avec le thème : blanc ici, sombre en thème sombre. Voir la note du
+  // bloc sombre.
+  --brand-ink: #ffffff;
 
   // Types de leçon
   --theory: #2563eb;
@@ -85,6 +117,24 @@
   --ink-faint: #756e92;
   --border: #322a55;
   --border-strong: #6a5da0;
+
+  // Bandeau de marque : plus sombre qu'en thème clair, pas plus clair. Le
+  // blanc y garde 15:1 au départ et 7,6:1 à l'arrivée du dégradé.
+  --banner-from: #1e1838;
+  --banner-to: #4a2ee0;
+
+  // ⚠️ **Encre sombre sur aplat de marque, et non blanche.** En thème sombre
+  // `--brand` et `--brand-strong` sont volontairement *clairs* : ils servent
+  // aussi de couleur de texte et de lien sur les surfaces sombres. Du blanc
+  // posé dessus tombait à 3,7:1 puis 2,6:1 — sous le seuil AA.
+  //
+  // Assombrir l'aplat plutôt que l'encre n'était pas une option : un bouton à
+  // 0,08 de luminance sur une surface à 0,01 ne se détache plus de son fond
+  // (2,1:1, sous les 3:1 exigés d'une limite de composant). C'est donc l'encre
+  // qui s'inverse — aplat clair, texte sombre, comme le fait tout thème sombre
+  // moderne. Contraste obtenu : 5,0:1 sur `--brand`, 7,1:1 sur
+  // `--brand-strong`.
+  --brand-ink: #140f26;
 
   --theory: #7fa2ff;
   --theory-soft: #1c2748;

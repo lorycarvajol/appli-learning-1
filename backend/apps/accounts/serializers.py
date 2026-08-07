@@ -23,15 +23,26 @@ EDITABLE_PROFILE_FIELDS = (
 class ProfileSerializer(serializers.ModelSerializer):
     """Serializer for user profile."""
 
+    #: Nom de la classe, en lecture seule. L'en-tête du profil l'affichait déjà
+    #: (`user.profile.cohort_name`) mais il n'était pas sérialisé : la ligne
+    #: était morte, aucun apprenant n'a jamais vu sa classe sur cette page.
+    #:
+    #: ⚠️ En lecture seule et **sans** `cohort` en écriture : le rattachement à
+    #: une classe passe par une invitation ou par un admin
+    #: (`assign_cohort`, audité), jamais par un formulaire de profil.
+    cohort_name = serializers.CharField(
+        source='cohort.name', read_only=True, default=None,
+    )
+
     class Meta:
         model = Profile
         fields = [
             'bio', 'avatar_key', 'theme', 'total_points', 'level',
             'timezone', 'github_username', 'show_in_leaderboard',
-            'created_at', 'updated_at'
+            'cohort_name', 'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'total_points', 'level', 'created_at', 'updated_at'
+            'total_points', 'level', 'cohort_name', 'created_at', 'updated_at'
         ]
 
     def validate_avatar_key(self, value):

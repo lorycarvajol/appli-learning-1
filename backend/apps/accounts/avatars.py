@@ -23,38 +23,79 @@ cultures — qu'une poignée de dessins ne peut pas rendre justement.
 
 Ce choix a été levé au profit de visages illustrés, ce qui répond mieux à
 l'attente d'un avatar de profil. L'objection d'origine tient toujours, mais
-elle est désormais traitée par le volume : le rendu s'appuie sur **Notionists**
-(via DiceBear), dont chaque graine combine coiffure, traits, teint et
-accessoires. Le choix reste à l'apprenant, dans une liste que personne d'autre
-ne peut alimenter.
+elle est désormais traitée par le volume : le rendu s'appuie sur **sept
+familles DiceBear** de six visages chacune, dont chaque graine combine
+coiffure, traits, teint et accessoires. Le choix reste à l'apprenant, dans une
+liste que personne d'autre ne peut alimenter.
 
-⚠️ Les visages sont générés **hors ligne, dans le navigateur**, par le paquet
-npm `@dicebear/collection` — **jamais** par l'API HTTP de DiceBear. Appeler un
-service tiers enverrait l'adresse IP de chaque apprenant à chaque affichage de
-page, ce qui ferait tomber la raison même pour laquelle l'application n'a pas
-de bannière de consentement (aucun traceur tiers, cf. la section RGPD de
-`CLAUDE.md`). Ne pas « simplifier » en passant par une URL distante.
+⚠️ Les visages sont **pré-générés à la construction** par le paquet npm
+`@dicebear/collection`, puis versionnés en SVG — **jamais** servis par l'API
+HTTP de DiceBear. Appeler un service tiers enverrait l'adresse IP de chaque
+apprenant à chaque affichage de page, ce qui ferait tomber la raison même pour
+laquelle l'application n'a pas de bannière de consentement (aucun traceur
+tiers, cf. la section RGPD de `CLAUDE.md`). Ne pas « simplifier » en passant
+par une URL distante.
 
-Licence du style : **CC0 1.0** (Notionists, par Zoish) — domaine public, aucune
-obligation d'attribution. Si un jour un autre style est retenu, vérifier sa
-licence dans `collection[style].meta.license` : plusieurs styles de la même
-bibliothèque sont en CC BY 4.0 et imposeraient une mention.
+### Licences — la seule contrainte juridique du catalogue
+
+Notionists est en **CC0 1.0** (domaine public, rien à faire). Les six familles
+ajoutées ensuite ne le sont pas :
+
+- **CC BY 4.0** — Adventurer et Adventurer Neutral (Lisa Wischofsky),
+  Big Smile (Ashley Seo), ToonHead (Johan Melin). L'attribution est
+  **obligatoire** : elle est portée sous chaque famille du sélecteur d'avatar
+  et dans les mentions légales (`frontend/src/features/legal/LegalNotice.jsx`).
+- **« Free for personal and commercial use »** — Avataaars et Bottts
+  (Pablo Stanley). Rien n'est exigé ; on crédite pareil.
+
+⚠️ Avant d'ajouter ou de changer une famille, vérifier
+`collection[style].meta.license`. Le script `frontend/scripts/generate-avatars.mjs`
+confronte automatiquement les crédits affichés à ces métadonnées et **échoue**
+en cas d'écart : une attribution fausse est pire qu'une attribution absente.
 
 ### La forme de la clé
 
 `<visage>-<palette>`, par exemple `nova-violet`. Deux petites listes valent
-mieux qu'une énumération de trente-six combinaisons : ajouter une palette
-enrichit tous les visages à la fois.
+mieux qu'une énumération de deux cent cinquante-deux combinaisons : ajouter une
+palette enrichit tous les visages à la fois.
+
+⚠️ Un identifiant de visage **ne peut pas contenir de tiret** : le client
+découpe la clé sur ce caractère. D'où `adventurerneutral1` plutôt que
+`adventurer-neutral-1`.
 
 ⚠️ Les deux listes sont **dupliquées côté client** dans
-`frontend/src/features/profile/avatars.js`, qui fait le rendu. Ajouter un
-visage ici sans l'ajouter là produit un avatar vide. Un test verrouille le
-format des clés, pas cette correspondance — elle relève de la relecture.
+`frontend/src/features/profile/avatarCatalog.js`, qui porte en plus les
+graines, les réglages de cadrage et les crédits. Ajouter un visage ici sans
+l'ajouter là produit un avatar vide. Un test verrouille le format des clés, pas
+cette correspondance — elle relève de la relecture.
 """
 
-#: Graines DiceBear. La valeur *est* la graine : la changer change le visage
-#: rendu chez tous ceux qui l'avaient choisi. Ne pas renommer à la légère.
-VISAGES = ('nova', 'atlas', 'vega', 'orion', 'lyra', 'sol')
+#: Graines DiceBear, groupées par famille dans l'ordre du sélecteur. La valeur
+#: *est* la graine **et** ce qui est stocké en base : la changer change le
+#: visage rendu chez tous ceux qui l'avaient choisi, et invalide leur clé
+#: enregistrée. Ajouter, oui ; renommer, jamais.
+VISAGES = (
+    # Notionists — Zoish, CC0 1.0
+    'nova', 'atlas', 'vega', 'orion', 'lyra', 'sol',
+    # Adventurer — Lisa Wischofsky, CC BY 4.0
+    'adventurer1', 'adventurer2', 'adventurer3',
+    'adventurer4', 'adventurer5', 'adventurer6',
+    # Adventurer Neutral — Lisa Wischofsky, CC BY 4.0
+    'adventurerneutral1', 'adventurerneutral2', 'adventurerneutral3',
+    'adventurerneutral4', 'adventurerneutral5', 'adventurerneutral6',
+    # Avataaars — Pablo Stanley, free for personal and commercial use
+    'avataaars1', 'avataaars2', 'avataaars3',
+    'avataaars4', 'avataaars5', 'avataaars6',
+    # Big Smile — Ashley Seo, CC BY 4.0
+    'bigsmile1', 'bigsmile2', 'bigsmile3',
+    'bigsmile4', 'bigsmile5', 'bigsmile6',
+    # Bottts — Pablo Stanley, free for personal and commercial use
+    'bottts1', 'bottts2', 'bottts3',
+    'bottts4', 'bottts5', 'bottts6',
+    # ToonHead — Johan Melin, CC BY 4.0
+    'toonhead1', 'toonhead2', 'toonhead3',
+    'toonhead4', 'toonhead5', 'toonhead6',
+)
 
 PALETTES = ('violet', 'amber', 'teal', 'rose', 'indigo', 'lime')
 

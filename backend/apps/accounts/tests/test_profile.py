@@ -60,7 +60,15 @@ def test_le_catalogue_davatars_est_expose(learner):
     assert 'nova' in response.data['visages']
     assert 'violet' in response.data['palettes']
     assert 'nova-violet' in response.data['keys']
-    assert len(response.data['keys']) == 36
+
+    # Sept familles de six visages, six palettes.
+    assert len(response.data['visages']) == 42
+    assert len(response.data['keys']) == 42 * 6
+
+    # Un visage dont l'identifiant porterait un tiret casserait le découpage de
+    # la clé côté client : la clé serait tronquée, donc refusée, et l'apprenant
+    # verrait son choix revenir aux initiales sans explication.
+    assert all('-' not in visage for visage in response.data['visages'])
 
 
 def test_lavatar_vide_est_accepte(learner):
@@ -114,6 +122,43 @@ def test_le_profil_ne_permet_pas_de_se_crediter_des_points(learner):
     assert learner.profile.total_points == 10
     assert learner.profile.level == 1
     assert learner.profile.bio == 'coucou'
+
+
+def test_le_profil_expose_le_nom_de_la_classe(learner):
+    """L'en-tête du profil l'affiche : sans ce champ, la ligne reste morte.
+
+    Elle l'a été longtemps — le composant lisait `profile.cohort_name`, que le
+    sérialiseur ne produisait pas.
+    """
+    learner.profile.cohort = Cohort.objects.create(name='Promo 2026')
+    learner.profile.save(update_fields=['cohort'])
+
+    response = client_for(learner).get('/api/auth/me/')
+
+    assert response.status_code == 200
+    assert response.data['profile']['cohort_name'] == 'Promo 2026'
+
+
+def test_le_nom_de_classe_vaut_none_sans_classe(learner):
+    """Un apprenant autonome n'a pas de classe : le champ doit valoir `None`,
+    pas faire échouer la sérialisation."""
+    response = client_for(learner).get('/api/auth/me/')
+
+    assert response.status_code == 200
+    assert response.data['profile']['cohort_name'] is None
+
+
+def test_le_nom_de_classe_reste_en_lecture_seule(learner):
+    """L'exposer ne doit pas offrir une deuxième voie pour changer de classe."""
+    cohort = Cohort.objects.create(name='Promo fermée')
+
+    response = client_for(learner).patch('/api/auth/me/', {
+        'profile': {'cohort_name': cohort.name},
+    }, format='json')
+
+    assert response.status_code == 200
+    learner.refresh_from_db()
+    assert learner.profile.cohort is None
 
 
 def test_le_profil_ne_permet_pas_de_changer_de_classe(learner):

@@ -64,7 +64,7 @@
 .cohort-chip--active {
   background: var(--brand);
   border-color: var(--brand);
-  color: #fff;
+  color: var(--brand-ink);
 }
 
 /* Chapitre déjà ouvert à la classe : état « fait », lisible malgré le disabled */
@@ -100,7 +100,7 @@
   border: none;
   border-radius: 10px;
   background: linear-gradient(135deg, var(--brand), var(--brand-strong));
-  color: #fff;
+  color: var(--brand-ink);
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;

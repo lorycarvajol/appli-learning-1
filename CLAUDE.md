@@ -673,6 +673,61 @@ l'illustration — l'en-tête de chapitre n'en porte pas — mais il reste : la
 description courait sur toute la largeur du conteneur, près de 140 caractères
 par ligne, bien au-delà du confort de lecture.
 
+### Le bandeau d'accueil parle de code, pas de cercles flottants
+
+`DashboardHero` (`Dashboard.jsx`). L'ancien bandeau ouvrait sur « Bonjour X ! 👋 »,
+une phrase figée identique pour tout le monde et tous les jours, et **trois
+cercles translucides flottants** — le fond qu'on trouve sur n'importe quel
+produit. Rien n'y disait qu'on est sur une plateforme d'apprentissage du code.
+
+Ce qu'il porte désormais, et pourquoi :
+
+| Élément | Raison |
+|---|---|
+| Date + **série de jours** (chasse fixe) | La série n'apparaît **nulle part ailleurs** sur cet écran ; les cinq cartes couvrent points, leçons, temps, score et trophées |
+| « Bonsoir, **Prénom** » | Salutation selon l'heure, le prénom en gras : la salutation est la même pour tous, le prénom non |
+| Une phrase d'**orientation** | « Vous reprenez Les bases du CSS, leçon 6 sur 17 » |
+| **Trois fichiers ouverts** en fond | `script.js`, `style.css`, `index.html` — les trois premiers chapitres, en chasse fixe, onglet nommé et gouttière de numéros |
+
+Quatre décisions, chacune couverte par un test validé par sabotage
+(`Dashboard.test.jsx`) :
+
+- **Aucun chiffre de progression.** Ils sont dans les cinq cartes juste en
+  dessous. Les répéter en gros aurait reconstitué l'en-tête de tableau de bord
+  générique qu'on remplaçait.
+- **L'orientation est au chapitre, pas à la leçon.** La carte « Continuer
+  l'apprentissage » dit quoi faire maintenant ; le bandeau dit où l'on se
+  trouve. Le titre de la leçon deux fois à dix centimètres d'écart, c'est du
+  doublon. ⚠️ Les trois absences de `next_lesson` gardent leurs trois phrases
+  distinctes (terminé / en attente du formateur / rien de publié).
+- **La série ne s'annonce qu'à partir de deux jours.** Un jour n'est pas encore
+  une série ; l'afficher banaliserait le signal au moment où il commence à
+  valoir quelque chose.
+- **Le fond est décoratif et le reste** : `aria-hidden` sur le bloc entier — un
+  lecteur d'écran qui énoncerait trente lignes de balisage avant d'atteindre
+  « Bonsoir » rendrait la page inutilisable. Opacité 0,20, deux fondus
+  (horizontal pour écarter le texte, vertical **par le bas seulement** : le
+  haut porte les noms de fichiers, qui sont précisément ce qui fait lire
+  « éditeur »). Les colonnes cèdent une à une, de la plus proche du texte à la
+  plus lointaine (1560, 1320, 1080 px).
+
+⚠️ Le contenu des trois fichiers **n'est pas du décor abstrait** : c'est le
+code des premières leçons — la page squelette, une règle de style, un écouteur
+de clic — et l'ordre des colonnes va du chapitre 3 au chapitre 1, de gauche à
+droite, parce que le fondu efface la gauche : c'est donc le point de départ du
+parcours qui se lit le plus nettement. Le reste se perd dans le fond.
+
+`segmenter()` donne trois niveaux de blanc (balises et mots-clés, valeurs entre
+guillemets, le reste). ⚠️ **Ce n'est pas une coloration syntaxique et il ne
+faut pas la faire grandir vers ça** : le fond est illisible par construction, et
+une vraie palette de couleurs derrière le titre deviendrait du bruit.
+
+Le fond utilise `--banner-*`, comme le profil : il était en `--brand` →
+`--brand-strong`, donc à **2,6:1** de contraste en thème sombre (cf. la section
+sur les tokens de bandeau). L'entrée en fondu respecte
+`prefers-reduced-motion` ; l'ancienne animation de flottement a disparu avec
+les cercles.
+
 ### Le conseil du jour est calculé, plus écrit en dur
 
 Le bloc affichait une phrase unique, la même pour tout le monde et tous les
@@ -739,7 +794,7 @@ progression en lecture seule.
 ### Avatars : catalogue, pas téléversement
 
 Le choix d'avatar se fait par `Profile.avatar_key`, une clé `<visage>-<palette>`
-prise dans une liste close (`apps/accounts/avatars.py`, 6 × 6 = 36
+prise dans une liste close (`apps/accounts/avatars.py`, 42 × 6 = 252
 combinaisons), et le rendu se fait en SVG côté client. **Aucun téléversement
 d'image** : un ancien champ `Profile.avatar` (`ImageField`) jamais alimenté a
 été supprimé (migration `0007`) après vérification qu'aucune base ne le
@@ -766,11 +821,42 @@ poignée de dessins ne peut pas rendre justement.
 
 Ce parti a été levé au profit de visages illustrés, plus conformes à l'attente
 d'un avatar de profil. L'objection d'origine tient toujours ; elle est traitée
-par le volume : chaque graine du style **Notionists** combine coiffure, traits,
-teint et accessoires. Migration `0008` : les anciennes clés ont été remises à
-vide (retour aux initiales), car elles sont désormais **refusées en écriture** —
-les laisser aurait fait échouer l'enregistrement d'un profil sur un champ que
-l'apprenant n'a pas touché.
+par le volume : chaque graine combine coiffure, traits, teint et accessoires.
+Migration `0008` : les anciennes clés ont été remises à vide (retour aux
+initiales), car elles sont désormais **refusées en écriture** — les laisser
+aurait fait échouer l'enregistrement d'un profil sur un champ que l'apprenant
+n'a pas touché.
+
+#### Sept familles, depuis le 2026-08-07
+
+Le catalogue s'est d'abord limité au seul style **Notionists**, jugé peu
+attrayant à l'usage. Il en compte désormais **sept, de six visages chacune** :
+
+| Famille | Auteur | Licence |
+|---|---|---|
+| Notionists | Zoish | CC0 1.0 |
+| Adventurer, Adventurer Neutral | Lisa Wischofsky | **CC BY 4.0** |
+| Avataaars | Pablo Stanley | libre, usage personnel et commercial |
+| Big Smile | Ashley Seo | **CC BY 4.0** |
+| Bottts | Pablo Stanley | libre, usage personnel et commercial |
+| ToonHead | Johan Melin | **CC BY 4.0** |
+
+⚠️ **Quatre familles sont en CC BY 4.0 : l'attribution est une obligation, pas
+une politesse.** Elle est portée à deux endroits, et il faut les deux — sous
+chaque famille du sélecteur (là où l'œuvre est utilisée) et dans les mentions
+légales, page publique (là où on la retrouve). Un test front rougit si le
+crédit disparaît du sélecteur ; **rien ne surveille la page légale**, il faut y
+penser à la main en ajoutant une famille.
+
+`frontend/src/features/profile/avatarCatalog.js` est la **source unique** :
+familles, graines, réglages de cadrage et crédits. Il est volontairement
+**dépourvu d'imports**, pour que le script de génération — qui tourne sous Node
+et ne sait pas charger un `.svg` — lise le même fichier. Sans lui, la liste
+aurait été recopiée trois fois.
+
+⚠️ Un identifiant de visage **ne peut pas contenir de tiret** : `parseAvatarKey`
+découpe la clé dessus. D'où `adventurerneutral1`, et non `adventurer-neutral-1`.
+Verrouillé des deux côtés par un test.
 
 ⚠️ **Les visages sont pré-générés à la construction**, pas à l'exécution, et
 **jamais** servis par l'API HTTP de DiceBear. Un appel distant enverrait l'IP de
@@ -782,23 +868,39 @@ raison même pour laquelle l'application n'a pas de bannière de consentement
 npm run avatars   # scripts/generate-avatars.mjs → src/assets/avatars/*.svg
 ```
 
-Les six SVG produits sont **versionnés** : la construction ne dépend donc pas
-de DiceBear, qui est en `devDependencies`. Relancer la commande après toute
-modification de `VISAGES` ou du style — le test front « sait dessiner chaque
-clé du catalogue » rougit si un visage manque.
+Les 42 SVG produits (273 ko) sont **versionnés** : la construction ne dépend
+donc pas de DiceBear, qui est en `devDependencies`. Relancer la commande après
+toute modification d'`avatarCatalog.js` — le test front « sait dessiner chaque
+clé du catalogue » rougit si un visage manque, et le script **supprime** les
+fichiers d'un visage retiré du catalogue.
+
+Le script **confronte les crédits déclarés à `collection[style].meta`** et
+échoue en cas d'écart. Ce n'est pas un luxe : une mise à jour de DiceBear
+pourrait changer un auteur ou une licence sans que rien ne le signale, et
+l'application afficherait alors une attribution fausse — pire que pas
+d'attribution.
+
+⚠️ **Les réglages de cadrage (`options.scale`) se jugent à l'œil, jamais au
+calcul.** Chaque style dessine son sujet à sa propre échelle, et la vignette a
+des coins arrondis qui rognent. Constaté sur les deux familles concernées :
+Adventurer Neutral ne dessine que les traits — ni crâne, ni buste — et sortait
+la bouche par le bas (ramené à 62) ; Big Smile débordait par le haut sur les
+coiffures volumineuses (ramené à 78).
 
 ⚠️ **Ne pas réintroduire `@dicebear/core` dans le code d'exécution.** Le
-catalogue est fermé : six visages connus d'avance. Embarquer le générateur pour
-les recalculer à chaque affichage ajoutait **~380 ko au morceau d'entrée** —
-`Avatar` est tiré par le `Header`, donc structurel et jamais différé — faisant
-passer le bundle de 261 ko à 640 ko et refranchir le seuil d'alerte de Vite.
-Pré-générés, les visages sont six fichiers statiques cacheables (~5 ko gzip
-chacun) et le bundle d'entrée est inchangé.
+catalogue est fermé : quarante-deux visages connus d'avance. Embarquer le
+générateur pour les recalculer à chaque affichage ajoutait **~380 ko au morceau
+d'entrée** — `Avatar` est tiré par le `Header`, donc structurel et jamais
+différé — faisant passer le bundle de 261 ko à 640 ko et refranchir le seuil
+d'alerte de Vite.
 
-Licence : **CC0 1.0** (Notionists, par Zoish) — domaine public, aucune
-attribution obligatoire. Plusieurs autres styles de la même bibliothèque sont
-en **CC BY 4.0** et imposeraient une mention : vérifier `meta.license` du style
-avant tout changement.
+⚠️ **Piège voisin, rencontré en passant à 42 visages : `assetsInlineLimit`.**
+Vite intègre en base64 tout asset de moins de 4 ko. Douze visages passaient
+sous le seuil et atterrissaient **dans le morceau d'entrée** : +58 ko bruts,
++13 ko gzip, téléchargés par chaque visiteur pour douze visages qu'il ne verra
+jamais. `vite.config.js` exclut donc `assets/avatars/` de l'intégration.
+Mesuré : entrée à 319 ko avant, **267 ko après**. (Le suffixe `?no-inline`,
+qui dirait la même chose au point d'usage, n'existe qu'à partir de Vite 6.)
 
 Le visage est posé en `<image href="…">` par-dessus le dégradé de palette, et
 non injecté en balisage : un SVG référencé par `<image>` est rendu en mode
@@ -806,12 +908,75 @@ image, sans script — donc aucun `dangerouslySetInnerHTML` à surveiller.
 
 ⚠️ Les listes `VISAGES` / `PALETTES` sont **dupliquées** entre
 `backend/apps/accounts/avatars.py` (autorité) et
-`frontend/src/features/profile/avatars.js` (rendu). En modifier une seule donne
-soit un avatar vide, soit un choix refusé à l'enregistrement. Un test front
-vérifie que chaque clé sait se dessiner.
+`frontend/src/features/profile/avatarCatalog.js` (rendu). En modifier une seule
+donne soit un avatar vide, soit un choix refusé à l'enregistrement. Un test
+front vérifie que chaque clé sait se dessiner.
 
-⚠️ Chaque valeur de `VISAGES` **est** la graine DiceBear : la renommer change
-le visage de tous ceux qui l'avaient choisie. Ajouter, oui ; renommer, non.
+⚠️ Chaque valeur de `VISAGES` est **par défaut** la graine DiceBear, et c'est
+ce qui est stocké en base : la renommer invalide la clé enregistrée de tous
+ceux qui l'avaient choisie. Ajouter, oui ; renommer, non.
+
+**Pour remplacer un visage jugé raté, ne pas le renommer** : déclarer une
+graine dans le `graines` de sa famille (`graines: { avataaars2: 'maya' }`).
+L'identifiant — donc la clé en base — ne bouge pas, seul le dessin change.
+C'est le seul moyen de corriger un choix esthétique sans reverser aux
+initiales ceux qui avaient choisi ce visage. `avataaars2` a été échangé ainsi.
+
+#### Le bandeau du profil dit qui est la personne, pas ce qu'elle a marqué
+
+`ProfileHero` (`ProfilePage.jsx`) présente le nom, le pseudo, le rôle, la
+classe et la **bio**. Il ne porte **aucun chiffre**, et c'est délibéré : points,
+niveau, série et trophées sont dans la carte « Ma progression », juste
+en dessous. Les remonter en gros dans le bandeau aurait donné l'en-tête de
+tableau de bord qu'on voit partout, et relégué la seule chose que l'apprenant
+écrit lui-même — sa bio — au rang de sous-titre.
+
+Trois décisions à ne pas défaire :
+
+- **Le pseudo est `github_username`**, le seul identifiant pseudonyme que le
+  profil enregistre. Il est rendu en **chasse fixe** (`--font-mono`) et mène au
+  compte GitHub. C'est le seul écart typographique du bandeau. ⚠️ Si un vrai
+  champ « pseudo » indépendant est voulu un jour, c'est un ajout au modèle, une
+  migration et une entrée dans `EDITABLE_PROFILE_FIELDS`.
+- **L'accent coloré vient de l'avatar choisi** : `--hero-accent` est posée en
+  ligne depuis la palette d'`avatar_key` (repli sur la couleur dérivée du nom,
+  celle de l'avatar à initiales). Anneau, lueur et filet de pied la reprennent.
+  ⚠️ Elle ne touche **que du décor** — ces six palettes sont claires, sous du
+  texte blanc elles ne tiendraient pas le contraste.
+- **La bio vide invite au lieu de constater** : « Ajoutez une phrase pour vous
+  présenter », pas « Aucune bio ».
+
+⚠️ **`profile.cohort_name` n'était pas sérialisé.** Le composant l'affichait
+depuis toujours, `ProfileSerializer` ne le produisait pas : la ligne était
+morte, aucun apprenant n'a jamais vu sa classe sur cette page. Le champ est
+maintenant exposé **en lecture seule** — le rattachement à une classe passe par
+une invitation ou par `assign_cohort` (audité), jamais par un formulaire de
+profil. Trois tests le verrouillent, dont celui du « pas d'écriture ».
+
+⚠️ **Piège de refonte, rencontré ici :** un bloc `@media` **antérieur** stylait
+encore `.profile__hero` comme conteneur flex (`flex-direction: column;
+text-align: center`). La disposition ayant déménagé sur `.profile__hero-inner`,
+il ne restait qu'un `text-align: center` orphelin — invisible au bureau, il
+centrait tout le bandeau sous 640 px, bio de cinq lignes comprise. **Quand on
+déplace la mise en page d'un élément vers un enfant, relire ses media queries.**
+
+#### Le sélecteur : replié, puis en deux temps
+
+Le catalogue **ne s'affiche qu'à la demande**, derrière un bouton « Changer
+d'avatar » (`aria-expanded` / `aria-controls`), à côté de l'avatar courant.
+Déplié d'emblée, il repoussait hors de vue tout le reste du profil — nom, mot
+de passe, retrait du classement — alors qu'on ne change d'avatar qu'une fois.
+
+Une fois ouvert, le choix se fait **en deux temps**. 252 combinaisons à plat
+donneraient une planche illisible où chaque visage reviendrait six fois :
+`AvatarPicker` présente les visages **groupés par famille** (crédit sous le
+titre), puis une rangée de palettes appliquée au visage retenu — quarante-huit
+boutons au lieu de deux cent cinquante-deux, et la palette redevient un
+réglage plutôt qu'une variante.
+
+La rangée de palettes **n'apparaît pas** tant qu'aucun visage n'est choisi :
+sur le repli à initiales, la couleur vient du nom, et des palettes sans effet
+se liraient comme une panne.
 
 ### L'écriture imbriquée du profil et le piège des points
 
@@ -2137,6 +2302,47 @@ Deux emplacements coexistent pour le style, et c'est voulu :
 Règle commune : **BEM, et les couleurs viennent toujours des tokens** de
 `styles/base/_theme.scss` — jamais une valeur en dur (sauf le blanc posé sur un
 fond de marque). C'est ce qui fait fonctionner le thème sombre gratuitement.
+
+⚠️ **« Gratuitement » a une limite : un fond qui porte du texte blanc ne peut
+pas suivre n'importe quel token.** Le bandeau du profil était dégradé de
+`var(--ink)` vers `var(--brand-strong)`, deux tokens qui **s'éclaircissent** en
+thème sombre (`--ink` y vaut `#edebf8`, presque blanc). Le titre blanc s'y
+retrouvait à **1,18:1** de contraste — invisible — et le sous-titre à 2,56:1.
+D'où `--banner-from` / `--banner-to`, tenus sombres dans les deux thèmes
+(16,9:1 et 7,6:1 en sombre, le thème clair inchangé). **Tout nouveau bandeau de
+marque doit les utiliser**, jamais `--ink` ni `--brand-strong`.
+
+Les **quatre bandeaux** de l'application les utilisent : `.profile__hero`,
+`.dashboard__hero`, `.badges-page__hero` et `.leaderboard__hero`. Tous
+portaient le même défaut.
+
+#### `--brand-ink` : l'encre posée sur un aplat de marque
+
+⚠️ **Le même piège, autrement.** Les boutons pleins (`.profile__submit`,
+`.quiz-start`, `.badges-filter--active`, `.admin-tab--active`, treize règles en
+tout) posaient `#fff` sur `var(--brand)` : **3,7:1** en thème sombre, et
+**2,6:1** au bout d'un dégradé vers `--brand-strong`.
+
+La racine est que ces deux tokens ont **deux emplois contradictoires** : ils
+servent de couleur de texte et de lien sur les surfaces sombres — où ils
+doivent être clairs — et de fond de bouton sous du texte blanc — où ils
+devraient être sombres.
+
+⚠️ **Assombrir l'aplat n'était pas une option**, et c'est le calcul qui l'a
+tranché : un bouton à 0,08 de luminance sur une surface à 0,01 tombe à
+**2,1:1** contre son propre fond, sous les 3:1 exigés d'une limite de
+composant. Le bouton cesse alors de se détacher de la carte qui le porte. C'est
+donc **l'encre** qui s'inverse : `--brand-ink` vaut `#fff` en thème clair et
+`#140f26` en sombre — aplat clair, texte sombre, comme le fait tout thème
+sombre moderne.
+
+Mesuré dans le navigateur après correction, pas seulement calculé :
+**5,03:1** sur `--brand`, **7,29:1** sur `--brand-strong`. Le thème clair est
+inchangé au pixel près, l'encre y valant toujours `#fff`.
+
+**Tout nouvel aplat de marque portant du texte doit utiliser `--brand-ink`**,
+jamais `#fff` en dur. Les barres de progression et autres remplissages sans
+texte, eux, gardent `var(--brand)` seul — rien n'y est écrit.
 
 ⚠️ **La dette Preflight a été reprise dans `styles/base/_reset.scss`.**
 L'avertissement qui figurait ici — Preflight fournit `border-style: solid`, et

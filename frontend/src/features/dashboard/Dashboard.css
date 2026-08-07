@@ -5,36 +5,86 @@
   background-color: var(--bg);
 }
 
-/* Hero Section */
+/* ── Bandeau d'accueil ──────────────────────────────────────────────────────
+
+   Le fond vient de `--banner-*`, comme celui du profil : `--brand` et
+   `--brand-strong` **s'éclaircissent** en thème sombre, où le titre blanc y
+   tombait à 2,6:1. Voir _theme.scss. */
 .dashboard__hero {
-  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
-  padding: 3.5rem 2rem;
+  background: linear-gradient(135deg, var(--banner-from), var(--banner-to));
+  /* Un peu plus haut qu'un bandeau de salutation ne l'exigerait : c'est ce qui
+     laisse respirer les trois volets de code posés derrière. */
+  padding: 3.75rem 2rem;
   position: relative;
   overflow: hidden;
   margin-bottom: 2rem;
 }
 
-.dashboard__hero-content {
+.dashboard__hero-inner {
+  position: relative;
   max-width: 1400px;
   margin: 0 auto;
-  position: relative;
-  z-index: 2;
 }
 
-.dashboard__hero-title {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: clamp(1.75rem, 4vw, 2.75rem);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: white;
-  margin-bottom: 0.6rem;
+.dashboard__hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 42rem;
+}
+
+/* Ligne de contexte : la date, et la série quand elle est tenue. En chasse
+   fixe, comme le pseudo du profil — c'est la voix « journal » de la
+   plateforme, réservée aux métadonnées. */
+.dashboard__hero-eyebrow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0 0 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
   animation: dashboard-fade-up 0.6s ease both;
 }
 
+.dashboard__hero-date {
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.dashboard__hero-date::first-letter {
+  text-transform: uppercase;
+}
+
+.dashboard__hero-streak {
+  padding: 0.15rem 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.dashboard__hero-title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.9rem, 4vw, 2.9rem);
+  /* La salutation est la même pour tout le monde, le prénom non : c'est lui
+     qu'on met en gras, pas le « Bonsoir ». */
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: white;
+  margin: 0 0 0.55rem;
+  animation: dashboard-fade-up 0.6s ease 0.06s both;
+}
+
+.dashboard__hero-name {
+  font-weight: 700;
+}
+
 .dashboard__hero-subtitle {
-  font-size: 1.15rem;
-  color: rgba(255, 255, 255, 0.88);
-  animation: dashboard-fade-up 0.6s ease 0.12s both;
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
+  animation: dashboard-fade-up 0.6s ease 0.14s both;
 }
 
 @keyframes dashboard-fade-up {
@@ -48,50 +98,117 @@
   }
 }
 
-.dashboard__hero-illustration {
+/* ── Les trois fichiers en fond ─────────────────────────────────────────────
+
+   Remplacent trois cercles translucides flottants — le fond qu'on trouve sur
+   n'importe quel produit. Ceux-ci ne veulent dire quelque chose que sur une
+   plateforme qui apprend à coder : `index.html`, `style.css`, `script.js` sont
+   les trois premiers chapitres du parcours, et le code qu'on y lit est celui
+   des premières leçons.
+
+   ⚠️ Purement décoratif, et il doit le rester : opacité basse, masqué par un
+   dégradé du côté du texte, et jamais sous une ligne lisible. Le texte est
+   borné à 42rem, les colonnes commencent après. */
+/* Ancré en **haut**, pas centré : les colonnes sont plus hautes que le
+   bandeau, et centrées elles perdaient leurs deux extrémités — dont les noms
+   de fichiers, qui sont précisément ce qui fait lire « éditeur ». Alignées en
+   haut, elles se lisent comme un volet d'édition plus grand que la fenêtre :
+   les onglets sont là, le code file par le bas. */
+.dashboard__hero-listing {
   position: absolute;
+  /* Aligné sur la **ligne de contexte**, pas sur un décalage choisi à vue :
+     les onglets partent du même haut que la date. Le bandeau a ainsi une
+     seule ligne d'appui, au lieu de deux blocs qui flottaient l'un par rapport
+     à l'autre — c'était le défaut de la version précédente, qui posait un
+     `top` arbitraire. Le code remonte d'autant et gagne une ligne visible
+     avant le fondu. */
   top: 0;
   right: 0;
-  width: 420px;
-  height: 100%;
   z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 2.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.8;
+  white-space: pre;
+  color: rgba(255, 255, 255, 0.2);
+  user-select: none;
   pointer-events: none;
+  /* Deux fondus, combinés : l'horizontal écarte les colonnes du texte, le
+     vertical les efface **par le bas seulement** — le haut porte les noms de
+     fichiers, il doit rester net. Sans ce second fondu, les lignes du bas
+     étaient tranchées net, ce qui se lit comme un défaut ; fondues, elles se
+     lisent comme un fichier qui continue au-delà du cadre. */
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 34%),
+    linear-gradient(to bottom, #000 55%, transparent);
+  mask-image:
+    linear-gradient(to right, transparent, #000 34%),
+    linear-gradient(to bottom, #000 55%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
 }
 
-.dashboard__hero-circle {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+.dashboard__hero-file {
+  display: flex;
+  flex-direction: column;
 }
 
-.dashboard__hero-circle--1 {
-  width: 300px;
-  height: 300px;
-  top: -100px;
-  right: -50px;
-  animation: dashboard-float 7s ease-in-out infinite;
+/* L'onglet nomme le fichier. Avec la gouttière de numéros, c'est ce qui fait
+   lire « éditeur » plutôt que « bloc de texte » — et il dit vrai : ce sont les
+   trois premiers chapitres du parcours. */
+.dashboard__hero-tab {
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.34);
+  letter-spacing: 0.02em;
 }
 
-.dashboard__hero-circle--2 {
-  width: 190px;
-  height: 190px;
-  top: 60px;
-  right: 160px;
-  animation: dashboard-float 9s ease-in-out infinite 1s;
+.dashboard__hero-line {
+  display: block;
 }
 
-.dashboard__hero-circle--3 {
-  width: 130px;
-  height: 130px;
-  bottom: -40px;
-  right: 60px;
-  animation: dashboard-float 8s ease-in-out infinite 2s;
+/* La gouttière dit vrai elle aussi : le code se lit par lignes numérotées,
+   c'est ainsi qu'on en parle en cours. */
+.dashboard__hero-gutter {
+  display: inline-block;
+  width: 2ch;
+  margin-right: 1.4ch;
+  text-align: right;
+  color: rgba(255, 255, 255, 0.11);
 }
 
-@keyframes dashboard-float {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-18px) scale(1.04); }
+/* Trois niveaux de blanc, pas une palette : assez pour que l'œil reconnaisse
+   du code, pas assez pour concurrencer le titre. Voir `segmenter()`. */
+.dashboard__hero-tk--cle {
+  color: rgba(255, 255, 255, 0.32);
+}
+
+.dashboard__hero-tk--valeur {
+  color: rgba(255, 255, 255, 0.26);
+}
+
+/* Les colonnes cèdent une à une, en commençant par la plus à gauche — celle
+   qui s'approche le plus du texte. C'est de la décoration : elle part avant
+   que quoi que ce soit de lisible ne soit gêné. */
+@media (max-width: 1560px) {
+  .dashboard__hero-file:nth-child(1) {
+    display: none;
+  }
+}
+
+@media (max-width: 1320px) {
+  .dashboard__hero-file:nth-child(2) {
+    display: none;
+  }
+}
+
+@media (max-width: 1080px) {
+  .dashboard__hero-listing {
+    display: none;
+  }
 }
 
 /* Container */
@@ -480,19 +597,35 @@
   align-items: flex-start;
 }
 
+/* Le guillemet et la citation forment un bloc.
+   C'est ce bloc qui prend la marge automatique — donc qui se centre dans la
+   hauteur libre — et non plus le seul texte : sinon le guillemet, ancré au
+   corps de carte, restait en haut pendant que la citation descendait. */
+.dashboard__tip-quote {
+  position: relative;
+  align-self: stretch;
+  margin: auto 0;
+}
+
 /* Guillemet ornemental, dans l'angle haut-droit.
-   ⚠️ Trois réglages successifs avant d'arriver ici, chacun instructif :
+   ⚠️ Quatre réglages successifs avant d'arriver ici, chacun instructif :
    - en absolu avec un décalage négatif, il sortait de la carte et se faisait
      rogner par l'`overflow` : deux virgules perdues dans un coin ;
    - avec `line-height: 0`, l'encre débordait **au-dessus** de sa boîte et
      chevauchait le titre ;
    - à 3,75 rem dans le flux, il ne pesait plus rien : l'encre d'un « “ »
      n'occupe qu'environ un quart de sa boîte, un guillemet doit donc être
-     démesuré pour se voir.
-   D'où : hors du flux, **sous** la ligne de titre, et à 7 rem. */
+     démesuré pour se voir ;
+   - ancré au corps de carte à 2,6 rem, il tombait au niveau de la troisième
+     ligne de la citation, où il croisait le texte au lieu de l'annoncer.
+   D'où : ancré à la citation, et remonté d'une ligne au-dessus d'elle. Le
+   décalage négatif le pose dans l'écart entre le titre et le texte — un
+   guillemet ouvrant annonce une parole, il doit précéder la phrase, pas
+   l'accompagner. ⚠️ Ne pas remonter davantage : à −1,6 rem il commence à
+   serrer le titre. */
 .dashboard__tip-mark {
   position: absolute;
-  top: 2.6rem;
+  top: -1.1rem;
   right: 1.25rem;
   font-family: 'Space Grotesk', Georgia, serif;
   font-size: 7rem;
@@ -503,7 +636,9 @@
 }
 
 .dashboard__tip-text {
-  margin: auto 0;
+  /* Le centrage vertical est passé au bloc `--quote` qui porte aussi le
+     guillemet ; le texte n'a plus de marge propre. */
+  margin: 0;
   /* Le texte passe devant l'ornement, jamais derrière. */
   position: relative;
   /* Filet doré : il donne un bord à la citation et la rattache au liseré de
@@ -743,7 +878,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dashboard__hero-circle {
+  /* L'entrée en fondu du bandeau est une orchestration, pas une information :
+     elle s'efface entièrement plutôt que de se raccourcir. */
+  .dashboard__hero-eyebrow,
+  .dashboard__hero-title,
+  .dashboard__hero-subtitle {
     animation: none;
   }
 

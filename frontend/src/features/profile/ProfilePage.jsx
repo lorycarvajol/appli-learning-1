@@ -6,7 +6,15 @@ import { authApi } from '@/services/api/authApi'
 import Avatar from '@/components/ui/Avatar'
 import PasswordInput from '@/components/ui/PasswordInput'
 import { ROLE_LABELS } from '@/constants/roles'
-import { AVATAR_KEYS } from './avatars'
+import {
+  FAMILLES,
+  PALETTES,
+  PALETTE_LABELS,
+  PALETTE_PAR_DEFAUT,
+  initialsPalette,
+  paletteColors,
+  parseAvatarKey,
+} from './avatars'
 import './ProfilePage.css'
 
 const THEMES = [
@@ -23,6 +31,7 @@ export default function ProfilePage() {
   const summary = useSelector((state) => state.gamification.summary)
 
   const [form, setForm] = useState(null)
+  const [pickerOuvert, setPickerOuvert] = useState(false)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState(null)
   const [error, setError] = useState(null)
@@ -94,20 +103,7 @@ export default function ProfilePage() {
 
   return (
     <div className="profile">
-      <header className="profile__hero">
-        <Avatar user={preview} size={84} className="profile__hero-avatar" />
-        <div>
-          <h1 className="profile__title">
-            {user.first_name || user.last_name
-              ? `${user.first_name} ${user.last_name}`.trim()
-              : user.email}
-          </h1>
-          <p className="profile__subtitle">
-            {user.email} · {ROLE_LABELS[user.role] || user.role}
-            {user.profile?.cohort_name && ` · ${user.profile.cohort_name}`}
-          </p>
-        </div>
-      </header>
+      <ProfileHero user={user} preview={preview} />
 
       <div className="profile__container">
         {error && <div className="auth-alert auth-alert--error" role="alert">{error}</div>}
@@ -121,11 +117,33 @@ export default function ProfilePage() {
             Sans choix, vos initiales servent d’avatar.
           </p>
 
-          <AvatarPicker
-            value={form.avatar_key}
-            user={preview}
-            onChange={(key) => setForm((c) => ({ ...c, avatar_key: key }))}
-          />
+          {/*
+            Le catalogue est déplié à la demande. Quarante-deux visages ouverts
+            d'emblée occupaient tout l'écran et repoussaient le reste du profil
+            — nom, mot de passe, classement — hors de vue, alors qu'on ne
+            change d'avatar qu'une fois.
+          */}
+          <div className="profile__avatar-actuel">
+            <Avatar user={preview} size={64} />
+            <button
+              type="button"
+              className="profile__submit profile__submit--ghost profile__avatar-bascule"
+              aria-expanded={pickerOuvert}
+              aria-controls="choix-avatar"
+              onClick={() => setPickerOuvert((ouvert) => !ouvert)}
+            >
+              {pickerOuvert ? 'Fermer les avatars' : 'Changer d’avatar'}
+            </button>
+          </div>
+
+          {pickerOuvert && (
+            <AvatarPicker
+              id="choix-avatar"
+              value={form.avatar_key}
+              user={preview}
+              onChange={(key) => setForm((c) => ({ ...c, avatar_key: key }))}
+            />
+          )}
 
           <h2 className="profile__card-title">Mes informations</h2>
 
@@ -202,6 +220,77 @@ export default function ProfilePage() {
   )
 }
 
+/**
+ * En-tête du profil : qui est cette personne sur la plateforme.
+ *
+ * Volontairement **sans chiffres** : points, niveau, série et trophées sont
+ * dans la carte « Ma progression », juste en dessous. Les répéter en gros dans
+ * le bandeau aurait donné l'en-tête de tableau de bord qu'on voit partout, et
+ * relégué la seule chose que l'apprenant écrit lui-même — sa bio — au rang de
+ * sous-titre. Ici la bio est le texte le plus grand après le nom : c'est le
+ * seul endroit de l'application où un apprenant parle en son nom.
+ *
+ * L'accent coloré du bandeau est repris de **l'avatar choisi** : la palette
+ * sélectionnée dans le catalogue teinte l'anneau et la lueur. Sans choix, on
+ * retombe sur la couleur dérivée du nom — celle de l'avatar à initiales — donc
+ * il y a toujours un accent, et il désigne toujours la même personne.
+ */
+function ProfileHero({ user, preview }) {
+  const parsed = parseAvatarKey(user.profile?.avatar_key)
+  const accent = paletteColors(
+    parsed ? parsed.palette : initialsPalette(user.email || '')
+  )
+
+  const nom = `${user.first_name || ''} ${user.last_name || ''}`.trim()
+  const pseudo = user.profile?.github_username?.trim()
+  const bio = user.profile?.bio?.trim()
+  const classe = user.profile?.cohort_name
+
+  return (
+    <header
+      className="profile__hero"
+      style={{ '--hero-accent': accent.from, '--hero-accent-2': accent.to }}
+    >
+      <div className="profile__hero-inner">
+        <Avatar user={preview} size={96} className="profile__hero-avatar" />
+
+        <div className="profile__identity">
+          {/* Sur sa propre page, l'email en repli n'expose rien à personne. */}
+          <h1 className="profile__title">{nom || user.email}</h1>
+
+          <div className="profile__meta">
+            {pseudo && (
+              // Le seul identifiant « pseudonyme » que le profil enregistre est
+              // le compte GitHub. En chasse fixe, comme on l'écrirait dans
+              // l'éditeur — c'est le seul écart typographique du bandeau.
+              <a
+                className="profile__handle"
+                href={`https://github.com/${pseudo}`}
+                target="_blank"
+                rel="noreferrer noopener"
+                aria-label={`Profil GitHub de ${pseudo}`}
+              >
+                @{pseudo}
+              </a>
+            )}
+            <span className="profile__chip">{ROLE_LABELS[user.role] || user.role}</span>
+            {classe && <span className="profile__chip">{classe}</span>}
+          </div>
+
+          {bio
+            ? <p className="profile__bio">{bio}</p>
+            : (
+              /* Un bandeau vide n'invite à rien : on dit quoi faire. */
+              <p className="profile__bio profile__bio--vide">
+                Ajoutez une phrase pour vous présenter.
+              </p>
+            )}
+        </div>
+      </div>
+    </header>
+  )
+}
+
 function Field({ label, id, hint, children }) {
   return (
     <div className="profile__field">
@@ -212,33 +301,110 @@ function Field({ label, id, hint, children }) {
   )
 }
 
-function AvatarPicker({ value, user, onChange }) {
-  return (
-    <div className="profile__avatars" role="radiogroup" aria-label="Choix de l’avatar">
-      <button
-        type="button"
-        role="radio"
-        aria-checked={!value}
-        aria-label="Mes initiales"
-        className={`profile__avatar-choice ${!value ? 'profile__avatar-choice--active' : ''}`}
-        onClick={() => onChange('')}
-      >
-        <Avatar user={{ ...user, profile: { avatar_key: '' } }} size={48} />
-      </button>
+/**
+ * Choix de l'avatar, en deux temps : le visage, puis la couleur du fond.
+ *
+ * Le catalogue compte sept familles de six visages, déclinés en six palettes —
+ * **252 combinaisons**. Les présenter à plat, comme le faisait la version à
+ * trente-six, donnerait une planche illisible où chaque visage reviendrait six
+ * fois. En séparant les deux choix, on retombe à quarante-huit boutons et la
+ * palette redevient ce qu'elle est : un réglage, pas une variante.
+ *
+ * Les vignettes de visage portent la **palette en cours**, pour que l'aperçu
+ * corresponde à ce qui sera enregistré.
+ */
+function AvatarPicker({ id, value, user, onChange }) {
+  const parsed = parseAvatarKey(value)
+  const paletteCourante = parsed ? parsed.palette : PALETTE_PAR_DEFAUT
 
-      {AVATAR_KEYS.map((key) => (
+  return (
+    <div className="profile__avatar-picker" id={id}>
+      <div
+        className="profile__avatars"
+        role="radiogroup"
+        aria-label="Avatar par défaut"
+      >
         <button
-          key={key}
           type="button"
           role="radio"
-          aria-checked={value === key}
-          aria-label={`Avatar ${key.replace('-', ' ')}`}
-          className={`profile__avatar-choice ${value === key ? 'profile__avatar-choice--active' : ''}`}
-          onClick={() => onChange(key)}
+          aria-checked={!value}
+          aria-label="Mes initiales"
+          className={`profile__avatar-choice ${!value ? 'profile__avatar-choice--active' : ''}`}
+          onClick={() => onChange('')}
         >
-          <Avatar user={{ profile: { avatar_key: key } }} size={48} />
+          <Avatar user={{ ...user, profile: { avatar_key: '' } }} size={48} />
         </button>
+      </div>
+
+      {FAMILLES.map((famille) => (
+        <section className="profile__avatar-family" key={famille.id}>
+          <h3 className="profile__avatar-family-title">{famille.titre}</h3>
+          {/*
+            L'attribution est portée là où l'œuvre est utilisée : quatre des
+            sept familles sont en CC BY 4.0, qui l'impose. Les mentions légales
+            reprennent la liste complète, avec les liens.
+          */}
+          <p className="profile__avatar-credit">
+            {famille.credit.auteur} · {famille.credit.licence}
+          </p>
+
+          <div
+            className="profile__avatars"
+            role="radiogroup"
+            aria-label={`Visages ${famille.titre}`}
+          >
+            {famille.visages.map((visage) => {
+              const key = `${visage}-${paletteCourante}`
+              return (
+                <button
+                  key={visage}
+                  type="button"
+                  role="radio"
+                  aria-checked={value === key}
+                  aria-label={`Avatar ${visage}`}
+                  className={`profile__avatar-choice ${value === key ? 'profile__avatar-choice--active' : ''}`}
+                  onClick={() => onChange(key)}
+                >
+                  <Avatar user={{ profile: { avatar_key: key } }} size={48} />
+                </button>
+              )
+            })}
+          </div>
+        </section>
       ))}
+
+      {/*
+        Sans visage choisi, la couleur du fond vient du nom (repli à initiales,
+        déterministe) : il n'y a rien à régler, et proposer des palettes sans
+        effet ferait croire à une panne.
+      */}
+      {parsed && (
+        <section className="profile__avatar-family">
+          <h3 className="profile__avatar-family-title">Couleur du fond</h3>
+          <div
+            className="profile__palettes"
+            role="radiogroup"
+            aria-label="Couleur du fond de l’avatar"
+          >
+            {PALETTES.map((palette) => {
+              const key = `${parsed.visage}-${palette}`
+              return (
+                <button
+                  key={palette}
+                  type="button"
+                  role="radio"
+                  aria-checked={value === key}
+                  aria-label={`Fond ${PALETTE_LABELS[palette] || palette}`}
+                  className={`profile__avatar-choice ${value === key ? 'profile__avatar-choice--active' : ''}`}
+                  onClick={() => onChange(key)}
+                >
+                  <Avatar user={{ profile: { avatar_key: key } }} size={48} />
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      )}
     </div>
   )
 }

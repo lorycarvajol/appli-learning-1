@@ -25,6 +25,26 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    /**
+     * Vite intègre en base64 tout asset de moins de 4 ko. C'est un bon défaut
+     * — une requête épargnée pour une icône — mais il se retourne contre le
+     * catalogue d'avatars : `Avatar` est tiré par le `Header`, donc structurel
+     * et jamais différé, et douze des quarante-deux visages passaient sous le
+     * seuil. Chaque visiteur téléchargeait donc douze visages qu'il ne verrait
+     * jamais (+58 ko bruts, +13 ko gzip sur le morceau d'entrée), alors qu'un
+     * compte n'en affiche qu'un.
+     *
+     * Rendre `false` **désactive** l'intégration pour ces fichiers : ils sont
+     * émis à part, chargés à la demande et mis en cache. `undefined` laisse le
+     * seuil habituel s'appliquer partout ailleurs.
+     *
+     * ⚠️ Le suffixe `?no-inline`, qui dirait la même chose au point d'usage,
+     * n'existe qu'à partir de Vite 6.
+     */
+    assetsInlineLimit: (filePath) =>
+      filePath.includes('/assets/avatars/') ? false : undefined,
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

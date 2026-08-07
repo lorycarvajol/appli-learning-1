@@ -12,7 +12,7 @@
   padding: 3rem 2rem;
   background: linear-gradient(135deg, var(--brand), var(--brand-strong));
   border-radius: 16px;
-  color: white;
+  color: var(--brand-ink);
   box-shadow: 0 10px 40px color-mix(in srgb, var(--brand) 35%, transparent);
 }
 
@@ -276,7 +276,7 @@
 
 .quiz-navigation__button--submit {
   background: linear-gradient(135deg, var(--brand), var(--brand-strong));
-  color: white;
+  color: var(--brand-ink);
 }
 
 .quiz-navigation__button--submit:hover:not(:disabled) {
@@ -320,7 +320,7 @@
 
 .quiz-navigation__dot--current {
   background: linear-gradient(135deg, var(--brand), var(--brand-strong));
-  color: white;
+  color: var(--brand-ink);
   border-color: var(--brand);
   transform: scale(1.15);
 }
@@ -500,7 +500,7 @@
   margin-top: 2rem;
   padding: 1rem 2.5rem;
   background: linear-gradient(135deg, var(--brand), var(--brand-strong));
-  color: white;
+  color: var(--brand-ink);
   border: none;
   border-radius: 50px;
   font-size: 1.1rem;

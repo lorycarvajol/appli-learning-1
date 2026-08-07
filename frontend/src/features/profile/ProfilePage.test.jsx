@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Provider } from 'react-redux'
 import { configureStore } from '@reduxjs/toolkit'
@@ -64,27 +64,128 @@ describe('ProfilePage', () => {
     expect(screen.queryByRole('slider', { name: /points/i })).not.toBeInTheDocument()
   })
 
+  it('présente la personne : pseudo, rôle, classe et bio', async () => {
+    renderPage({
+      ...USER,
+      profile: {
+        ...USER.profile,
+        github_username: 'evemartin',
+        bio: 'Je découvre le web, une balise à la fois.',
+        cohort_name: 'Promo 2026',
+      },
+    })
+
+    const titre = await screen.findByRole('heading', { name: 'Eve Martin', level: 1 })
+    // La bio et le pseudo apparaissent **aussi** dans le formulaire plus bas :
+    // on interroge le bandeau, pas la page, sinon l'assertion ne prouve rien.
+    const bandeau = within(titre.closest('header'))
+
+    // Le pseudo mène au compte GitHub : l'afficher sans y conduire n'aurait
+    // servi à rien.
+    const pseudo = bandeau.getByRole('link', { name: 'Profil GitHub de evemartin' })
+    expect(pseudo).toHaveAttribute('href', 'https://github.com/evemartin')
+    expect(pseudo).toHaveTextContent('@evemartin')
+
+    expect(bandeau.getByText('Apprenant')).toBeInTheDocument()
+    expect(bandeau.getByText('Promo 2026')).toBeInTheDocument()
+    expect(bandeau.getByText('Je découvre le web, une balise à la fois.')).toBeInTheDocument()
+  })
+
+  it('invite à écrire une bio quand il n’y en a pas', async () => {
+    renderPage()
+
+    // Un bandeau vide n'invite à rien. On dit quoi faire, pas « aucune bio ».
+    expect(await screen.findByText('Ajoutez une phrase pour vous présenter.'))
+      .toBeInTheDocument()
+    // Rien à afficher ⇒ rien d'affiché : pas de « @ » orphelin ni de puce vide.
+    expect(screen.queryByRole('link', { name: /Profil GitHub/ })).not.toBeInTheDocument()
+  })
+
+  it('ne répète pas les chiffres de la progression dans le bandeau', async () => {
+    renderPage()
+
+    // Points, niveau, série et trophées vivent dans la carte « Ma progression »
+    // juste en dessous. Les remonter dans le bandeau ferait un doublon, et
+    // écraserait la bio — la seule chose que l'apprenant écrit lui-même.
+    const bandeau = (await screen.findByRole('heading', { name: 'Eve Martin', level: 1 }))
+      .closest('header')
+    expect(bandeau).not.toHaveTextContent('120')
+    expect(bandeau).not.toHaveTextContent('Niveau')
+  })
+
+  it('ne déplie le catalogue qu’à la demande', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    // Quarante-deux visages ouverts d'emblée repoussaient hors de vue tout le
+    // reste du profil, alors qu'on ne change d'avatar qu'une fois.
+    const bascule = await screen.findByRole('button', { name: 'Changer d’avatar' })
+    expect(bascule).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('radio', { name: 'Avatar nova' })).not.toBeInTheDocument()
+
+    await user.click(bascule)
+    expect(screen.getByRole('radio', { name: 'Avatar nova' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Fermer les avatars' }))
+      .toHaveAttribute('aria-expanded', 'true')
+  })
+
   it('enregistre l’avatar choisi dans la galerie', async () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.click(await screen.findByRole('radio', { name: 'Avatar nova violet' }))
+    // Le choix se fait en deux temps depuis que le catalogue compte sept
+    // familles : le visage d'abord — la palette par défaut s'applique — puis
+    // la couleur de fond. Ce test vérifie que les deux se recombinent en une
+    // seule clé `<visage>-<palette>`, la seule forme que le serveur accepte.
+    await user.click(await screen.findByRole('button', { name: 'Changer d’avatar' }))
+    await user.click(screen.getByRole('radio', { name: 'Avatar nova' }))
+    await user.click(screen.getByRole('radio', { name: 'Fond turquoise' }))
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
 
     await waitFor(() => {
       expect(authApi.updateProfile).toHaveBeenCalledWith(
         expect.objectContaining({
-          profile: expect.objectContaining({ avatar_key: 'nova-violet' }),
+          profile: expect.objectContaining({ avatar_key: 'nova-teal' }),
         })
       )
     })
+  })
+
+  it('n’offre pas de couleur de fond tant qu’aucun visage n’est choisi', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    // Sans visage, le fond vient du nom (repli à initiales, déterministe) :
+    // des palettes sans effet se liraient comme une panne.
+    await user.click(await screen.findByRole('button', { name: 'Changer d’avatar' }))
+    expect(screen.getByRole('radio', { name: 'Mes initiales' })).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Fond turquoise' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('radio', { name: 'Avatar bottts3' }))
+    expect(screen.getByRole('radio', { name: 'Fond turquoise' })).toBeInTheDocument()
+  })
+
+  it('affiche l’auteur et la licence de chaque famille de visages', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    // Quatre des sept familles sont en CC BY 4.0 : l'attribution est une
+    // obligation, pas une décoration. La retirer du sélecteur doit rougir.
+    await user.click(await screen.findByRole('button', { name: 'Changer d’avatar' }))
+    expect(screen.getByText('Zoish · CC0 1.0')).toBeInTheDocument()
+    // Lisa Wischofsky signe deux familles (Adventurer et sa variante neutre) :
+    // la ligne apparaît donc deux fois, une par famille.
+    expect(screen.getAllByText('Lisa Wischofsky · CC BY 4.0')).toHaveLength(2)
+    expect(screen.getByText('Ashley Seo · CC BY 4.0')).toBeInTheDocument()
+    expect(screen.getByText('Johan Melin · CC BY 4.0')).toBeInTheDocument()
   })
 
   it('permet de revenir aux initiales', async () => {
     const user = userEvent.setup()
     renderPage({ ...USER, profile: { ...USER.profile, avatar_key: 'prism-amber' } })
 
-    await user.click(await screen.findByRole('radio', { name: 'Mes initiales' }))
+    await user.click(await screen.findByRole('button', { name: 'Changer d’avatar' }))
+    await user.click(screen.getByRole('radio', { name: 'Mes initiales' }))
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
 
     await waitFor(() => {

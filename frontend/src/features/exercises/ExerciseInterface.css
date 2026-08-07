@@ -250,7 +250,7 @@
 .exercise-submit-button {
   padding: 0.875rem 2.25rem;
   background: linear-gradient(135deg, var(--brand), var(--brand-strong));
-  color: white;
+  color: var(--brand-ink);
   border: none;
   border-radius: 10px;
   font-size: 1rem;

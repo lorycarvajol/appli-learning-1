@@ -6,31 +6,166 @@
   background-color: var(--bg);
 }
 
+/* ── Bandeau d'identité ─────────────────────────────────────────────────────
+
+   Le fond vient de `--banner-*`, et non de `--ink` / `--brand-strong` : ces
+   deux-là s'éclaircissent en thème sombre, ce qui posait le titre blanc sur un
+   dégradé presque blanc (1,2:1 de contraste). Un bandeau qui porte du texte
+   blanc a besoin de teintes sombres dans les deux thèmes — voir _theme.scss.
+
+   `--hero-accent` / `--hero-accent-2` sont posées **en ligne** par le
+   composant, depuis la palette de l'avatar choisi. Les valeurs de repli
+   ci-dessous ne servent qu'à garder la feuille lisible seule.
+
+   ⚠️ L'accent ne touche que du décor — anneau, lueur, filet. Jamais du texte :
+   ces six palettes sont claires, et certaines ne tiendraient pas le contraste
+   sur le dégradé sombre. */
 .profile__hero {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 2.5rem 2rem;
-  background: linear-gradient(135deg, var(--ink), var(--brand-strong));
+  --hero-accent: var(--brand);
+  --hero-accent-2: var(--brand-strong);
+
+  position: relative;
+  overflow: hidden;
+  padding: 2.75rem 2rem 2.5rem;
+  background: linear-gradient(135deg, var(--banner-from), var(--banner-to));
   color: #fff;
+}
+
+/* Filet horizontal en pied de bandeau, à l'accent : il ferme le bloc et fait
+   la jonction avec le fond de page, sans bordure grise. */
+.profile__hero::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--hero-accent), var(--hero-accent-2), transparent);
+}
+
+.profile__hero-inner {
+  position: relative;
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+/* Lueur d'accent, centrée sur l'avatar — et **pas** sur le bandeau : ancrée au
+   bandeau, elle éclairait le vide à gauche de la colonne de contenu, où elle
+   se lisait comme une tache plutôt que comme un halo.
+   ⚠️ Elle doit rester à l'écart du texte : ces six palettes sont claires, et
+   une lueur qui déborde sous la bio en réduirait le contraste. D'où un rayon
+   court et une opacité basse. */
+.profile__hero-inner::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 48px;
+  width: 300px;
+  height: 300px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--hero-accent) 30%, transparent) 0%,
+    transparent 65%
+  );
+  pointer-events: none;
 }
 
 .profile__hero-avatar {
   flex-shrink: 0;
-  border-radius: 24px;
-  box-shadow: 0 6px 24px rgb(0 0 0 / 0.25);
+  border-radius: 28px;
+  /* Anneau à la couleur de l'avatar, puis ombre portée. L'anneau est posé en
+     `box-shadow` et non en `border` : pas de décalage de la boîte. */
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--hero-accent) 70%, transparent),
+    0 10px 30px rgb(0 0 0 / 0.35);
+}
+
+.profile__identity {
+  min-width: 0;
+  flex: 1;
 }
 
 .profile__title {
-  font-size: 1.6rem;
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
-.profile__subtitle {
-  margin: 0.35rem 0 0;
-  opacity: 0.85;
-  font-size: 0.9rem;
+.profile__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+/* Le pseudo est un identifiant, pas une phrase : chasse fixe, comme on
+   l'écrirait dans l'éditeur. C'est le seul écart typographique du bandeau. */
+.profile__handle {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: #fff;
+  text-decoration: none;
+  border-bottom: 1px solid rgb(255 255 255 / 0.35);
+  padding-bottom: 1px;
+}
+
+.profile__handle:hover {
+  border-bottom-color: #fff;
+}
+
+.profile__handle:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+.profile__chip {
+  padding: 0.2rem 0.6rem;
+  border: 1px solid rgb(255 255 255 / 0.24);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.12);
+  font-size: 0.76rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* La mesure compte plus que la taille : une bio qui court sur 900 px ne se lit
+   pas. 58 caractères, c'est la largeur de lecture confortable. */
+.profile__bio {
+  margin: 0.85rem 0 0;
+  max-width: 58ch;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: rgb(255 255 255 / 0.92);
+  overflow-wrap: anywhere;
+}
+
+/* L'invitation reste plus discrète qu'une vraie bio, mais lisible : à 0,6
+   d'opacité elle tombait à 3,8:1 sur le clair du dégradé. */
+.profile__bio--vide {
+  color: rgb(255 255 255 / 0.75);
+}
+
+@media (max-width: 720px) {
+  .profile__hero {
+    padding: 2rem 1.25rem;
+  }
+
+  .profile__hero-inner {
+    flex-wrap: wrap;
+    gap: 1.1rem;
+  }
+
+  .profile__title {
+    font-size: 1.45rem;
+  }
 }
 
 .profile__container {
@@ -79,11 +214,59 @@
 
 /* Galerie d'avatars */
 
+/* L'avatar courant et le bouton qui déplie le catalogue. Voir l'avatar à côté
+   du bouton évite d'avoir à remonter à l'en-tête de la page pour savoir ce
+   qu'on est en train de changer. */
+.profile__avatar-actuel {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* `profile__submit` porte une marge haute faite pour un bas de formulaire ;
+   ici le bouton est aligné sur un avatar. */
+.profile__avatar-bascule {
+  margin-top: 0;
+}
+
+.profile__avatar-picker {
+  margin-bottom: 1rem;
+}
+
+/* Une famille = un titre, son crédit, sa grille. L'espacement sépare les
+   familles plus qu'il ne sépare les vignettes : c'est ce qui fait lire sept
+   groupes plutôt qu'une planche de quarante-deux visages. */
+.profile__avatar-family {
+  margin-top: 1.4rem;
+}
+
+.profile__avatar-family-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* L'attribution CC BY est une obligation, pas une note de bas de page : elle
+   reste lisible (pas de gris trop pâle) tout en s'effaçant devant le titre. */
+.profile__avatar-credit {
+  margin: 0.1rem 0 0.5rem;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
 .profile__avatars {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
   gap: 0.6rem;
-  margin-bottom: 1rem;
+}
+
+/* Les six palettes sont un réglage, pas un catalogue : une rangée qui ne
+   s'étire pas sur toute la largeur, contrairement aux grilles de visages. */
+.profile__palettes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
 }
 
 .profile__avatar-choice {
@@ -145,7 +328,7 @@
   border: none;
   border-radius: 10px;
   background: var(--brand);
-  color: #fff;
+  color: var(--brand-ink);
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
@@ -269,10 +452,12 @@
 }
 
 @media (max-width: 640px) {
-  .profile__hero {
+  /* ⚠️ Ce bloc visait `.profile__hero` du temps où c'était lui le conteneur
+     flex. La disposition est passée sur `.profile__hero-inner` ; il restait un
+     `text-align: center` orphelin qui centrait tout le bandeau, bio comprise —
+     un paragraphe centré sur cinq lignes est pénible à lire. */
+  .profile__hero-inner {
     flex-direction: column;
-    text-align: center;
-    padding: 2rem 1.25rem;
   }
 
   .profile__container {

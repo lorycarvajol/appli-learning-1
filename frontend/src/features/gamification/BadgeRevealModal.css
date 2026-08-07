@@ -106,7 +106,7 @@
   border: none;
   border-radius: 12px;
   background: linear-gradient(135deg, var(--brand), var(--brand-strong));
-  color: #fff;
+  color: var(--brand-ink);
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;

@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
   AVATAR_KEYS,
+  FAMILLES,
   VISAGES,
   PALETTES,
   avatarFaceUri,
+  familleDuVisage,
   initialsOf,
   initialsPalette,
   parseAvatarKey,
@@ -45,6 +47,34 @@ describe('catalogue d’avatars', () => {
   it('refuse un visage hors catalogue', () => {
     expect(avatarFaceUri('licorne')).toBeNull()
     expect(avatarFaceUri('')).toBeNull()
+  })
+
+  it('n’admet aucun tiret dans un identifiant de visage', () => {
+    // `parseAvatarKey` découpe la clé sur le tiret : un identifiant qui en
+    // contient serait tronqué, et la clé rejetée en silence — l'apprenant
+    // verrait son choix revenir aux initiales sans explication.
+    for (const visage of VISAGES) {
+      expect(visage, visage).not.toContain('-')
+    }
+  })
+
+  it('rattache chaque visage à une famille créditée', () => {
+    // L'attribution CC BY 4.0 est une obligation : une famille sans auteur ni
+    // licence affichés mettrait l'exploitant en faute. Un visage orphelin de
+    // famille, lui, ne serait crédité nulle part.
+    for (const visage of VISAGES) {
+      const famille = familleDuVisage(visage)
+      expect(famille, visage).not.toBeNull()
+      expect(famille.credit.auteur, visage).toBeTruthy()
+      expect(famille.credit.licence, visage).toBeTruthy()
+    }
+  })
+
+  it('ne déclare aucun visage en double entre familles', () => {
+    // Le même identifiant dans deux familles rendrait le crédit ambigu et
+    // ferait dessiner deux fois la même vignette dans le sélecteur.
+    expect(new Set(VISAGES).size).toBe(VISAGES.length)
+    expect(VISAGES).toHaveLength(FAMILLES.reduce((n, f) => n + f.visages.length, 0))
   })
 
   it('retombe sur les initiales pour une clé inconnue', () => {

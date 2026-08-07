@@ -83,7 +83,7 @@
 .admin-tab--active {
   background: var(--brand);
   border-color: var(--brand);
-  color: #fff;
+  color: var(--brand-ink);
 }
 
 /* Compteur d'alerte : ce qui demande une action de l'admin */

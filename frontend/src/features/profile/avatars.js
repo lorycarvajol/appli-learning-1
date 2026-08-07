@@ -5,46 +5,76 @@
  * stocké côté serveur. Voir `backend/apps/accounts/avatars.py` pour le
  * raisonnement complet (modération, formats, surface d'attaque).
  *
+ * Les familles, leurs graines et leurs crédits vivent dans `avatarCatalog.js`,
+ * volontairement dépourvu d'imports : le script de génération, qui tourne sous
+ * Node et ne sait pas charger un `.svg`, lit le même fichier. Ce module-ci n'y
+ * ajoute que le dessin.
+ *
  * ⚠️ Les visages sont **pré-générés à la construction** (`npm run avatars`) et
  * servis par l'application elle-même — **jamais** par l'API HTTP de DiceBear.
  * Un appel distant enverrait l'IP de chaque apprenant à un tiers à chaque
  * affichage, et ferait tomber la raison pour laquelle l'application n'a pas de
  * bannière de consentement (aucun traceur tiers). Ne pas remplacer par une URL.
  *
- * Style : **Notionists**, licence **CC0 1.0** (Zoish) — domaine public, aucune
- * attribution obligatoire. Plusieurs autres styles de la même bibliothèque sont
- * en CC BY 4.0 : vérifier `meta.license` avant d'en changer.
+ * ⚠️ Ne pas réintroduire `@dicebear/core` ici. Le catalogue est fermé :
+ * quarante-deux visages connus d'avance. Embarquer le générateur pour les
+ * recalculer à l'exécution ajoutait ~380 ko au morceau d'entrée — `Avatar` est
+ * tiré par le `Header`, donc structurel et jamais différé — et faisait repasser
+ * le bundle de 261 ko à 640 ko.
  *
- * ⚠️ `VISAGES` et `PALETTES` **dupliquent** les listes du serveur. C'est
- * assumé : le serveur reste l'autorité sur ce qui est acceptable, le client
- * n'a besoin que de savoir dessiner. Mais ajouter un visage d'un seul côté
- * produit soit un avatar vide, soit un choix refusé à l'enregistrement —
- * toujours modifier les deux fichiers ensemble.
+ * Licences : Notionists est en CC0, mais **quatre des sept familles sont en
+ * CC BY 4.0** et imposent une attribution. Elle est portée par le sélecteur
+ * d'avatar (sous chaque titre de famille) et par les mentions légales. Les
+ * crédits sont vérifiés contre `collection[style].meta` à chaque génération.
  */
 
-// Visages **pré-générés** par `npm run avatars` (voir
-// `scripts/generate-avatars.mjs`). Vite les transforme en URLs : le navigateur
-// reçoit six SVG statiques, mis en cache, et **aucun code de génération**.
-//
-// ⚠️ Ne pas réintroduire `@dicebear/core` ici. Le catalogue est fermé : six
-// visages connus d'avance. Embarquer le générateur pour les recalculer à
-// l'exécution ajoutait ~380 ko au morceau d'entrée — `Avatar` est tiré par le
-// `Header`, donc structurel et jamais différé — et faisait repasser le bundle
-// de 261 ko à 640 ko.
-import novaSvg from '@/assets/avatars/nova.svg'
-import atlasSvg from '@/assets/avatars/atlas.svg'
-import vegaSvg from '@/assets/avatars/vega.svg'
-import orionSvg from '@/assets/avatars/orion.svg'
-import lyraSvg from '@/assets/avatars/lyra.svg'
-import solSvg from '@/assets/avatars/sol.svg'
+import { FAMILLES, VISAGES, familleDuVisage } from './avatarCatalog'
+
+export { FAMILLES, VISAGES, familleDuVisage }
 
 /**
- * Chaque valeur **est** la graine DiceBear : la renommer change le visage de
- * tous ceux qui l'avaient choisi. Miroir de `VISAGES` dans `avatars.py`.
+ * Visages **pré-générés**, chargés en bloc plutôt qu'un `import` par fichier.
+ *
+ * Vite résout ce glob à la compilation : le résultat est exactement ce que
+ * donnaient les imports nominatifs — quarante-deux URL de fichiers statiques,
+ * mis en cache et chargés à la demande. Aucun code de génération n'entre dans
+ * le bundle.
+ *
+ * On préfère le glob à quarante-deux lignes d'import parce qu'une liste
+ * manuelle de cette taille dérive en silence : un visage ajouté au catalogue
+ * mais oublié ici produirait une vignette vide, sans erreur. Ici, le fichier
+ * manque ou il est là.
+ *
+ * ⚠️ Ces fichiers sont **exclus de l'intégration en base64** par le
+ * `assetsInlineLimit` de `vite.config.js`. Sans cette exclusion, les douze
+ * visages pesant moins de 4 ko atterrissaient dans le morceau d'entrée —
+ * `Avatar` est tiré par le `Header`, donc structurel — et chaque visiteur
+ * téléchargeait douze visages qu'il ne verrait jamais. Ne pas retirer la règle
+ * en croyant simplifier la configuration.
  */
-export const VISAGES = ['nova', 'atlas', 'vega', 'orion', 'lyra', 'sol']
+const FICHIERS = import.meta.glob('../../assets/avatars/*.svg', {
+  eager: true,
+  import: 'default',
+})
+
+const FACE_URLS = Object.fromEntries(
+  Object.entries(FICHIERS).map(([chemin, url]) => [
+    chemin.slice(chemin.lastIndexOf('/') + 1, -'.svg'.length),
+    url,
+  ])
+)
 
 export const PALETTES = ['violet', 'amber', 'teal', 'rose', 'indigo', 'lime']
+
+/** Étiquette lisible d'une palette, pour les libellés d'accessibilité. */
+export const PALETTE_LABELS = {
+  violet: 'violet',
+  amber: 'ambre',
+  teal: 'turquoise',
+  rose: 'rose',
+  indigo: 'indigo',
+  lime: 'vert',
+}
 
 /** Fond dégradé et couleur de tracé, pour chaque palette. */
 const PALETTE_COLORS = {
@@ -56,14 +86,8 @@ const PALETTE_COLORS = {
   lime: { from: '#5aa02c', to: '#a3d94f', ink: '#1b3000' },
 }
 
-const FACE_URLS = {
-  nova: novaSvg,
-  atlas: atlasSvg,
-  vega: vegaSvg,
-  orion: orionSvg,
-  lyra: lyraSvg,
-  sol: solSvg,
-}
+/** Palette retenue quand on quitte les initiales sans en avoir choisi une. */
+export const PALETTE_PAR_DEFAUT = 'violet'
 
 /**
  * URL du visage, à poser dans un `<image>`.
@@ -80,7 +104,13 @@ export const AVATAR_KEYS = VISAGES.flatMap((visage) =>
   PALETTES.map((palette) => `${visage}-${palette}`)
 )
 
-/** Décompose une clé en visage et palette, ou `null` si elle est inconnue. */
+/**
+ * Décompose une clé en visage et palette, ou `null` si elle est inconnue.
+ *
+ * ⚠️ Le découpage se fait sur le tiret : c'est pourquoi aucun identifiant de
+ * visage ne peut en contenir (`adventurerneutral1`, et non
+ * `adventurer-neutral-1`). Un test verrouille cette règle.
+ */
 export function parseAvatarKey(key) {
   if (!key) return null
   const [visage, palette] = String(key).split('-')

@@ -36,7 +36,7 @@
     height: 40px;
     border-radius: $border-radius-md;
     background: linear-gradient(135deg, var(--brand), var(--brand-strong));
-    color: #fff;
+    color: var(--brand-ink);
     font-family: $font-family-mono;
     font-size: 0.85rem;
     box-shadow: 0 4px 14px color-mix(in srgb, var(--brand) 40%, transparent);
