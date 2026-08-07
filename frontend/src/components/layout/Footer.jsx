@@ -17,6 +17,17 @@ export default function Footer() {
     { label: 'CGU', path: '/cgu' },
   ];
 
+  /*
+    ⚠️ Ce lien n'est pas décoratif : c'est une **obligation de la licence**.
+    La plateforme est sous AGPL-3.0, dont la section 13 (« Remote Network
+    Interaction ») impose que quiconque utilise le logiciel *à travers le
+    réseau* — donc chaque visiteur, sans rien installer — puisse obtenir le
+    code source. Un fichier LICENSE dans le dépôt ne suffit pas à satisfaire
+    cette clause pour une application déployée : il faut une offre visible
+    depuis l'application elle-même. Ne pas le retirer sans changer de licence.
+  */
+  const SOURCE_URL = 'https://github.com/lorycarvajol/appli-learning-1';
+
   return (
     <footer className="footer">
       <div className="footer__container">
@@ -57,7 +68,16 @@ export default function Footer() {
         </nav>
 
         <p className="footer__copyright">
-          © {currentYear} CodeAcademy
+          © {currentYear} CodeAcademy ·{' '}
+          <a
+            className="footer__link"
+            href={SOURCE_URL}
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            Code source
+          </a>{' '}
+          <abbr title="GNU Affero General Public License, version 3">(AGPL-3.0)</abbr>
         </p>
       </div>
     </footer>

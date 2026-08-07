@@ -7,6 +7,7 @@
 [![CI](https://github.com/lorycarvajol/appli-learning-1/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/lorycarvajol/appli-learning-1/actions/workflows/ci.yml)
 [![En ligne](https://img.shields.io/badge/en_ligne-codelearning.lorycarvajol.dev-5b3df0)](https://codelearning.lorycarvajol.dev/login)
 [![Dernier commit](https://img.shields.io/github/last-commit/lorycarvajol/appli-learning-1?label=dernier%20commit&color=5b3df0)](https://github.com/lorycarvajol/appli-learning-1/commits/main)
+[![Licence](https://img.shields.io/badge/licence-AGPL--3.0-blue)](./LICENSE)
 
 [![Django](https://img.shields.io/badge/Django-5.2-092E20?logo=django&logoColor=white)](https://www.djangoproject.com/)
 [![DRF](https://img.shields.io/badge/DRF-3.16-A30000?logo=django&logoColor=white)](https://www.django-rest-framework.org/)
@@ -28,7 +29,7 @@
 
 [Aperçu](#aperçu) · [Le parcours](#le-parcours) · [Ce que chacun peut faire](#ce-que-chacun-peut-faire) ·
 [Décisions techniques](#décisions-techniques) · [La pile](#la-pile) · [Démarrer](#démarrer-en-local) ·
-[Tests](#tests) · [Structure](#structure-du-dépôt) · [Documentation](#documentation)
+[Tests](#tests) · [Structure](#structure-du-dépôt) · [Documentation](#documentation) · [Licence](#licence)
 
 ---
 
@@ -239,6 +240,31 @@ construit fait perdre plus de temps qu'elle n'en fait gagner :
 - **Forum** — l'app n'existe pas.
 - **Soumission de projets** — le modèle `Project` existe, aucun modèle de
   soumission.
+
+---
+
+## Licence
+
+Ce projet est distribué sous **[GNU Affero General Public License v3.0](./LICENSE)**.
+
+Vous pouvez lire, modifier et redéployer ce code. En contrepartie, la licence
+impose une chose : **si vous déployez une version modifiée et que des
+utilisateurs s'en servent à travers le réseau, vous devez publier votre code
+source** — même sans distribuer le moindre fichier. C'est ce que dit la
+section 13, et c'est la raison d'être de l'AGPL par rapport à la GPL, écrite
+avant que le logiciel ne se consomme depuis un navigateur.
+
+> [!NOTE]
+> C'est aussi pourquoi le pied de page de l'application renvoie vers ce
+> dépôt : pour une application déployée, un fichier `LICENSE` ne suffit pas à
+> satisfaire la section 13 — l'offre de source doit être atteignable depuis
+> l'application elle-même.
+
+La licence couvre le **code**. Les visages d'avatar gardent la leur (voir
+ci-dessous), et l'attribution CC BY 4.0 qu'ils imposent reste due
+indépendamment de l'AGPL.
+
+Copyright © 2026 Lory Carvajol.
 
 ---
 
