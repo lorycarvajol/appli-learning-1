@@ -151,6 +151,40 @@ describe('ProfilePage', () => {
     })
   })
 
+  it('remonte au bandeau après enregistrement, pour qu’on voie le résultat', async () => {
+    // Le bouton est en bas d'une page longue ; le message et l'avatar mis à
+    // jour sont en haut. Sans ce défilement, on clique sans rien voir se
+    // passer.
+    const user = userEvent.setup()
+    const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => {
+      expect(scroll).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }))
+    })
+    scroll.mockRestore()
+  })
+
+  it('remonte aussi quand l’enregistrement échoue', async () => {
+    // Le cas qui compte le plus : l'alerte d'erreur est au même endroit. Sans
+    // défilement, un refus ne se distingue pas d'un clic sans effet.
+    const user = userEvent.setup()
+    const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+    authApi.updateProfile.mockRejectedValueOnce({
+      response: { data: { profile: { avatar_key: ['Refusé.'] } } },
+    })
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => {
+      expect(scroll).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }))
+    })
+    scroll.mockRestore()
+  })
+
   it('présente la couleur et la bordure AVANT les visages', async () => {
     const user = userEvent.setup()
     renderPage({ ...USER, profile: { ...USER.profile, avatar_key: 'nova-violet' } })

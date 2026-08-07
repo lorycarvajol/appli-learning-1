@@ -27,6 +27,20 @@ const THEMES = [
 
 const BIO_MAX = 500
 
+/**
+ * Ramène la vue en haut de page, là où vivent le bandeau et le message
+ * d'enregistrement.
+ *
+ * ⚠️ Le défilement est **animé sauf si le système demande de réduire les
+ * animations** : un déplacement brusque de plus de mille pixels est
+ * désorientant, et pour une partie des gens, nauséeux. `prefers-reduced-motion`
+ * n'est pas une préférence esthétique.
+ */
+function remonterAuBandeau() {
+  const sansAnimation = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  window.scrollTo({ top: 0, behavior: sansAnimation ? 'auto' : 'smooth' })
+}
+
 export default function ProfilePage() {
   const dispatch = useDispatch()
   const { user } = useSelector((state) => state.auth)
@@ -107,6 +121,25 @@ export default function ProfilePage() {
     } else {
       setNotice('Profil enregistré.')
     }
+
+    /*
+      ⚠️ On remonte, quelle que soit l'issue.
+
+      Le bouton « Enregistrer » est en bas d'une page longue — le sélecteur
+      d'avatar déplié fait à lui seul plus de mille pixels. Le message
+      d'enregistrement et l'avatar mis à jour, eux, sont tout en haut : on
+      cliquait donc sans **rien** voir se passer, et il fallait deviner qu'il
+      fallait remonter pour le constater.
+
+      Le cas d'échec compte encore plus : l'alerte d'erreur est au même
+      endroit. Sans ce défilement, un enregistrement refusé ne se distinguait
+      pas d'un clic sans effet.
+
+      Le message porte `role="status"` (et `role="alert"` en erreur) : un
+      lecteur d'écran l'annonce de toute façon. Ce défilement s'adresse à qui
+      regarde l'écran.
+    */
+    remonterAuBandeau()
   }
 
   return (
