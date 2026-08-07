@@ -8,6 +8,8 @@ formateur. Les formateurs suivent leur classe et ouvrent les chapitres.
 
 ### 🌐 [codelearning.lorycarvajol.dev](https://codelearning.lorycarvajol.dev/login)
 
+![Le tableau de bord d'un apprenant](docs/images/tableau-de-bord.jpg)
+
 ---
 
 ## Ce que c'est, en chiffres
@@ -49,11 +51,25 @@ dans un bac à sable isolé. Passer des quiz. Gagner des points, des niveaux et
 des trophées. Se comparer aux autres, ou s'en retirer d'un clic. Exporter
 toutes ses données, ou supprimer son compte, sans passer par personne.
 
+![Un exercice corrigé automatiquement](docs/images/exercice.jpg)
+
+Le code part dans un conteneur jetable, sans réseau ; chaque critère est
+vérifié séparément et le retour dit **quoi corriger**, pas seulement que
+c'est faux.
+
+![Les trophées, dont dix secrets](docs/images/trophees.jpg)
+
+Les objectifs visibles balisent le parcours avec leur barre de progression.
+Les secrets ne montrent qu'une énigme — et le masquage se fait **côté
+serveur** : impossible de les découvrir en inspectant les requêtes réseau.
+
 ### 👩‍🏫 Formateur
 
 Créer des classes et inviter par lien — aucun envoi d'e-mail requis. Suivre
 la progression de ses apprenants, leçon par leçon. Ouvrir les chapitres au
 rythme qu'il choisit. Il ne voit **que ses propres classes**.
+
+![L'espace formateur](docs/images/espace-formateur.jpg)
 
 ### 🛠️ Administrateur
 
