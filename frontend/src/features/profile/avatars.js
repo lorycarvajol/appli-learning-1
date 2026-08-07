@@ -90,6 +90,60 @@ const PALETTE_COLORS = {
 export const PALETTE_PAR_DEFAUT = 'violet'
 
 /**
+ * Bordures de vignette. ⚠️ Miroir de `BORDURES` dans
+ * `backend/apps/accounts/avatars.py`, qui reste l'autorité : une valeur
+ * ajoutée ici sans l'être là-bas serait refusée à l'enregistrement.
+ *
+ * La chaîne vide est « aucune bordure », et c'est le défaut — un avatar nu est
+ * l'état neutre.
+ */
+export const BORDURES = ['', 'clair', 'sombre', 'double', 'lueur']
+
+export const BORDURE_LABELS = {
+  '': 'Aucune',
+  clair: 'Anneau clair',
+  sombre: 'Anneau sombre',
+  double: 'Double liseré',
+  lueur: 'Halo',
+}
+
+/**
+ * Traits de la bordure, à poser **par-dessus** le visage.
+ *
+ * ⚠️ Les valeurs sont volontairement en blanc et en noir translucides, jamais
+ * dans une couleur de thème : la bordure se superpose aux six palettes et doit
+ * rester visible sur chacune, du lime clair à l'indigo. Une teinte fixe aurait
+ * disparu sur au moins l'une d'elles.
+ *
+ * ⚠️ Chaque anneau est **rentré de la moitié de son épaisseur** (`inset`) et
+ * son rayon réduit d'autant : un trait centré sur le bord de la vignette
+ * déborderait de moitié, et se ferait rogner par le `rx` du fond.
+ */
+const BORDURE_TRAITS = {
+  clair: [{ inset: 3, epaisseur: 6, couleur: 'rgba(255,255,255,0.92)' }],
+  sombre: [{ inset: 3, epaisseur: 6, couleur: 'rgba(23,19,42,0.55)' }],
+  double: [
+    { inset: 2, epaisseur: 4, couleur: 'rgba(255,255,255,0.95)' },
+    { inset: 8, epaisseur: 2, couleur: 'rgba(255,255,255,0.55)' },
+  ],
+  // Trois anneaux de plus en plus effacés : un vrai `filter: blur()` sur un
+  // `<svg>` inline coûte une couche de composition à chaque avatar, et il y en
+  // a jusqu'à quarante-huit à l'écran dans le sélecteur.
+  lueur: [
+    { inset: 2, epaisseur: 4, couleur: 'rgba(255,255,255,0.55)' },
+    { inset: 6, epaisseur: 4, couleur: 'rgba(255,255,255,0.28)' },
+    { inset: 10, epaisseur: 4, couleur: 'rgba(255,255,255,0.14)' },
+  ],
+}
+
+/** Anneaux à dessiner pour une bordure, ou un tableau vide si elle est
+ *  inconnue ou absente. Le repli silencieux est voulu : une valeur périmée en
+ *  base doit donner un avatar nu, pas un avatar cassé. */
+export function bordureTraits(bordure) {
+  return BORDURE_TRAITS[bordure] || []
+}
+
+/**
  * URL du visage, à poser dans un `<image>`.
  *
  * On passe par une image plutôt que par une injection de balisage : le SVG

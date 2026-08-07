@@ -5,7 +5,7 @@ from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 
-from .avatars import is_valid_avatar_key
+from .avatars import is_valid_avatar_border, is_valid_avatar_key
 from .models import User, Profile
 
 #: Seuls champs du profil qu'un apprenant peut écrire lui-même.
@@ -15,8 +15,8 @@ from .models import User, Profile
 #: formateur, `anonymized_at` du RGPD. Aucun ne doit pouvoir bouger depuis un
 #: formulaire de profil.
 EDITABLE_PROFILE_FIELDS = (
-    'bio', 'avatar_key', 'theme', 'timezone', 'github_username',
-    'show_in_leaderboard',
+    'bio', 'avatar_key', 'avatar_border', 'theme', 'timezone',
+    'github_username', 'show_in_leaderboard',
 )
 
 
@@ -37,8 +37,8 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = [
-            'bio', 'avatar_key', 'theme', 'total_points', 'level',
-            'timezone', 'github_username', 'show_in_leaderboard',
+            'bio', 'avatar_key', 'avatar_border', 'theme', 'total_points',
+            'level', 'timezone', 'github_username', 'show_in_leaderboard',
             'cohort_name', 'created_at', 'updated_at'
         ]
         read_only_fields = [
@@ -54,6 +54,14 @@ class ProfileSerializer(serializers.ModelSerializer):
         if not is_valid_avatar_key(value):
             raise serializers.ValidationError(
                 "Cet avatar ne fait pas partie du catalogue."
+            )
+        return value
+
+    def validate_avatar_border(self, value):
+        """Même garde que pour la clé : la liste est close côté serveur."""
+        if not is_valid_avatar_border(value):
+            raise serializers.ValidationError(
+                "Cette bordure ne fait pas partie du catalogue."
             )
         return value
 

@@ -99,8 +99,24 @@ VISAGES = (
 
 PALETTES = ('violet', 'amber', 'teal', 'rose', 'indigo', 'lime')
 
+#: Bordures possibles autour de la vignette.
+#:
+#: ⚠️ **Champ séparé, et non un troisième segment de la clé.** La clé
+#: `<visage>-<palette>` est découpée sur le tiret côté client ; y ajouter une
+#: bordure aurait invalidé d'un coup **toutes** les clés déjà enregistrées, et
+#: interdit à jamais un tiret dans un nom de bordure. Un champ à part se
+#: valide seul, se laisse vide, et n'a aucun effet sur l'existant.
+#:
+#: La chaîne vide signifie « aucune bordure » — c'est le défaut, et il doit le
+#: rester : un avatar sans bordure est l'état neutre, pas un choix par défaut
+#: imposé.
+BORDURES = ('', 'clair', 'sombre', 'double', 'lueur')
+
 #: Valeur signifiant « pas de choix » : on retombe sur les initiales colorées.
 DEFAULT_AVATAR_KEY = ''
+
+#: Idem pour la bordure.
+DEFAULT_AVATAR_BORDER = ''
 
 
 def avatar_choices():
@@ -117,3 +133,13 @@ def is_valid_avatar_key(key):
     if not key:
         return True
     return key in set(avatar_choices())
+
+
+def is_valid_avatar_border(border):
+    """Vrai si la bordure est vide (aucune) ou présente au catalogue.
+
+    Même raison qu'`is_valid_avatar_key` : sans ce contrôle, un `PATCH`
+    poserait une chaîne arbitraire que le client interpolerait dans un nom de
+    classe ou un attribut SVG.
+    """
+    return (border or '') in set(BORDURES)

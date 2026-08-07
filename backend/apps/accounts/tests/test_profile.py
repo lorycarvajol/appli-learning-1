@@ -228,3 +228,71 @@ def test_un_apprenant_ne_modifie_pas_le_profil_dun_autre(learner):
 
     autre.refresh_from_db()
     assert autre.profile.bio == ''
+
+
+# ---------------------------------------------------------------------------
+# Bordure d'avatar
+#
+# Champ distinct d'`avatar_key`, et non un troisième segment de la clé : la
+# clé est découpée sur le tiret côté client, l'y ajouter aurait invalidé
+# toutes celles déjà en base.
+# ---------------------------------------------------------------------------
+
+def test_un_apprenant_choisit_une_bordure(learner):
+    response = client_for(learner).patch(
+        '/api/auth/me/', {'profile': {'avatar_border': 'double'}}, format='json',
+    )
+
+    assert response.status_code == 200
+    learner.refresh_from_db()
+    assert learner.profile.avatar_border == 'double'
+
+
+def test_la_bordure_vide_est_acceptee(learner):
+    """« Aucune bordure » est l'état neutre, il doit rester atteignable."""
+    learner.profile.avatar_border = 'lueur'
+    learner.profile.save(update_fields=['avatar_border'])
+
+    response = client_for(learner).patch(
+        '/api/auth/me/', {'profile': {'avatar_border': ''}}, format='json',
+    )
+
+    assert response.status_code == 200
+    learner.refresh_from_db()
+    assert learner.profile.avatar_border == ''
+
+
+def test_une_bordure_hors_catalogue_est_refusee(learner):
+    """Sans ce refus, la valeur finirait interpolée dans le rendu du client."""
+    response = client_for(learner).patch(
+        '/api/auth/me/',
+        {'profile': {'avatar_border': '"><script>'}},
+        format='json',
+    )
+
+    assert response.status_code == 400
+    learner.refresh_from_db()
+    assert learner.profile.avatar_border == ''
+
+
+def test_choisir_une_bordure_ne_touche_pas_a_l_avatar(learner):
+    """Les deux champs sont indépendants : c'est tout l'intérêt de les avoir
+    séparés plutôt que d'allonger la clé."""
+    learner.profile.avatar_key = 'nova-violet'
+    learner.profile.save(update_fields=['avatar_key'])
+
+    client_for(learner).patch(
+        '/api/auth/me/', {'profile': {'avatar_border': 'clair'}}, format='json',
+    )
+
+    learner.refresh_from_db()
+    assert learner.profile.avatar_key == 'nova-violet'
+    assert learner.profile.avatar_border == 'clair'
+
+
+def test_le_catalogue_expose_les_bordures(learner):
+    response = client_for(learner).get('/api/auth/avatars/')
+
+    assert response.status_code == 200
+    assert '' in response.data['bordures'], "« aucune » doit être proposable"
+    assert 'double' in response.data['bordures']

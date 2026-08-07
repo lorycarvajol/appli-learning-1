@@ -982,6 +982,34 @@ il ne restait qu'un `text-align: center` orphelin — invisible au bureau, il
 centrait tout le bandeau sous 640 px, bio de cinq lignes comprise. **Quand on
 déplace la mise en page d'un élément vers un enfant, relire ses media queries.**
 
+#### La bordure : un champ à part, pas un troisième segment de clé
+
+`Profile.avatar_border` (migration `0011`) tient la bordure de la vignette :
+`''` (aucune), `clair`, `sombre`, `double`, `lueur`.
+
+⚠️ **Champ distinct, et non un `<visage>-<palette>-<bordure>`.** La clé est
+découpée sur le tiret côté client : l'allonger aurait invalidé d'un coup les
+252 clés possibles déjà enregistrées, et interdit à jamais un tiret dans un
+nom de bordure. Un champ séparé se valide seul, se laisse vide, et n'a aucun
+effet sur l'existant — deux tests vérifient d'ailleurs que changer l'un ne
+touche pas l'autre.
+
+⚠️ **Les anneaux sont en blanc ou en noir translucide, jamais dans une couleur
+de thème.** Ils se superposent aux six palettes, du lime clair à l'indigo : une
+teinte fixe aurait disparu sur au moins l'une d'elles. Un test le verrouille.
+
+⚠️ Chaque anneau est **rentré de la moitié de son épaisseur** et son rayon
+réduit d'autant. Un trait centré sur le bord déborderait de moitié et se ferait
+rogner par le `rx` du fond ; un rayon laissé à 28 rendrait les coins plus
+carrés que la vignette.
+
+Le halo est fait de **trois anneaux de plus en plus effacés**, pas d'un
+`filter: blur()` : le sélecteur affiche jusqu'à quarante-huit vignettes à la
+fois, et un flou réel coûte une couche de composition à chacune.
+
+La bordure s'applique **aussi aux initiales** — c'est un habillage de vignette,
+pas un accessoire du dessin.
+
 #### Le sélecteur : replié, puis en deux temps
 
 Le catalogue **ne s'affiche qu'à la demande**, derrière un bouton « Changer
@@ -996,9 +1024,17 @@ titre), puis une rangée de palettes appliquée au visage retenu — quarante-hu
 boutons au lieu de deux cent cinquante-deux, et la palette redevient un
 réglage plutôt qu'une variante.
 
+⚠️ **Couleur et bordure viennent AVANT les visages.** Elles étaient reléguées
+en fin de sélecteur, derrière les sept familles : mesuré à **plus de 1 000 px**
+du haut du bloc, soit introuvable — l'exploitant a cru la couleur de fond
+disparue. Placées en tête, elles sont visibles d'emblée et les quarante-deux
+vignettes qui suivent se prévisualisent dans la combinaison choisie. L'ordre du
+sélecteur suit ainsi l'ordre de la décision : l'habillage, puis le visage.
+
 La rangée de palettes **n'apparaît pas** tant qu'aucun visage n'est choisi :
 sur le repli à initiales, la couleur vient du nom, et des palettes sans effet
-se liraient comme une panne.
+se liraient comme une panne. La bordure, elle, reste proposée — elle vaut aussi
+pour les initiales.
 
 ### L'écriture imbriquée du profil et le piège des points
 

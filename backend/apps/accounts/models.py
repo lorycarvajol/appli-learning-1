@@ -162,6 +162,15 @@ class Profile(models.Model):
         help_text="Clé du catalogue (« visage-palette »). Vide = initiales.",
     )
 
+    # ⚠️ Champ distinct, et non un troisième segment d'`avatar_key` : la clé
+    # est découpée sur le tiret côté client, l'y ajouter aurait invalidé
+    # toutes celles déjà enregistrées. Voir `avatars.BORDURES`.
+    avatar_border = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Bordure de la vignette. Vide = aucune.",
+    )
+
     class Theme(models.TextChoices):
         AUTO = 'AUTO', 'Selon le système'
         LIGHT = 'LIGHT', 'Clair'

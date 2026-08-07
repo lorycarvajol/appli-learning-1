@@ -9,7 +9,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 
-from .avatars import VISAGES, PALETTES, avatar_choices
+from .avatars import BORDURES, VISAGES, PALETTES, avatar_choices
 from .models import User, Profile
 from .throttling import FailedLoginThrottle
 from .serializers import (
@@ -133,9 +133,10 @@ class AvatarCatalogView(APIView):
     """
     GET /api/auth/avatars/
 
-    Visages et palettes disponibles. Le client fait le rendu en SVG à partir de
-    ces deux listes ; le serveur reste l'autorité sur ce qui est acceptable
-    (cf. `ProfileSerializer.validate_avatar_key`).
+    Visages, palettes et bordures disponibles. Le client fait le rendu en SVG
+    à partir de ces listes ; le serveur reste l'autorité sur ce qui est
+    acceptable (cf. `ProfileSerializer.validate_avatar_key` et
+    `validate_avatar_border`).
     """
     permission_classes = [IsAuthenticated]
 
@@ -143,6 +144,7 @@ class AvatarCatalogView(APIView):
         return Response({
             'visages': list(VISAGES),
             'palettes': list(PALETTES),
+            'bordures': list(BORDURES),
             'keys': avatar_choices(),
         })
 

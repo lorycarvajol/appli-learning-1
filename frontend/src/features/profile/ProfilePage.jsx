@@ -7,6 +7,8 @@ import Avatar from '@/components/ui/Avatar'
 import PasswordInput from '@/components/ui/PasswordInput'
 import { ROLE_LABELS } from '@/constants/roles'
 import {
+  BORDURES,
+  BORDURE_LABELS,
   FAMILLES,
   PALETTES,
   PALETTE_LABELS,
@@ -46,6 +48,7 @@ export default function ProfilePage() {
         bio: user.profile?.bio || '',
         github_username: user.profile?.github_username || '',
         avatar_key: user.profile?.avatar_key || '',
+        avatar_border: user.profile?.avatar_border || '',
         theme: user.profile?.theme || 'AUTO',
         // Absent de la réponse (vieux client, compte tout juste créé) vaut
         // « visible » : c'est le défaut du modèle, et l'inverse retirerait
@@ -72,7 +75,11 @@ export default function ProfilePage() {
     ...user,
     first_name: form.first_name,
     last_name: form.last_name,
-    profile: { ...user.profile, avatar_key: form.avatar_key },
+    profile: {
+      ...user.profile,
+      avatar_key: form.avatar_key,
+      avatar_border: form.avatar_border,
+    },
   }
 
   const submit = async (event) => {
@@ -88,6 +95,7 @@ export default function ProfilePage() {
         bio: form.bio,
         github_username: form.github_username,
         avatar_key: form.avatar_key,
+        avatar_border: form.avatar_border,
         theme: form.theme,
         show_in_leaderboard: form.show_in_leaderboard,
       },
@@ -140,8 +148,10 @@ export default function ProfilePage() {
             <AvatarPicker
               id="choix-avatar"
               value={form.avatar_key}
+              bordure={form.avatar_border}
               user={preview}
               onChange={(key) => setForm((c) => ({ ...c, avatar_key: key }))}
+              onBordureChange={(b) => setForm((c) => ({ ...c, avatar_border: b }))}
             />
           )}
 
@@ -313,9 +323,13 @@ function Field({ label, id, hint, children }) {
  * Les vignettes de visage portent la **palette en cours**, pour que l'aperçu
  * corresponde à ce qui sera enregistré.
  */
-function AvatarPicker({ id, value, user, onChange }) {
+function AvatarPicker({ id, value, bordure, user, onChange, onBordureChange }) {
   const parsed = parseAvatarKey(value)
   const paletteCourante = parsed ? parsed.palette : PALETTE_PAR_DEFAUT
+
+  // Vignette d'aperçu : le visage donné, mais toujours la bordure et la
+  // palette en cours. C'est ce qui permet de choisir en voyant le résultat.
+  const apercu = (avatarKey) => ({ profile: { avatar_key: avatarKey, avatar_border: bordure } })
 
   return (
     <div className="profile__avatar-picker" id={id}>
@@ -332,9 +346,85 @@ function AvatarPicker({ id, value, user, onChange }) {
           className={`profile__avatar-choice ${!value ? 'profile__avatar-choice--active' : ''}`}
           onClick={() => onChange('')}
         >
-          <Avatar user={{ ...user, profile: { avatar_key: '' } }} size={48} />
+          <Avatar
+            user={{ ...user, profile: { avatar_key: '', avatar_border: bordure } }}
+            size={48}
+          />
         </button>
       </div>
+
+      {/*
+        ⚠️ Couleur et bordure sont **avant** les visages, pas après.
+
+        Elles étaient reléguées en fin de sélecteur, derrière sept familles de
+        six vignettes : mesuré à plus de 1 000 px du haut du bloc, soit
+        introuvable — l'exploitant a cru la couleur de fond disparue. Placées
+        ici, elles sont visibles d'emblée et, surtout, les quarante-deux
+        vignettes qui suivent s'affichent dans la combinaison choisie. L'ordre
+        du sélecteur suit ainsi l'ordre de la décision : d'abord l'habillage,
+        ensuite le visage qu'on y met.
+      */}
+      {parsed && (
+        <section className="profile__avatar-family">
+          <h3 className="profile__avatar-family-title">Couleur du fond</h3>
+          <div
+            className="profile__palettes"
+            role="radiogroup"
+            aria-label="Couleur du fond de l’avatar"
+          >
+            {PALETTES.map((palette) => {
+              const key = `${parsed.visage}-${palette}`
+              return (
+                <button
+                  key={palette}
+                  type="button"
+                  role="radio"
+                  aria-checked={value === key}
+                  aria-label={`Fond ${PALETTE_LABELS[palette] || palette}`}
+                  className={`profile__avatar-choice ${value === key ? 'profile__avatar-choice--active' : ''}`}
+                  onClick={() => onChange(key)}
+                >
+                  <Avatar user={apercu(key)} size={48} />
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {/*
+        La bordure s'applique aussi aux initiales : c'est un choix de vignette,
+        pas un accessoire du dessin. Elle reste donc proposée même sans visage.
+      */}
+      <section className="profile__avatar-family">
+        <h3 className="profile__avatar-family-title">Bordure</h3>
+        <div
+          className="profile__palettes"
+          role="radiogroup"
+          aria-label="Bordure de l’avatar"
+        >
+          {BORDURES.map((choix) => (
+            <button
+              key={choix || 'aucune'}
+              type="button"
+              role="radio"
+              aria-checked={bordure === choix}
+              aria-label={`Bordure ${BORDURE_LABELS[choix]}`}
+              title={BORDURE_LABELS[choix]}
+              className={`profile__avatar-choice ${bordure === choix ? 'profile__avatar-choice--active' : ''}`}
+              onClick={() => onBordureChange(choix)}
+            >
+              <Avatar
+                user={{
+                  ...user,
+                  profile: { avatar_key: value, avatar_border: choix },
+                }}
+                size={48}
+              />
+            </button>
+          ))}
+        </div>
+      </section>
 
       {FAMILLES.map((famille) => (
         <section className="profile__avatar-family" key={famille.id}>
@@ -365,46 +455,13 @@ function AvatarPicker({ id, value, user, onChange }) {
                   className={`profile__avatar-choice ${value === key ? 'profile__avatar-choice--active' : ''}`}
                   onClick={() => onChange(key)}
                 >
-                  <Avatar user={{ profile: { avatar_key: key } }} size={48} />
+                  <Avatar user={apercu(key)} size={48} />
                 </button>
               )
             })}
           </div>
         </section>
       ))}
-
-      {/*
-        Sans visage choisi, la couleur du fond vient du nom (repli à initiales,
-        déterministe) : il n'y a rien à régler, et proposer des palettes sans
-        effet ferait croire à une panne.
-      */}
-      {parsed && (
-        <section className="profile__avatar-family">
-          <h3 className="profile__avatar-family-title">Couleur du fond</h3>
-          <div
-            className="profile__palettes"
-            role="radiogroup"
-            aria-label="Couleur du fond de l’avatar"
-          >
-            {PALETTES.map((palette) => {
-              const key = `${parsed.visage}-${palette}`
-              return (
-                <button
-                  key={palette}
-                  type="button"
-                  role="radio"
-                  aria-checked={value === key}
-                  aria-label={`Fond ${PALETTE_LABELS[palette] || palette}`}
-                  className={`profile__avatar-choice ${value === key ? 'profile__avatar-choice--active' : ''}`}
-                  onClick={() => onChange(key)}
-                >
-                  <Avatar user={{ profile: { avatar_key: key } }} size={48} />
-                </button>
-              )
-            })}
-          </div>
-        </section>
-      )}
     </div>
   )
 }

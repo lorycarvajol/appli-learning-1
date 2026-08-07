@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
   AVATAR_KEYS,
+  BORDURES,
+  BORDURE_LABELS,
+  bordureTraits,
   FAMILLES,
   VISAGES,
   PALETTES,
@@ -108,5 +111,53 @@ describe('avatar de repli', () => {
 
   it('ignore un nom fait uniquement d’espaces', () => {
     expect(initialsOf({ first_name: '   ', email: 'zoe@example.com' })).toBe('Z')
+  })
+})
+
+describe('bordures', () => {
+  it('propose « aucune » comme premier choix', () => {
+    // Un avatar nu est l'état neutre : il doit rester atteignable, et rester
+    // le défaut. Le retirer imposerait une bordure à qui n'en veut pas.
+    expect(BORDURES[0]).toBe('')
+    expect(bordureTraits('')).toEqual([])
+  })
+
+  it('donne un libellé à chaque bordure', () => {
+    // Sans libellé, le bouton n'a pas de nom accessible — cinq vignettes
+    // indistinguables pour un lecteur d'écran.
+    for (const bordure of BORDURES) {
+      expect(BORDURE_LABELS[bordure], bordure).toBeTruthy()
+    }
+  })
+
+  it('retombe sur aucun anneau pour une valeur inconnue', () => {
+    // Une valeur périmée en base doit donner un avatar nu, jamais un avatar
+    // cassé.
+    expect(bordureTraits('licorne')).toEqual([])
+    expect(bordureTraits(undefined)).toEqual([])
+  })
+
+  it('rentre chaque anneau et réduit son rayon d’autant', () => {
+    // ⚠️ Un trait centré sur le bord déborderait de la moitié de son
+    // épaisseur et se ferait rogner par le `rx` du fond ; un rayon laissé à
+    // 28 rendrait les coins plus carrés que la vignette.
+    for (const bordure of BORDURES.filter(Boolean)) {
+      for (const trait of bordureTraits(bordure)) {
+        expect(trait.inset, bordure).toBeGreaterThan(0)
+        expect(trait.epaisseur, bordure).toBeGreaterThan(0)
+        expect(28 - trait.inset, bordure).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('n’emploie que du blanc ou du noir translucide', () => {
+    // Les anneaux se superposent aux six palettes : une teinte fixe
+    // disparaîtrait sur au moins l'une d'elles.
+    for (const bordure of BORDURES.filter(Boolean)) {
+      for (const trait of bordureTraits(bordure)) {
+        expect(trait.couleur, `${bordure} ${trait.couleur}`)
+          .toMatch(/^rgba\((255,255,255|23,19,42),/)
+      }
+    }
   })
 })

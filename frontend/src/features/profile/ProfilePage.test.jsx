@@ -151,6 +151,49 @@ describe('ProfilePage', () => {
     })
   })
 
+  it('présente la couleur et la bordure AVANT les visages', async () => {
+    const user = userEvent.setup()
+    renderPage({ ...USER, profile: { ...USER.profile, avatar_key: 'nova-violet' } })
+
+    await user.click(await screen.findByRole('button', { name: 'Changer d’avatar' }))
+
+    // ⚠️ Ces deux réglages étaient relégués après les sept familles, à plus de
+    // 1 000 px du haut : l'exploitant a cru la couleur de fond disparue. Ils
+    // doivent précéder les visages, qui se prévisualisent alors dans la
+    // combinaison choisie.
+    const titres = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
+    expect(titres.slice(0, 2)).toEqual(['Couleur du fond', 'Bordure'])
+  })
+
+  it('enregistre la bordure choisie', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Changer d’avatar' }))
+    await user.click(screen.getByRole('radio', { name: 'Bordure Double liseré' }))
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => {
+      expect(authApi.updateProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          profile: expect.objectContaining({ avatar_border: 'double' }),
+        })
+      )
+    })
+  })
+
+  it('propose la bordure même sans visage choisi', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    // La bordure habille la vignette, pas le dessin : elle vaut aussi pour
+    // les initiales. La couleur du fond, elle, vient du nom dans ce cas — d'où
+    // son absence.
+    await user.click(await screen.findByRole('button', { name: 'Changer d’avatar' }))
+    expect(screen.getByRole('radio', { name: 'Bordure Halo' })).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Fond turquoise' })).not.toBeInTheDocument()
+  })
+
   it('n’offre pas de couleur de fond tant qu’aucun visage n’est choisi', async () => {
     const user = userEvent.setup()
     renderPage()

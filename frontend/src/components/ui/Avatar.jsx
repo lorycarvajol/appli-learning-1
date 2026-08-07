@@ -1,5 +1,6 @@
 import {
   avatarFaceUri,
+  bordureTraits,
   initialsOf,
   initialsPalette,
   paletteColors,
@@ -31,6 +32,10 @@ export default function Avatar({ user, size = 40, label, className = '' }) {
   const accessibility = label
     ? { role: 'img', 'aria-label': label }
     : { 'aria-hidden': 'true', focusable: 'false' }
+
+  // La bordure s'applique aussi bien au visage qu'aux initiales : c'est un
+  // choix de vignette, pas un accessoire du dessin.
+  const traits = bordureTraits(user?.profile?.avatar_border)
 
   return (
     <svg
@@ -79,6 +84,25 @@ export default function Avatar({ user, size = 40, label, className = '' }) {
             {initialsOf(user)}
           </text>
         )}
+
+      {/*
+        Les anneaux passent **après** le visage : dessinés avant, l'image les
+        recouvrirait entièrement. Le rayon suit celui du fond, diminué de
+        l'inset, sans quoi les coins seraient plus carrés que la vignette.
+      */}
+      {traits.map((trait) => (
+        <rect
+          key={`${trait.inset}-${trait.epaisseur}`}
+          x={trait.inset}
+          y={trait.inset}
+          width={100 - trait.inset * 2}
+          height={100 - trait.inset * 2}
+          rx={28 - trait.inset}
+          fill="none"
+          stroke={trait.couleur}
+          strokeWidth={trait.epaisseur}
+        />
+      ))}
     </svg>
   )
 }
