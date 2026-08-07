@@ -1,414 +1,198 @@
-# 🎓 Plateforme d'Apprentissage Web - Documentation Complète
+# CodeAcademy
 
-## 📋 Vue d'Ensemble
+**Une plateforme d'apprentissage du développement web, du premier `<h1>` à la mise en ligne.**
 
-Cette plateforme est une application web interactive pour l'apprentissage de la programmation web, avec :
-- 🎯 Système de progression contrôlée par formateur
-- 💻 Exercices de code avec validation automatique
-- 🎮 Gamification (badges, points, classements)
-- 📊 Suivi temps réel de l'activité des apprenants
-- 💬 Forum communautaire
-- 🚀 Architecture moderne Django + React
+Les apprenants suivent un parcours de quatre chapitres, écrivent du vrai code
+corrigé automatiquement, et progressent à leur rythme ou au tempo de leur
+formateur. Les formateurs suivent leur classe et ouvrent les chapitres.
+
+### 🌐 [codelearning.lorycarvajol.dev](https://codelearning.lorycarvajol.dev/login)
 
 ---
 
-## 📚 DOCUMENTATION DISPONIBLE
+## Ce que c'est, en chiffres
 
-### 🗺️ [01_ROADMAP.md](./01_ROADMAP.md)
-**Roadmap complète du projet sur 12 semaines**
-- Planning par sprints
-- Livrables attendus
-- Métriques de succès
-- Analyse des risques
-
-**À utiliser pour :** Planification, suivi de projet, priorisation
-
----
-
-### 📖 [02_USER_STORY_MAPPING.md](./02_USER_STORY_MAPPING.md)
-**User Stories détaillées et personas**
-- 3 personas (Apprenant, Formateur, Admin)
-- 30+ user stories avec critères d'acceptation
-- Story points et estimation
-- Priorisation MoSCoW
-
-**À utiliser pour :** Développement orienté utilisateur, tests d'acceptation
+| | |
+|---|---|
+| **Parcours** | 4 chapitres · 68 leçons · 25 exercices corrigés · 5 quiz |
+| **Récompenses** | 30 trophées, dont 10 secrets |
+| **Personnalisation** | 42 visages d'avatar, 7 familles · thème clair et sombre |
+| **Illustrations** | 31 figures de cours · 4 illustrations de leçon |
+| **Application** | 7 apps Django · 13 features React · 20 routes |
+| **Tests** | **332** backend · **146** frontend · 11 bout-en-bout |
 
 ---
 
-### 🏗️ [03_DIAGRAMMES_UML.md](./03_DIAGRAMMES_UML.md)
-**Diagrammes UML complets**
-- Diagramme de cas d'utilisation
-- Diagramme de classes (modèle de données)
-- Diagrammes de séquence (authentification, WebSocket, déblocage)
-- Diagrammes d'activité et d'état
-- Architecture de déploiement
+## Le parcours
 
-**À utiliser pour :** Compréhension technique, développement backend
+| # | Chapitre | Contenu |
+|---|---|---|
+| 1 | Introduction au HTML | 18 leçons, 8 exercices, 2 quiz |
+| 2 | Introduction au CSS | 17 leçons, 8 exercices, 1 quiz |
+| 3 | Introduction à JavaScript | 18 leçons, 9 exercices, 1 quiz |
+| 4 | Créer et mettre en ligne un site vitrine | 15 leçons, 1 quiz |
 
----
-
-### 🏛️ [04_ARCHITECTURE_TECHNIQUE.md](./04_ARCHITECTURE_TECHNIQUE.md)
-**Architecture complète et détaillée**
-- Stack technologique
-- Structure backend Django (avec code)
-- Structure frontend React (avec code)
-- Schéma base de données PostgreSQL
-- API REST endpoints
-- Configuration WebSocket
-- Sécurité et performance
-
-**À utiliser pour :** Implémentation technique, référence code
+Le contenu pédagogique **ne vit pas en base de données** : il vit dans le code,
+sous `backend/apps/courses/content/`. La base n'en est qu'une projection,
+reconstructible à tout moment par une commande. C'est ce qui a permis de
+récupérer deux incidents sans perdre une ligne.
 
 ---
 
-### 🚀 [05_GUIDE_DEVELOPPEMENT_INITIAL.md](./05_GUIDE_DEVELOPPEMENT_INITIAL.md)
-**Guide pas-à-pas pour démarrer le projet**
-- Setup environnement local
-- Configuration Django + PostgreSQL + Redis
-- Configuration React + Redux
-- Authentification JWT
-- Premier test end-to-end
+## Ce que chacun peut faire
 
-**À utiliser pour :** Onboarding nouveaux développeurs, setup initial
+### 🎓 Apprenant
 
----
+Lire les leçons — validées **à la lecture**, pas par un bouton à cocher.
+Écrire du code dans un éditeur Monaco, soumis à des tests qui s'exécutent
+dans un bac à sable isolé. Passer des quiz. Gagner des points, des niveaux et
+des trophées. Se comparer aux autres, ou s'en retirer d'un clic. Exporter
+toutes ses données, ou supprimer son compte, sans passer par personne.
 
-## 🛠️ STACK TECHNIQUE
+### 👩‍🏫 Formateur
 
-### Backend
-```
-Framework: Django 5.0+
-API: Django REST Framework
-WebSockets: Django Channels
-Async Tasks: Celery
-Database: PostgreSQL 15+
-Cache/Broker: Redis 7.0+
-Auth: JWT (djangorestframework-simplejwt)
-```
+Créer des classes et inviter par lien — aucun envoi d'e-mail requis. Suivre
+la progression de ses apprenants, leçon par leçon. Ouvrir les chapitres au
+rythme qu'il choisit. Il ne voit **que ses propres classes**.
 
-### Frontend
-```
-Framework: React 18+
-State: Redux Toolkit
-Router: React Router 6+
-HTTP: Axios
-WebSocket: Socket.io-client
-Editor: Monaco Editor
-Styling: Tailwind CSS
-Build: Vite
-```
+### 🛠️ Administrateur
 
-### DevOps
-```
-Container: Docker + Docker Compose
-CI/CD: GitHub Actions
-Hosting: Railway / Render
-Monitoring: Sentry
-Storage: AWS S3 / Railway Storage
-```
+Piloter les comptes (rôle, activation, anonymisation RGPD, affectation de
+classe), le tout **tracé dans un journal d'audit** que rien ne peut réécrire.
+Le CRUD de contenu reste dans l'admin Django, qui le fait mieux.
 
 ---
 
-## 🚀 QUICK START
+## Décisions techniques qui méritent le détour
 
-### Prérequis
-- Python 3.11+
-- Node.js 18+
-- Docker & Docker Compose
-- Git
+Le projet documente ses choix plutôt que ses fonctionnalités. Quelques-uns
+valent d'être lus :
 
-### Installation Rapide
+- **Rien ne peut être récompensé deux fois.** Ce n'est pas garanti par du code
+  prudent mais par trois mécanismes cumulés : des contraintes d'unicité en
+  base, des règles monotones, et un grand livre de points où le solde est
+  toujours égal à la somme des transactions. `sync_gamification` peut donc
+  être relancé n'importe quand.
+
+- **Le bac à sable est la seule frontière.** La liste noire de motifs a été
+  retirée : elle refusait du code d'apprenant légitime (`evaluer` déclenchait
+  sur `eval`) sans arrêter le moindre contournement. Le conteneur, lui, est
+  sans réseau, non privilégié, sans capacité, en lecture seule, et le worker
+  ne voit le démon Docker qu'à travers un mandataire qui n'ouvre que les
+  routes du bac à sable.
+
+- **Aucun traceur, donc aucune bannière de consentement.** Les avatars sont
+  pré-générés à la construction, les polices et les images sont servies par
+  la plateforme. C'est ce qui rend la politique de confidentialité tenable.
+
+- **Anonymisation, jamais suppression en cascade.** Effacer un compte
+  fausserait rétroactivement les statistiques de sa classe. L'identité part,
+  la progression reste, rattachée à un compte qui ne désigne plus personne.
+
+- **On ne reverrouille jamais un chapitre.** Un accès obtenu le reste, qu'on
+  rejoigne une classe ensuite ou qu'on la quitte.
+
+Le raisonnement complet — y compris les erreurs commises et ce qu'elles ont
+coûté — est dans [`CLAUDE.md`](./CLAUDE.md).
+
+---
+
+## La pile
+
+| | |
+|---|---|
+| **Backend** | Django 5.2 · Django REST Framework · SimpleJWT · Celery · PostgreSQL 15 · Redis 7 |
+| **Frontend** | React 18 · Vite 5 · Redux Toolkit · React Router 7 · Monaco Editor |
+| **Style** | SCSS maison, BEM, tokens de thème — **aucun framework CSS** |
+| **Exécution de code** | Conteneurs Docker jetables, pilotés par Celery via un mandataire de socket |
+| **Production** | Docker Compose · Traefik · Let's Encrypt · WhiteNoise |
+
+---
+
+## Démarrer en local
 
 ```bash
-# 1. Cloner le repository
-git clone https://github.com/votre-org/learning-platform.git
-cd learning-platform
+docker compose up -d
 
-# 2. Démarrer les services (PostgreSQL + Redis)
-docker-compose up -d
-
-# 3. Backend Setup
-cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements/development.txt
-python manage.py migrate
-python manage.py createsuperuser
-python manage.py runserver  # http://localhost:8000
-
-# 4. Frontend Setup (nouveau terminal)
-cd ../frontend
-npm install
-npm run dev  # http://localhost:5173
+docker compose exec backend python manage.py load_course_content   # le parcours
+docker compose exec backend python manage.py seed_badges           # les trophées
+docker compose exec backend python manage.py create_demo_users     # comptes de dev
 ```
 
-### Premier Test
-1. Ouvrir http://localhost:5173
-2. S'inscrire avec un nouveau compte
-3. Se connecter
-4. Vérifier le token dans localStorage (DevTools)
+Puis [localhost:5173](http://localhost:5173) et
+[localhost:8000/admin](http://localhost:8000/admin/).
 
-**Plus de détails :** Voir [05_GUIDE_DEVELOPPEMENT_INITIAL.md](./05_GUIDE_DEVELOPPEMENT_INITIAL.md)
+> **Tout passe par Docker.** Seul `npm` s'utilise en local, côté front — le
+> conteneur est en Node 18, la CI et les tests en Node 22.
 
----
+> ⚠️ `create_demo_users` **refuse de s'exécuter en production** : ses mots de
+> passe sont écrits dans le dépôt.
 
-## 📦 STRUCTURE DU PROJET
-
-```
-learning-platform/
-│
-├── backend/                    # Django Backend
-│   ├── apps/
-│   │   ├── accounts/          # Utilisateurs & Auth
-│   │   ├── courses/           # Chapitres, Leçons, Exercices
-│   │   ├── progression/       # Suivi progression
-│   │   ├── gamification/      # Badges, Points
-│   │   ├── forum/             # Forum communauté
-│   │   └── validation/        # Validation code
-│   ├── config/                # Settings Django
-│   ├── channels/              # WebSocket consumers
-│   └── requirements/
-│
-├── frontend/                   # React Frontend
-│   ├── src/
-│   │   ├── app/               # Redux store
-│   │   ├── features/          # Features (auth, chapters, etc.)
-│   │   ├── components/        # Composants réutilisables
-│   │   ├── services/          # API & WebSocket services
-│   │   └── hooks/             # Custom React hooks
-│   └── public/
-│
-├── docs/                       # Documentation (ce dossier)
-│   ├── 01_ROADMAP.md
-│   ├── 02_USER_STORY_MAPPING.md
-│   ├── 03_DIAGRAMMES_UML.md
-│   ├── 04_ARCHITECTURE_TECHNIQUE.md
-│   └── 05_GUIDE_DEVELOPPEMENT_INITIAL.md
-│
-├── docker-compose.yml
-└── README.md                   # Ce fichier
-```
-
----
-
-## 🎯 ROADMAP SIMPLIFIÉE
-
-### Phase 1 : Fondations (Semaines 1-3) ✅
-- [x] Setup projet Django + React
-- [x] Authentification JWT
-- [ ] Modèles de données (Chapitres, Leçons)
-- [ ] Système de progression
-- [ ] Admin Django pour création contenu
-
-### Phase 2 : Temps Réel (Semaines 4-6)
-- [ ] WebSocket avec Django Channels
-- [ ] Sauvegarde auto toutes les 3s
-- [ ] Interface apprenant (navigation, exercices, QCM)
-- [ ] Dashboard formateur avec suivi temps réel
-
-### Phase 3 : Gamification (Semaines 7-8)
-- [ ] Système de points et badges
-- [ ] Leaderboard
-- [ ] Validation automatique exercices
-- [ ] Feedback instantané
-
-### Phase 4 : Collaboration (Semaines 9-10)
-- [ ] Projets finaux avec soumission
-- [ ] Review par formateur
-- [ ] Forum Q&A par chapitre
-
-### Phase 5 : Production (Semaines 11-12)
-- [ ] Optimisation performance
-- [ ] Tests de charge (20+ users simultanés)
-- [ ] CI/CD avec GitHub Actions
-- [ ] Déploiement Railway/Render
-
-**Détails :** [01_ROADMAP.md](./01_ROADMAP.md)
-
----
-
-## 🧪 TESTS
-
-### Backend (Pytest)
-```bash
-cd backend
-pytest                        # Tous les tests
-pytest --cov=apps            # Avec couverture
-pytest apps/accounts/tests/  # Tests spécifiques
-```
-
-### Frontend (Vitest)
-```bash
-cd frontend
-npm run test                 # Tous les tests
-npm run test:coverage        # Avec couverture
-```
-
-### Tests End-to-End (Playwright)
-```bash
-npm run test:e2e
-```
-
----
-
-## 📊 MÉTRIQUES CLÉS
-
-### Objectifs Techniques
-- ✅ Temps sauvegarde < 200ms
-- ✅ Support 20+ connexions WebSocket simultanées
-- ✅ API response time < 300ms (p95)
-- ✅ Couverture tests > 80%
-- ✅ Uptime 99.5%
-
-### Objectifs Produit
-- 🎯 Taux complétion chapitre > 70%
-- 🎯 Temps moyen par exercice < 15min
-- 🎯 Satisfaction utilisateurs > 4/5
-- 🎯 Engagement forum > 30% users actifs
-
----
-
-## 🔐 SÉCURITÉ
-
-- ✅ JWT Authentication avec refresh tokens
-- ✅ HTTPS enforced en production
-- ✅ Rate limiting sur API (100 req/min)
-- ✅ CORS configuré strictement
-- ✅ Code execution dans sandbox Docker
-- ✅ Input validation côté backend
-- ✅ XSS & CSRF protection
-
-**Détails :** [04_ARCHITECTURE_TECHNIQUE.md](./04_ARCHITECTURE_TECHNIQUE.md) - Section Sécurité
-
----
-
-## 🚀 DÉPLOIEMENT
-
-### Environnements
-- **Development :** http://localhost:8000 (backend) + http://localhost:5173 (frontend)
-- **Staging :** https://staging.learning-platform.com (auto-deploy on PR)
-- **Production :** https://learning-platform.com (manual approval)
-
-### Déploiement Production
+### Les tests
 
 ```bash
-# 1. Build Docker images
-docker build -t learning-platform-backend:latest ./backend
-docker build -t learning-platform-frontend:latest ./frontend
+docker compose exec backend pytest          # 332 tests
+docker compose exec celery pytest -m docker # + 7 tests du bac à sable réel
 
-# 2. Push to registry
-docker push registry.example.com/learning-platform-backend:latest
-docker push registry.example.com/learning-platform-frontend:latest
-
-# 3. Deploy via Railway CLI
-railway up
-
-# Ou via GitHub Actions (auto sur push main)
+cd frontend && npm test                     # 146 tests
+cd frontend && npm run e2e                  # 11 tests Playwright (pile requise)
 ```
 
-**Configuration complète :** [04_ARCHITECTURE_TECHNIQUE.md](./04_ARCHITECTURE_TECHNIQUE.md) - Section DevOps
+Les tests sont **validés par sabotage** : on casse volontairement le code pour
+vérifier que le test rougit. Un test vert sur du code cassé ne protège rien.
 
 ---
 
-## 👥 CONTRIBUTION
+## Structure
 
-### Workflow Git
-
-```bash
-# 1. Créer branche feature
-git checkout -b feature/US-013-code-editor
-
-# 2. Développer et commiter
-git add .
-git commit -m "feat(exercises): add Monaco code editor component"
-
-# 3. Push et créer PR
-git push origin feature/US-013-code-editor
-
-# 4. Review et merge sur main
+```
+backend/
+  apps/          accounts · administration · cohorts · courses
+                 gamification · progression · validation
+  config/        settings/{base,development,production}.py
+frontend/
+  src/features/  auth · chapters · cohorts · dashboard · errors · exercises
+                 gamification · legal · profile · progression · quizzes · trainer
+  src/styles/    design system SCSS
+scripts/         sauvegarde et restauration PostgreSQL
 ```
 
-### Convention Commits
-```
-feat: Nouvelle fonctionnalité
-fix: Correction bug
-docs: Documentation
-style: Formatage code
-refactor: Refactoring
-test: Ajout tests
-chore: Maintenance
-```
+---
 
-### Code Review Checklist
-- [ ] Tests passent
-- [ ] Couverture tests maintenue
-- [ ] Documentation à jour
-- [ ] Pas de secrets hardcodés
-- [ ] Respect des conventions
+## Documentation
+
+| Fichier | Pour quoi |
+|---|---|
+| [**CLAUDE.md**](./CLAUDE.md) | **L'essentiel.** État du projet, décisions, pièges et leur histoire |
+| [06_ROADMAP_DEPLOIEMENT.md](./06_ROADMAP_DEPLOIEMENT.md) | Mise en production : procédure, contrôles d'ouverture, répétitions |
+| [04_ARCHITECTURE_TECHNIQUE.md](./04_ARCHITECTURE_TECHNIQUE.md) | Architecture détaillée |
+| [02_USER_STORY_MAPPING.md](./02_USER_STORY_MAPPING.md) | User stories des trois rôles |
+| [03_DIAGRAMMES_UML.md](./03_DIAGRAMMES_UML.md) | Diagrammes UML |
+| [01_ROADMAP.md](./01_ROADMAP.md) | Roadmap produit d'origine |
 
 ---
 
-## 📞 RESSOURCES & LIENS
+## Ce qui n'existe pas encore
 
-### Documentation Externe
-- [Django Docs](https://docs.djangoproject.com/)
-- [Django REST Framework](https://www.django-rest-framework.org/)
-- [React Docs](https://react.dev/)
-- [Redux Toolkit](https://redux-toolkit.js.org/)
-- [Tailwind CSS](https://tailwindcss.com/)
+Dit franchement, parce qu'une documentation qui promet ce qui n'est pas
+construit fait perdre plus de temps qu'elle n'en fait gagner :
 
-### Outils
-- **Sentry :** https://sentry.io (monitoring)
-- **Railway :** https://railway.app (hosting)
-- **Figma :** [Design mockups] (à créer)
-
-### Communication
-- **Slack :** #learning-platform
-- **Jira :** [Board du projet]
-- **Notion :** [Wiki technique]
+- **Temps réel / WebSockets** — `asgi.py` a un routeur vide, aucun consumer.
+  Rien n'en dépend : l'auto-sauvegarde, l'activité formateur et les
+  notifications passent par HTTP.
+- **Forum** — l'app n'existe pas.
+- **Soumission de projets** — le modèle `Project` existe, aucun modèle de
+  soumission.
 
 ---
 
-## ❓ FAQ
+## Crédits
 
-### Q: Quelle technologie dois-je choisir pour le front ?
-**R:** React est recommandé pour cette plateforme car nous avons besoin de beaucoup d'interactivité (éditeur de code, WebSockets, temps réel).
+Visages d'avatar issus de [DiceBear](https://www.dicebear.com/) :
+*Notionists* (Zoish, CC0 1.0) · *Adventurer* et *Adventurer Neutral*
+(Lisa Wischofsky, CC BY 4.0) · *Avataaars* et *Bottts* (Pablo Stanley) ·
+*Big Smile* (Ashley Seo, CC BY 4.0) · *ToonHead* (Johan Melin, CC BY 4.0).
+Ils sont générés à la construction et servis par la plateforme — aucune
+requête vers un tiers.
 
-### Q: Pourquoi Django Channels plutôt que Flask-SocketIO ?
-**R:** Django Channels s'intègre nativement avec Django, gère mieux la scalabilité avec Redis, et offre une meilleure séparation entre HTTP et WebSocket.
-
-### Q: Comment gérer 20+ utilisateurs simultanés ?
-**R:** Combinaison de Redis (cache + channel layer), connection pooling PostgreSQL, et async workers Celery. Tests de charge avec Locust.
-
-### Q: Le code des exercices est-il exécuté sur le serveur ?
-**R:** Oui, dans un sandbox Docker isolé avec limitations CPU/RAM pour éviter abus.
-
-### Q: Comment sont validés les exercices ?
-**R:** Chaque exercice a une suite de tests unitaires prédéfinis. Le code soumis est exécuté contre ces tests dans le sandbox.
-
----
-
-## 📄 LICENCE
-
-[MIT License](LICENSE) - Libre d'utilisation
-
----
-
-## 🙏 REMERCIEMENTS
-
-Merci à tous les contributeurs et à la communauté open-source pour les outils utilisés dans ce projet.
-
----
-
-## 📧 CONTACT
-
-- **Email :** contact@learning-platform.com
-- **GitHub :** https://github.com/votre-org/learning-platform
-- **Issues :** https://github.com/votre-org/learning-platform/issues
-
----
-
-**Dernière mise à jour :** 12 décembre 2024  
-**Version :** 1.0.0  
-**Status :** 🚧 En développement actif
+Édité par **Lory Carvajol** (`lorycarvajol.dev`).
