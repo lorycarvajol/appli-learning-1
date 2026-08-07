@@ -67,7 +67,13 @@
   justify-content: center;
 }
 
+/* ⚠️ `white-space: nowrap` : sans lui, « Tableau de bord » et « Ma
+   progression » se coupaient en deux lignes dès que la place manquait. Ce
+   n'est pas la barre qui passait à la ligne — `flex-wrap` est à `nowrap` —
+   mais le texte à l'intérieur de chaque lien, ce qui faisait grandir l'en-tête
+   et décalait tout verticalement. */
 .header__nav-link {
+  white-space: nowrap;
   position: relative;
   padding: 0.6rem 1rem;
   border-radius: 8px;
@@ -298,13 +304,54 @@
   margin: 0.5rem 0;
 }
 
-/* Responsive */
-@media (max-width: 968px) {
-  .header__nav {
+/* ── Responsive ─────────────────────────────────────────────────────────────
+
+   ⚠️ L'en-tête débordait entre ~970 et ~1320 px, et le symptôme trompait :
+   `flex-wrap` était déjà à `nowrap`, ce n'étaient donc pas les liens qui
+   passaient à la ligne mais **leur texte** — « Tableau de bord » sur deux
+   lignes. L'en-tête grandissait en hauteur et tout se décalait verticalement.
+   D'où le `white-space: nowrap` sur `.header__nav-link` : un manque de place
+   doit se voir comme un manque de place, pas comme un défaut d'alignement.
+
+   Les trois seuils ci-dessous ne sont pas choisis à vue. Mesurés dans le
+   navigateur, avec les sept liens d'un compte administrateur (le pire cas) :
+
+   | Contenu | Largeur nécessaire |
+   |---|---|
+   | Logo + titre + nav + nom d'utilisateur | 1324 px |
+   | Sans le titre                          | 1192 px |
+   | Sans le titre ni le nom                | 1097 px |
+
+   Chaque seuil retire donc exactement ce qu'il faut pour passer la marche
+   suivante, et le dernier bascule sur le menu déroulant — en dessous de
+   1097 px, la barre de navigation ne rentre plus, quoi qu'on enlève.
+
+   ⚠️ Ces seuils valent pour un **administrateur**, qui voit sept liens. Un
+   apprenant n'en a que cinq et tiendrait jusqu'à ~1075 px sans rien perdre :
+   il voit donc le titre disparaître plus tôt que nécessaire. C'est assumé —
+   une media query ne connaît pas le rôle, et faire dépendre le chrome du rôle
+   donnerait deux en-têtes différents pour un gain purement décoratif. Le
+   sigle porte la marque ; le mot est un confort. */
+
+/* Le titre part le premier : l'image porte déjà la marque, le mot « Code
+   Academy » est un confort. */
+@media (max-width: 1340px) {
+  .header__logo-text {
     display: none;
   }
+}
 
+/* Puis le nom et le rôle : l'avatar suffit à désigner le menu utilisateur. */
+@media (max-width: 1220px) {
   .header__user-info {
+    display: none;
+  }
+}
+
+/* Puis la barre elle-même, remplacée par le menu déroulant. ⚠️ Ce seuil
+   était à 968 px, où la navigation débordait déjà de 130 px. */
+@media (max-width: 1120px) {
+  .header__nav {
     display: none;
   }
 
@@ -316,10 +363,6 @@
 @media (max-width: 640px) {
   .header__container {
     padding: 0.75rem 1rem;
-  }
-
-  .header__logo-text {
-    display: none;
   }
 
   .header__user-button {
