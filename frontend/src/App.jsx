@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { Routes, Route, Navigate } from 'react-router-dom'
 // Structurels : chargés d'emblée, présents sur (presque) chaque route.
 import PrivateRoute from './features/auth/PrivateRoute'
+import PublicOnlyRoute from './features/auth/PublicOnlyRoute'
 import Layout from './components/layout/Layout'
 import PageLoader from './components/ui/PageLoader'
 import useThemePreferenceSync from './features/profile/useThemePreferenceSync'
@@ -31,6 +32,7 @@ const BadgesPage = lazy(() => import('./features/gamification/BadgesPage'))
 const LeaderboardPage = lazy(() => import('./features/gamification/LeaderboardPage'))
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage'))
 const AdminSpace = lazy(() => import('./features/administration/AdminSpace'))
+const NotFound = lazy(() => import('./features/errors/NotFound'))
 
 function App() {
   const dispatch = useDispatch()
@@ -51,8 +53,14 @@ function App() {
     <Suspense fallback={<PageLoader />}>
       <Routes>
       {/* Public routes - without layout */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      {/*
+        `PublicOnlyRoute` ne protège rien — elle évite une impasse : se
+        reconnecter quand on l'est déjà ne mène nulle part. Elle respecte
+        `?next=`, sans quoi un visiteur connecté suivant un lien d'invitation
+        atterrirait sur le tableau de bord sans jamais rejoindre la classe.
+      */}
+      <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
+      <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password/:uid/:token" element={<ResetPassword />} />
       {/* Lien d'invitation : public, il doit fonctionner sans session */}
@@ -164,7 +172,26 @@ function App() {
           </PrivateRoute>
         }
       />
+      {/*
+        La racine renvoie au tableau de bord **sans regarder la session**, et
+        c'est voulu : `PrivateRoute` est le seul endroit qui tranche
+        l'authentification. Dupliquer ici la décision créerait un second
+        chemin à maintenir — et surtout un qui ignorerait `initialized`,
+        le piège documenté (trancher avant le chargement du profil éjecte un
+        formateur vers /dashboard à chaque rafraîchissement). Un visiteur sans
+        session est donc redirigé une fois de plus, vers /login.
+      */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+      {/*
+        Toute autre adresse. ⚠️ Sans cette route, `<Routes>` ne rendait
+        **rien** pour une URL inconnue : une page blanche, que l'on prend
+        pour une panne du site alors que c'est une faute de frappe.
+        Le serveur, lui, faisait déjà sa part — `try_files … /index.html`
+        dans `frontend/nginx.conf` sert la SPA pour n'importe quel chemin,
+        sans quoi un lien profond aurait donné un 404 nginx.
+      */}
+      <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
   )

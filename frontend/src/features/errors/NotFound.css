@@ -1,0 +1,119 @@
+/* Page 404.
+
+   Elle sert aussi bien à un visiteur sans session qu'à un apprenant connecté :
+   dans le premier cas elle est seule à l'écran, dans le second elle est
+   enveloppée par `Layout`. D'où un centrage qui ne suppose aucune hauteur
+   d'en-tête — `min-height` en `vh` pour la version nue, la carte restant
+   centrée horizontalement dans les deux cas. */
+
+.not-found {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+  padding: 3rem 1.5rem;
+  background-color: var(--bg);
+}
+
+.not-found__card {
+  width: 100%;
+  max-width: 32rem;
+  padding: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+/* Le code d'erreur en chasse fixe, comme le pseudo du profil et la ligne de
+   contexte du tableau de bord : c'est la voix « métadonnée » de la plateforme.
+   Discret — le titre porte le message, pas le nombre. */
+.not-found__code {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.18em;
+  color: var(--ink-faint);
+}
+
+.not-found__title {
+  margin: 0.6rem 0 1.25rem;
+  font-family: var(--font-heading);
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+/* Le chemin demandé. ⚠️ C'est du texte fourni par le visiteur : React
+   l'échappe, mais la mise en page doit encaisser une adresse démesurée.
+   `overflow-wrap: anywhere` la coupe n'importe où plutôt que d'élargir la
+   carte, et la hauteur est bornée — au-delà, l'attribut `title` du composant
+   donne le chemin entier au survol. */
+.not-found__path {
+  margin: 0 0 1.25rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+  max-height: 5.5rem;
+  overflow: hidden;
+}
+
+.not-found__text {
+  margin: 0 0 1.75rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.not-found__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+/* Même facture que les boutons pleins de l'application : l'encre vient de
+   `--brand-ink`, jamais de `#fff` en dur — sur l'aplat clair du thème sombre,
+   du blanc tomberait à 3,7:1. Cf. « --brand-ink » dans _theme.scss. */
+.not-found__button {
+  padding: 0.7rem 1.4rem;
+  border-radius: 10px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.not-found__button:hover {
+  background: var(--brand-strong);
+}
+
+.not-found__link {
+  color: var(--brand);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.not-found__link:hover {
+  text-decoration: underline;
+}
+
+.not-found__button:focus-visible,
+.not-found__link:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .not-found__card {
+    padding: 1.75rem 1.25rem;
+  }
+}

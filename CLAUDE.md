@@ -1565,6 +1565,55 @@ avant de rebondir, et une assertion d'URL pouvait donc passer à tort. Vérifier
 un élément de l'en-tête authentifié (`.header__user-button`, rendu par `Layout`
 seulement quand `user` est chargé) — voir `e2e/helpers.expectAuthenticatedDashboard`.
 
+### Routage : la page 404 et les redirections
+
+⚠️ **`<Routes>` n'avait aucune route `*`.** Une adresse inconnue ne rendait
+**rien** : page blanche, sans erreur ni message. C'est le pire des cas — on la
+lit comme une panne du site alors qu'il s'agit presque toujours d'une faute de
+frappe. `features/errors/NotFound.jsx` la remplit, et affiche **le chemin
+demandé** en chasse fixe : c'est la seule information qui permet à quelqu'un de
+repérer sa propre coquille.
+
+Le tour complet des redirections, telles qu'elles sont aujourd'hui :
+
+| Situation | Où l'on atterrit | Qui décide |
+|---|---|---|
+| `/` | `/dashboard` | `App.jsx` — puis `PrivateRoute` tranche la session |
+| Adresse inconnue | page 404 | `App.jsx`, route `*` |
+| Lien profond (`/chapters/html` tapé directement) | la SPA | `try_files … /index.html`, `frontend/nginx.conf` |
+| Route privée sans session | `/login` | `PrivateRoute` |
+| Rôle insuffisant | `/dashboard` | `PrivateRoute` |
+| Session expirée en cours d'usage | `/login` | intercepteur axios |
+| `/login` ou `/register` **déjà connecté** | `?next=`, sinon `/dashboard` | `PublicOnlyRoute` |
+
+Trois décisions à ne pas défaire :
+
+- **La racine ne regarde pas la session.** `PrivateRoute` est le seul endroit
+  qui tranche l'authentification ; dupliquer la décision créerait un second
+  chemin, qui oublierait `initialized`.
+- **`PublicOnlyRoute` n'attend *pas* `initialized`, contrairement à
+  `PrivateRoute`.** Les deux gardes sont asymétriques parce que leurs
+  décisions le sont : `PrivateRoute` prononce un **refus**, il doit donc
+  attendre de savoir qui est là ; `PublicOnlyRoute` ne redirige que sur une
+  **présence** d'utilisateur. Attendre y aurait posé un écran de chargement sur
+  la page de connexion de quiconque traîne un jeton périmé — la famille de
+  symptômes « la connexion charge sans fin » déjà payée une fois. Avec un jeton
+  mort, le formulaire s'affiche : c'est le bon comportement.
+- **`PublicOnlyRoute` respecte `?next=`** (via `safeRedirectPath`). Sans cela,
+  quelqu'un de déjà connecté suivant un lien d'invitation repartirait au
+  tableau de bord **sans jamais être rattaché à la classe**, et rien ne le lui
+  dirait.
+
+⚠️ Le test qui compte n'est pas celui qui monte `<NotFound />` — c'est celui
+qui monte **`<App />`** sur une adresse inconnue. Le bug d'origine n'était pas
+un composant manquant mais une route manquante ; seul le second rougit si la
+route `*` disparaît.
+
+⚠️ **`window.matchMedia` est bouché dans `src/test/setup.js`.** jsdom ne
+l'implémente pas du tout, et tout test qui monte `Layout` → `Header` →
+`ThemeProvider` levait « matchMedia is not a function » au montage, avant la
+première assertion. Aucun test ne montait le thème jusqu'à la page 404.
+
 ### Décision actée : stockage des jetons
 
 Rester en `localStorage`. Migrer vers des cookies `httpOnly` impliquerait de
