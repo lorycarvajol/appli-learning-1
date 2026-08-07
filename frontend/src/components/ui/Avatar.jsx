@@ -6,6 +6,7 @@ import {
   paletteColors,
   parseAvatarKey,
 } from '@/features/profile/avatars'
+import './Avatar.css'
 
 /**
  * Avatar d'un utilisateur : visage choisi au catalogue, ou initiales colorées.

@@ -154,15 +154,20 @@
   border-color: var(--border-strong);
 }
 
-/* `Avatar` est un SVG qui porte son propre fond : ne pas lui en imposer un,
-   il masquerait le motif choisi. Le rayon est arrondi ici plutôt que dans le
-   composant, pour que la même image serve aussi en carré ailleurs. */
-.header__user-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
+/* ⚠️ **Aucune règle pour `.header__user-avatar`, et c'est délibéré.**
+
+   Il y en avait une, et elle posait trois choses qui n'étaient pas les
+   siennes :
+
+   - `border-radius: 50%` rognait en cercle une vignette dessinée en carré à
+     coins arrondis — et coupait au passage les anneaux de bordure ;
+   - `width`/`height: 32px` écrasait la taille demandée au composant, si bien
+     que la propriété `size` du balisage ne voulait rien dire ;
+   - un fond, qui aurait masqué le dégradé de palette porté par le SVG lui-même.
+
+   La forme vient désormais d'`Avatar.css` (une fois, pour tous les
+   emplacements), la taille de la propriété `size`. La classe reste passée au
+   composant pour servir de point d'accroche aux tests. */
 
 .header__user-info {
   display: flex;

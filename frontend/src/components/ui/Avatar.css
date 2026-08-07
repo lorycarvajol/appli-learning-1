@@ -1,0 +1,23 @@
+/* Forme de la vignette d'avatar.
+   =========================================================================
+
+   ⚠️ **Elle appartient au composant, pas à ses emplacements.** Elle était
+   redéclarée à chaque endroit qui affiche un avatar, et elle a fini par
+   diverger : l'en-tête posait `border-radius: 50%`, ce qui rognait en cercle
+   des vignettes dessinées en carré à coins arrondis — et coupait au passage
+   les bordures d'anneau. Déclarée ici une fois, aucune page n'a plus à la
+   connaître.
+
+   **28 %, et pas une valeur en pixels.** Le SVG dessine son fond avec
+   `rx="28"` dans un `viewBox` de 100 : le rayon vaut donc 28 % de la largeur.
+   Exprimé en pourcentage, il reste exact à 24 px comme à 96 px, alors qu'un
+   `28px` figé arrondirait trop une petite vignette et pas assez une grande.
+
+   ⚠️ Le rognage n'est pas décoratif : l'`<image>` du visage couvre tout le
+   carré 0–100, sans suivre les coins du fond. Sans lui, un visage dont le
+   dessin touche les angles déborderait de la silhouette. */
+
+.avatar {
+  border-radius: 28%;
+  flex-shrink: 0;
+}

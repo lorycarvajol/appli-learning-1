@@ -72,9 +72,9 @@
   pointer-events: none;
 }
 
+/* Le rayon vient d'`Avatar.css` (28 %) ; l'ombre le suit d'elle-même. Il
+   était fixé ici à `28px`, donc faux dès que la taille changeait. */
 .profile__hero-avatar {
-  flex-shrink: 0;
-  border-radius: 28px;
   /* Anneau à la couleur de l'avatar, puis ombre portée. L'anneau est posé en
      `box-shadow` et non en `border` : pas de décalage de la boîte. */
   box-shadow:

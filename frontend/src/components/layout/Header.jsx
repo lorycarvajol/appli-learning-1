@@ -131,7 +131,7 @@ export default function Header() {
               aria-expanded={showUserMenu}
               aria-controls="user-menu"
             >
-              <Avatar user={user} size={36} className="header__user-avatar" />
+              <Avatar user={user} size={32} className="header__user-avatar" />
               <span className="header__user-info">
                 <span className="header__user-name">{displayName}</span>
                 <span className="header__user-role">{roleLabel}</span>

@@ -1010,6 +1010,25 @@ fois, et un flou réel coûte une couche de composition à chacune.
 La bordure s'applique **aussi aux initiales** — c'est un habillage de vignette,
 pas un accessoire du dessin.
 
+#### La forme de la vignette appartient au composant
+
+⚠️ **`components/ui/Avatar.css` est le seul endroit qui déclare le rayon**
+(`border-radius: 28%`) et `flex-shrink: 0`. Chaque emplacement les redéclarait
+auparavant, et ils avaient divergé : l'en-tête posait `border-radius: 50%`, ce
+qui rognait en cercle une vignette dessinée en carré à coins arrondis — et
+coupait les anneaux de bordure au passage. Le profil, lui, posait `28px`. Ne
+pas reposer de rayon, de taille ni de fond depuis une feuille de page.
+
+**28 %, jamais une valeur en pixels** : le SVG dessine son fond avec `rx="28"`
+dans un `viewBox` de 100, le rayon vaut donc 28 % de la largeur. En pourcentage
+il reste exact à 24 px comme à 96 px ; un `28px` figé arrondirait trop une
+petite vignette et pas assez une grande.
+
+⚠️ La taille vient de la propriété `size`, et d'elle seule. `.header__user-avatar`
+imposait `32px` par-dessus, si bien que la valeur du balisage ne voulait rien
+dire — la classe reste passée au composant, mais **sans aucune règle**, comme
+point d'accroche pour les tests.
+
 #### Le sélecteur : replié, puis en deux temps
 
 Le catalogue **ne s'affiche qu'à la demande**, derrière un bouton « Changer
