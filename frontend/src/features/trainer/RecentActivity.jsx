@@ -1,16 +1,22 @@
 import PropTypes from 'prop-types';
+import { describeActivity } from '@/constants/activity';
 
-const ACTIVITY_ICONS = {
-  LESSON_STARTED: '▶️',
-  LESSON_COMPLETED: '✅',
-  EXERCISE_SUBMITTED: '💻',
-  QUIZ_COMPLETED: '📝',
-  CHAPTER_UNLOCKED: '🔓',
-  BADGE_EARNED: '🏆'
-};
+/*
+  Fusion des deux moitiés du travail formateur.
 
-// Le type d'activité choisit un modificateur BEM ; les teintes elles-mêmes
-// vivent dans styles/components/_trainer.scss, adossées aux tokens de thème.
+  Les deux branches avaient chacune une partie : celle-ci portait les classes
+  BEM (retrait de Tailwind), l'autre `describeActivity` (centralisation de la
+  table des types d'activité). Prises séparément, chacune gardait le défaut que
+  l'autre corrigeait — ici, le libellé était fabriqué par
+  `activity_type.replace('_', ' ').toLowerCase()`, soit « lesson started » en
+  anglais dans une interface française.
+
+  ⚠️ `describeActivity` renvoie aussi un `color`, qui est une paire de classes
+  Tailwind (`bg-blue-50 border-blue-200`). Tailwind ayant été retiré, ce champ
+  ne sert plus à rien : la teinte vient du modificateur BEM ci-dessous, adossé
+  aux tokens de thème dans `styles/components/_trainer.scss`. À nettoyer dans
+  `constants/activity.js` — pas dans un commit de fusion.
+*/
 const ACTIVITY_MODIFIERS = {
   LESSON_STARTED: 'lesson-started',
   LESSON_COMPLETED: 'lesson-completed',
@@ -33,35 +39,30 @@ const RecentActivity = ({ activities }) => {
       </div>
       <div className="trainer-panel__body">
         <div className="activity-feed trainer-panel__scroll trainer-panel__scroll--tall">
-          {activities.map((activity) => (
-            <div key={activity.id} className={cardClass(activity.activity_type)}>
-              <span className="activity-card__icon" aria-hidden="true">
-                {ACTIVITY_ICONS[activity.activity_type] || '📌'}
-              </span>
-              <div className="activity-card__body">
-                <div>
-                  <p className="activity-card__user">{activity.user_full_name}</p>
-                  <p className="activity-card__type">
-                    {activity.activity_type.replace('_', ' ').toLowerCase()}
-                  </p>
-                  {activity.lesson_title && (
-                    <p className="activity-card__context">📖 {activity.lesson_title}</p>
-                  )}
-                  {activity.chapter_title && !activity.lesson_title && (
-                    <p className="activity-card__context">📚 {activity.chapter_title}</p>
-                  )}
+          {activities.map((activity) => {
+            const { icon, label } = describeActivity(activity);
+            return (
+              <div key={activity.id} className={cardClass(activity.activity_type)}>
+                <span className="activity-card__icon" aria-hidden="true">{icon}</span>
+                <div className="activity-card__body">
+                  <div>
+                    <p className="activity-card__user">{activity.user_full_name}</p>
+                    {/* Le libellé porte déjà le titre de la leçon ou du
+                        chapitre : l'afficher à nouveau ferait doublon. */}
+                    <p className="activity-card__type">{label}</p>
+                  </div>
+                  <span className="activity-card__date">
+                    {new Date(activity.created_at).toLocaleString('fr-FR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
                 </div>
-                <span className="activity-card__date">
-                  {new Date(activity.created_at).toLocaleString('fr-FR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </span>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {activities.length === 0 && <p className="trainer-empty">Aucune activité récente</p>}
         </div>

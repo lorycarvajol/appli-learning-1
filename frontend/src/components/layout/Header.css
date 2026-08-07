@@ -25,12 +25,16 @@
   color: var(--ink);
 }
 
-/* Le sigle porte déjà son fond sombre et ses coins arrondis dans l'image :
-   on ne lui repose ni dégradé ni rayon, seulement son ombre portée. */
+/* Le sigle de la marque. L'image porte déjà son fond bleu nuit : on ne lui
+   repose **aucun dégradé**, sinon on obtiendrait un cadre autour d'un cadre.
+   Le `border-radius` n'en est pas un — il aligne simplement l'ombre portée sur
+   les coins arrondis du PNG. `object-fit: contain` protège du jour où le
+   fichier changerait de proportions. */
 .header__logo-mark {
   width: 34px;
   height: 34px;
   object-fit: contain;
+  flex-shrink: 0;
   box-shadow: 0 3px 10px color-mix(in srgb, var(--brand) 45%, transparent);
   border-radius: 9px;
 }

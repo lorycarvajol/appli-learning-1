@@ -22,6 +22,8 @@ export default function Footer() {
       <div className="footer__container">
         <div className="footer__brand">
           <div className="footer__logo">
+            {/* Le sigle seul, comme dans l'en-tête : à 24 px, le nom gravé
+                dans le logo complet serait illisible. */}
             <img
               src={logoMark}
               alt=""

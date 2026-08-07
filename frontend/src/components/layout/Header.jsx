@@ -5,8 +5,10 @@ import { logoutUser } from '@/features/auth/authSlice';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import Avatar from '@/components/ui/Avatar';
 import { ROLES, ROLE_LABELS, STAFF_ROLES } from '@/constants/roles';
-// Depuis `src/assets/` : Vite hache le nom de fichier, donc cache long terme
-// et invalidation automatique le jour où le sigle change.
+// Importé depuis `src/assets/` et non `public/` : Vite hache le nom de
+// fichier, ce qui donne un cache long terme *et* l'invalidation automatique
+// le jour où le logo change. Dans `public/`, le nom resterait le même et les
+// visiteurs de retour verraient l'ancienne image.
 import logoMark from '@/assets/logo-mark.png';
 import './Header.css';
 
@@ -82,9 +84,13 @@ export default function Header() {
         <Link to="/dashboard" className="header__logo">
           {/*
             Le sigle de marque, pas un placeholder : ce bloc dessinait un
-            `</>` en CSS alors que `logo-mark.png` existait. L'image est
-            décorative — le nom est rendu juste à côté en HTML, et le relire
-            ici ferait doublon pour un lecteur d'écran.
+            `</>` en CSS alors que `logo-mark.png` existait.
+
+            Le sigle seul, jamais le logo complet : celui-ci porte
+            « CODE ACADEMY » en dur, illisible à 34 px de haut. Le nom reste
+            donc du texte HTML — net à toute densité d'écran, et masqué sur
+            mobile par la règle existante. L'image est donc décorative, et la
+            relire ferait doublon pour un lecteur d'écran.
           */}
           <img
             src={logoMark}

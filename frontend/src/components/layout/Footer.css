@@ -32,11 +32,13 @@
   font-size: 1.05rem;
 }
 
-/* Idem en-tête : le sigle est une image, elle porte son propre fond. */
+/* Idem en-tête : l'image porte son propre fond, aucun cadre à ajouter — sinon
+   on encadrerait un cadre. Le rayon suit celui du PNG. */
 .footer__logo-mark {
   width: 24px;
   height: 24px;
   object-fit: contain;
+  flex-shrink: 0;
   border-radius: 6px;
 }
 

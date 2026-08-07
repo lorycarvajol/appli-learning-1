@@ -83,6 +83,28 @@
     background: linear-gradient(90deg, var(--brand), var(--brand-strong));
   }
 
+  // Le dernier chapitre, s'il se retrouve SEUL sur sa dernière ligne (cas d'un
+  // chapitre « orphelin » comme le projet final), occupe toute la largeur au
+  // lieu de rester une carte étriquée à gauche. Détection en CSS pur : un
+  // dernier enfant qui tombe en tête de ligne (`nth-child` = multiple du nombre
+  // de colonnes + 1) est forcément seul sur sa ligne.
+  @include respond-to('md') {          // grille à 2 colonnes
+    &:last-child:nth-child(2n + 1) {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @include respond-to('lg') {          // grille à 3 colonnes
+    // Les media queries sont cumulatives (mobile-first) : on neutralise d'abord
+    // la règle « 2 colonnes », puis on applique celle des 3 colonnes.
+    &:last-child:nth-child(2n + 1) {
+      grid-column: auto;
+    }
+    &:last-child:nth-child(3n + 1) {
+      grid-column: 1 / -1;
+    }
+  }
+
   // Chapitre verrouillé : visible (il montre la suite du parcours) mais inerte
   &--locked {
     cursor: default;

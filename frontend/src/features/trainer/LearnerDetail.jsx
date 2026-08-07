@@ -2,15 +2,7 @@ import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import PropTypes from 'prop-types';
 import { fetchLearnerDetail, unlockChapter, lockChapter, fetchLearnersSummary } from './trainerSlice';
-
-const ACTIVITY_ICONS = {
-  LESSON_STARTED: '▶️',
-  LESSON_COMPLETED: '✅',
-  EXERCISE_SUBMITTED: '💻',
-  QUIZ_COMPLETED: '📝',
-  CHAPTER_UNLOCKED: '🔓',
-  BADGE_EARNED: '🏆'
-};
+import { describeActivity } from '@/constants/activity';
 
 const LearnerDetail = ({ learnerId }) => {
   const dispatch = useDispatch();
@@ -127,24 +119,31 @@ const LearnerDetail = ({ learnerId }) => {
           )}
         </div>
 
+        {/*
+          Fusion des deux moitiés du travail : les classes BEM viennent du
+          retrait de Tailwind, `describeActivity` de la centralisation de la
+          table des types d'activité. Chaque branche n'en avait qu'une — ici
+          le libellé restait « lesson started », en anglais, dans une
+          interface française.
+        */}
         {selectedLearner.recent_activities.length > 0 && (
           <div className="learner-detail__activities">
             <h3 className="learner-detail__section-title">Activité récente</h3>
             <div className="activity-mini">
-              {selectedLearner.recent_activities.slice(0, 5).map((activity) => (
-                <div key={activity.id} className="activity-mini__item">
-                  <span aria-hidden="true">{ACTIVITY_ICONS[activity.activity_type]}</span>
-                  <div>
-                    <p className="activity-mini__label">
-                      {activity.activity_type.replace('_', ' ').toLowerCase()}
-                      {activity.lesson_title && `: ${activity.lesson_title}`}
-                    </p>
-                    <p className="activity-mini__date">
-                      {new Date(activity.created_at).toLocaleString('fr-FR')}
-                    </p>
+              {selectedLearner.recent_activities.slice(0, 5).map((activity) => {
+                const { icon, label } = describeActivity(activity);
+                return (
+                  <div key={activity.id} className="activity-mini__item">
+                    <span aria-hidden="true">{icon}</span>
+                    <div>
+                      <p className="activity-mini__label">{label}</p>
+                      <p className="activity-mini__date">
+                        {new Date(activity.created_at).toLocaleString('fr-FR')}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
