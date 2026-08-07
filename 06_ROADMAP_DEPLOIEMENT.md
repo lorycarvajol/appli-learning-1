@@ -9,9 +9,10 @@ Chaque constat ci-dessous a été vérifié dans le code, référence à l'appui
 
 **Tout le code est fait et éprouvé. Il ne reste que les étapes sur le serveur.**
 
-La pile de production a été montée en local avec Traefik le 2026-08-04 et les
-dix contrôles d'ouverture passent (voir « Répétition locale — résultats »). Ce qui manque ne peut se faire que sur
-le VPS, avec vos secrets :
+La pile de production a été remontée en local avec Traefik le **2026-08-07**,
+après la fusion vers `main` : les **quatorze** contrôles d'ouverture passent,
+soumission d'exercice comprise (voir « Deuxième répétition »). Ce qui manque
+ne peut se faire que sur le VPS, avec vos secrets :
 
 | # | À faire | Où |
 |---|---|---|
@@ -325,7 +326,68 @@ points que l'étape 6.3 du guide passe sous silence.
 
 ---
 
-## 5. Répétition locale — résultats
+## 5 bis. Deuxième répétition — 2026-08-07
+
+Rejouée intégralement après la fusion vers `main` : elle couvre donc React
+Router 7, la page 404, les 42 avatars, les 30 badges, la rotation des journaux
+et la frontière d'erreur — rien de tout cela n'existait le 2026-08-04.
+
+**Tout est vert.** Quatorze contrôles, dont cinq qui n'avaient jamais été
+joués.
+
+| Contrôle | Résultat |
+|---|---|
+| SPA `/` | 200 `text/html` |
+| API `/api/courses/chapters/` | 200 **`application/json`** — le piège de priorité ne mord pas |
+| Admin `/admin/login/` | 200 `text/html` |
+| Illustration `/media/…png` | 200 **`image/png`**, 35 761 o |
+| Statique `/static/admin/css/base.css` | 200 `text/css` (WhiteNoise) |
+| Ports publiés par le projet | **aucun** |
+| `VITE_API_URL` dans le bundle | `https://learning.local/api`, **aucun** `localhost` résiduel |
+| Inscription puis connexion via Traefik | 201 puis 200, jeton obtenu |
+| **Soumission d'exercice** | **202, puis résultats par test** — le bac à sable fonctionne à travers le mandataire |
+| Chapitre 1 ouvert, 2 à 4 verrouillés | conforme au rythme libre |
+| Adresse inconnue | 200 `text/html` — la SPA sert la page 404 |
+| Catalogue de badges | **30, dont 10 secrets** |
+| Mandataire Docker : volumes, réseaux, `info`, `build` | **403** |
+| Mandataire Docker : conteneurs, images | autorisés |
+
+⚠️ **La soumission d'exercice est le grand changement.** La répétition de
+2026-08-04 obtenait un 503 : le drapeau était à `False`. Ici elle aboutit —
+Celery prend la tâche, crée un conteneur **via le mandataire**, exécute le
+code et renvoie le détail test par test. C'est la chaîne complète du bac à
+sable qui est éprouvée, mandataire de socket compris.
+
+**Passage en navigateur, sur le bundle de production.** C'était la dernière
+inconnue : React Router 7 n'avait jamais tourné ailleurs qu'en développement.
+`/` redirige vers `/login`, et une adresse inconnue rend la page 404 — donc le
+repli `try_files` de nginx, la route `*` et le chargement différé des morceaux
+fonctionnent tous dans l'image de production.
+
+⚠️ Pour cela, une **image de front supplémentaire** a été construite avec
+`VITE_API_URL=http://localhost:8090/api`, et un jeu de routeurs `localhost`
+ajouté : `learning.local` ne résout pas sans toucher au fichier `hosts` du
+système, ce qu'on a évité. L'URL d'API étant figée dans le bundle, elle ne
+peut pas être changée à l'exécution — d'où la reconstruction.
+
+💡 **Le middleware `X-Forwarded-Proto` n'est pas un contournement.**
+`production.py` pose `SECURE_SSL_REDIRECT = True` ; sur un point d'entrée en
+clair, Traefik transmettrait `http` et Django renverrait un 301 vers `https://`
+en boucle. L'en-tête forcé reproduit exactement ce que fait une vraie
+terminaison TLS. C'est la seule différence assumée avec la production.
+
+💡 **Une erreur instructive, commise puis corrigée pendant la répétition** :
+avoir ajouté `PathPrefix('/media')` à la règle du routeur d'API renvoie les
+illustrations vers Django, qui ne les sert pas (404). C'est précisément
+pourquoi la vraie règle ne contient pas `/media` — le front en est seul
+responsable.
+
+Démontage vérifié : aucun conteneur, volume ou réseau de répétition ne
+subsiste, le `.env` a été supprimé, et la pile de développement est intacte.
+
+---
+
+## 5. Première répétition locale — 2026-08-04
 
 Faite le 2026-08-04 : Traefik local + `docker-compose.prod.yml` monté sous un
 nom de projet distinct (`-p learning-repetition`), images de production
