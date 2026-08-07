@@ -129,6 +129,61 @@ VISIBLE = [
         'rule_type': R.TIME_SPENT, 'criteria': {'minutes': 120},
         'points_reward': 25,
     },
+    {
+        'code': 'dix-heures', 'name': 'Dix heures au compteur', 'icon': '⏳',
+        'description': '600 minutes d\'apprentissage cumulées. Le temps y est.',
+        'category': C.REGULARITY, 'tier': T.GOLD,
+        'rule_type': R.TIME_SPENT, 'criteria': {'minutes': 600},
+        'points_reward': 60,
+    },
+
+    # -----------------------------------------------------------------------
+    # Un badge par chapitre du parcours.
+    #
+    # `CHAPTER_MASTERED` existait dans le modèle **et** dans le registre de
+    # règles depuis l'origine, sans qu'aucun badge ne s'en serve : la règle
+    # était écrite, testable, et morte. Ces quatre badges lui donnent son
+    # emploi, et ils disent quelque chose que `chapitre-boucle` (un chapitre,
+    # n'importe lequel) et `trois-chapitres` (trois, n'importe lesquels) ne
+    # disent pas — **lequel** on a terminé.
+    #
+    # ⚠️ Le `chapter_slug` doit exister en base, sinon le badge reste
+    # éternellement à 0 sans que rien ne le signale. Les quatre slugs sont
+    # ceux que posent les commandes `load_section_*` ; les renommer casserait
+    # ces badges en silence. Un test les verrouille.
+    # -----------------------------------------------------------------------
+    {
+        'code': 'maitre-html', 'name': 'Charpentier', 'icon': '🧱',
+        'description': 'Le chapitre HTML terminé de bout en bout. La structure n\'a plus de secret.',
+        'category': C.MASTERY, 'tier': T.SILVER,
+        'rule_type': R.CHAPTER_MASTERED,
+        'criteria': {'chapter_slug': 'introduction-html'},
+        'points_reward': 40,
+    },
+    {
+        'code': 'maitre-css', 'name': 'Coloriste', 'icon': '🎨',
+        'description': 'Le chapitre CSS terminé de bout en bout. Vos pages ont un style.',
+        'category': C.MASTERY, 'tier': T.SILVER,
+        'rule_type': R.CHAPTER_MASTERED,
+        'criteria': {'chapter_slug': 'introduction-css'},
+        'points_reward': 40,
+    },
+    {
+        'code': 'maitre-javascript', 'name': 'Mécanicien', 'icon': '⚙️',
+        'description': 'Le chapitre JavaScript terminé de bout en bout. Vos pages réagissent.',
+        'category': C.MASTERY, 'tier': T.GOLD,
+        'rule_type': R.CHAPTER_MASTERED,
+        'criteria': {'chapter_slug': 'introduction-javascript'},
+        'points_reward': 50,
+    },
+    {
+        'code': 'maitre-site-vitrine', 'name': 'En ligne', 'icon': '🌐',
+        'description': 'Le chapitre du site vitrine terminé. Votre site existe pour de vrai.',
+        'category': C.MASTERY, 'tier': T.GOLD,
+        'rule_type': R.CHAPTER_MASTERED,
+        'criteria': {'chapter_slug': 'site-vitrine'},
+        'points_reward': 50,
+    },
 ]
 
 # ---------------------------------------------------------------------------
@@ -199,6 +254,23 @@ SECRET = [
         'category': C.REGULARITY, 'tier': T.LEGENDARY,
         'rule_type': R.STREAK_DAYS, 'criteria': {'days': 14},
         'points_reward': 120,
+    },
+    {
+        'code': 'serie-30', 'name': 'Un mois sans faillir', 'icon': '🛡️',
+        'description': 'Trente jours consécutifs. Ce n\'est plus une série, c\'est une routine.',
+        'hint': "Quatorze jours n'étaient que l'échauffement…",
+        'category': C.REGULARITY, 'tier': T.LEGENDARY,
+        'rule_type': R.STREAK_DAYS, 'criteria': {'days': 30},
+        'points_reward': 150,
+    },
+    {
+        'code': 'premier-coup-x5', 'name': 'Sans filet', 'icon': '🃏',
+        'description': 'Les cinq quiz du parcours réussis dès la première tentative. '
+                       'Aucun ne vous a résisté.',
+        'hint': "Trois du premier coup, c'était déjà rare. Et tous ?",
+        'category': C.MASTERY, 'tier': T.LEGENDARY,
+        'rule_type': R.FIRST_TRY_QUIZZES, 'criteria': {'count': 5},
+        'points_reward': 90,
     },
 ]
 

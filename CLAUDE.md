@@ -302,6 +302,25 @@ C'est ce qui permet l'endpoint d'auto-réparation `POST /summary/sync/`.
 | `PointTransaction` | Grand livre idempotent, clé `source_key` (`lesson:<uuid>`, `badge:<code>`) |
 | `UserStreak` | Série de jours consécutifs, idempotente à la journée |
 
+### Le catalogue : 30 badges, 20 visibles et 10 secrets
+
+Réparti par catégorie (maîtrise 11, progression 8, régularité 6, exploration 5)
+et par palier (argent 10, or 9, bronze 7, légendaire 4).
+
+⚠️ **`CHAPTER_MASTERED` était une règle morte.** Elle existait dans
+`Badge.RuleType` **et** dans le registre `rules.RULES` depuis l'origine, sans
+qu'aucun badge ne s'en serve. Quatre badges l'emploient désormais — un par
+chapitre du parcours — et ils disent ce que `chapitre-boucle` (un chapitre,
+n'importe lequel) et `trois-chapitres` ne disent pas : **lequel**.
+
+⚠️ Le `chapter_slug` de ces badges doit correspondre à un slug réellement posé
+par une commande `load_section_*`. Un slug erroné donne un badge **inatteignable
+et muet** : la règle renvoie « 0 sur 1 » pour toujours, sans que le semis ni
+l'API ne s'en plaignent. `test_les_badges_de_chapitre_visent_un_slug_reellement_charge`
+lit les **sources des chargeurs** plutôt que la base de test — peupler la base
+dans le test n'aurait vérifié que sa cohérence avec lui-même, alors que c'est
+le lien avec `load_section_*` qui doit tenir.
+
 ### Objectifs cachés
 
 Le catalogue mêle **objectifs visibles** (avec barre de progression, pour

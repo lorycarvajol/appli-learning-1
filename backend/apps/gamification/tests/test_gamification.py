@@ -476,3 +476,70 @@ def test_marquer_la_lecon_terminee_deux_fois_ne_double_pas_les_points(api, learn
     assert second['points_earned'] == 0
     assert second['total_points'] == 25
     assert second['new_badges'] == []
+
+
+# ---------------------------------------------------------------------------
+# Catalogue de badges
+#
+# `seed_badges` est du contenu, pas de la logique — mais deux de ses propriétés
+# se cassent en silence, et ce sont celles-là qu'on verrouille : un badge qui
+# vise un chapitre inexistant reste éternellement à 0 sans rien signaler, et
+# un code en double ferait échouer le semis à la première contrainte d'unicité.
+# ---------------------------------------------------------------------------
+
+def test_les_badges_de_chapitre_visent_un_slug_reellement_charge():
+    """Un `chapter_slug` erroné donne un badge inatteignable et muet.
+
+    C'est le seul défaut du catalogue qui ne se voit ni au semis, ni à la
+    lecture de l'API : la règle renvoie « 0 sur 1 », pour toujours.
+
+    ⚠️ Le test lit les **sources des commandes de chargement**, et non la base
+    de test. Peupler la base ici ne vérifierait que la cohérence du test avec
+    lui-même ; c'est le lien entre `seed_badges` et `load_section_*` qui doit
+    tenir, donc c'est lui qu'on interroge. Renommer un chapitre dans un
+    chargeur fait désormais rougir ce test.
+    """
+    from pathlib import Path
+
+    from apps.courses.management.commands import load_course_content
+    from apps.gamification.management.commands.seed_badges import VISIBLE, SECRET
+
+    vises = {
+        badge['criteria']['chapter_slug']
+        for badge in VISIBLE + SECRET
+        if badge['rule_type'] == Badge.RuleType.CHAPTER_MASTERED
+    }
+    assert vises, 'Aucun badge de chapitre : le test ne protège plus rien.'
+
+    dossier = Path(load_course_content.__file__).parent
+    sources = '\n'.join(
+        fichier.read_text(encoding='utf-8')
+        for fichier in dossier.glob('load_section_*.py')
+    )
+
+    introuvables = sorted(slug for slug in vises if f"'{slug}'" not in sources)
+    assert not introuvables, (
+        f'Slugs cités par un badge mais absents des chargeurs : {introuvables}'
+    )
+
+
+def test_les_codes_de_badge_sont_uniques():
+    """`code` porte une contrainte d'unicité **et** sert de clé au grand livre
+    (`badge:<code>`). Un doublon casserait le semis et fausserait les points."""
+    from apps.gamification.management.commands.seed_badges import VISIBLE, SECRET
+
+    codes = [badge['code'] for badge in VISIBLE + SECRET]
+    assert len(codes) == len(set(codes))
+
+
+def test_seul_le_catalogue_secret_porte_une_enigme():
+    """`is_secret` est déduit de la présence d'un `hint` (cf. `handle`).
+
+    Un badge secret sans énigme sortirait de l'API entièrement masqué, sans
+    rien à afficher — une case vide que personne ne peut résoudre. Un badge
+    visible *avec* énigme, lui, serait rangé du mauvais côté.
+    """
+    from apps.gamification.management.commands.seed_badges import VISIBLE, SECRET
+
+    assert all('hint' not in badge for badge in VISIBLE)
+    assert all(badge.get('hint') for badge in SECRET)
