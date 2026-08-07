@@ -29,11 +29,38 @@
 #    barrière protège — et ce qu'elle ne protège pas.
 #
 # 5. **Étages `production`**, sources non montées, pas de `--reload`.
+#
+# 6. **Journaux bornés.** Voir l'ancre `x-journaux` ci-dessous.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Rotation des journaux
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# ⚠️ Sans cette directive, le pilote `json-file` de Docker écrit **sans
+# aucune limite**. Un journal qui grossit ne se voit pas : il ne ralentit
+# rien, ne lève aucune alerte, et le jour où le disque est plein ce n'est pas
+# ce projet qui tombe mais **tous ceux du VPS**, y compris leurs bases de
+# données. C'est le mode de panne le plus discret d'un hôte mutualisé.
+#
+# 10 Mo × 3 fichiers, soit 30 Mo par conteneur au pire, 210 Mo pour la pile
+# entière — négligeable sur 100 Go, et assez pour garder plusieurs jours
+# d'historique à ce volume de trafic.
+#
+# ⚠️ Rotation ne veut pas dire archivage : au-delà de trois fichiers, les plus
+# anciens sont **perdus**. Ce qui doit survivre à un incident passe par
+# Sentry (`SENTRY_DSN`), pas par `docker logs`.
+x-journaux: &journaux
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
 
 services:
   postgres:
     image: postgres:15-alpine
     restart: unless-stopped
+    <<: *journaux
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
@@ -51,6 +78,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    <<: *journaux
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
@@ -68,6 +96,7 @@ services:
       dockerfile: Dockerfile
       target: production
     restart: unless-stopped
+    <<: *journaux
     command: >
       sh -c "python manage.py migrate --noinput &&
              python manage.py collectstatic --noinput &&
@@ -114,6 +143,7 @@ services:
   docker-proxy:
     image: tecnativa/docker-socket-proxy:0.2.0
     restart: unless-stopped
+    <<: *journaux
     environment:
       # Seul CONTAINERS est ouvert : create, start, wait, logs, kill, remove.
       CONTAINERS: 1
@@ -152,6 +182,7 @@ services:
       dockerfile: Dockerfile
       target: production
     restart: unless-stopped
+    <<: *journaux
     command: celery -A config worker -l info -Q default,validation
     env_file: .env
     environment:
@@ -174,6 +205,7 @@ services:
       dockerfile: Dockerfile
       target: production
     restart: unless-stopped
+    <<: *journaux
     command: celery -A config beat -l info
     env_file: .env
     depends_on:
@@ -194,6 +226,7 @@ services:
         # Dockerfile. Changer cette valeur impose de reconstruire l'image.
         VITE_API_URL: https://${DOMAIN}/api
     restart: unless-stopped
+    <<: *journaux
     volumes:
       # Illustrations des cours, servies par nginx (cf. frontend/nginx.conf).
       # En lecture seule : ce sont des fichiers versionnés, rien ne doit y

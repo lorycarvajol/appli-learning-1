@@ -1,0 +1,114 @@
+/* Frontière d'erreur.
+
+   Même facture que la page 404 : c'est le même genre de moment — l'écran
+   s'excuse et propose une sortie. Les deux se ressemblent volontairement,
+   pour qu'un incident ne dépayse pas en plus d'interrompre. */
+
+.frontiere-erreur {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 3rem 1.5rem;
+  background-color: var(--bg);
+}
+
+.frontiere-erreur__carte {
+  width: 100%;
+  max-width: 32rem;
+  padding: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+.frontiere-erreur__code {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.18em;
+  color: var(--danger);
+}
+
+.frontiere-erreur__titre {
+  margin: 0.6rem 0 1.25rem;
+  font-family: var(--font-heading);
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.frontiere-erreur__texte {
+  margin: 0 0 1.5rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+/* Développement seulement. Aligné à gauche et défilable : un message d'erreur
+   se lit, il ne se centre pas, et certains sont très longs. */
+.frontiere-erreur__detail {
+  margin: 0 0 1.5rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 9rem;
+  overflow: auto;
+}
+
+.frontiere-erreur__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+/* L'encre vient de `--brand-ink`, jamais de `#fff` en dur : sur l'aplat clair
+   du thème sombre, du blanc tomberait à 3,7:1. Cf. _theme.scss. */
+.frontiere-erreur__bouton {
+  padding: 0.7rem 1.4rem;
+  border: none;
+  border-radius: 10px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.frontiere-erreur__bouton:hover {
+  background: var(--brand-strong);
+}
+
+.frontiere-erreur__lien {
+  color: var(--brand);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.frontiere-erreur__lien:hover {
+  text-decoration: underline;
+}
+
+.frontiere-erreur__bouton:focus-visible,
+.frontiere-erreur__lien:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .frontiere-erreur__carte {
+    padding: 1.75rem 1.25rem;
+  }
+}

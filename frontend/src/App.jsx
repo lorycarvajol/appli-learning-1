@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 // Structurels : chargés d'emblée, présents sur (presque) chaque route.
 import PrivateRoute from './features/auth/PrivateRoute'
 import PublicOnlyRoute from './features/auth/PublicOnlyRoute'
+import ErrorBoundary from './components/ui/ErrorBoundary'
 import Layout from './components/layout/Layout'
 import PageLoader from './components/ui/PageLoader'
 import useThemePreferenceSync from './features/profile/useThemePreferenceSync'
@@ -50,6 +51,14 @@ function App() {
   }, [dispatch, user])
 
   return (
+    /*
+      Frontière extérieure : elle couvre les pages publiques (connexion,
+      inscription, pages légales, 404 anonyme) qui ne passent pas par
+      `Layout`, et rattrape le cas où `Layout` ou l'en-tête casseraient
+      eux-mêmes. La frontière intérieure, dans `Layout`, prend le dessus pour
+      tout le reste — React s'arrête toujours à la plus proche.
+    */
+    <ErrorBoundary>
     <Suspense fallback={<PageLoader />}>
       <Routes>
       {/* Public routes - without layout */}
@@ -194,6 +203,7 @@ function App() {
       <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
+    </ErrorBoundary>
   )
 }
 

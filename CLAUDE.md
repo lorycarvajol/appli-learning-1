@@ -1614,6 +1614,36 @@ l'implémente pas du tout, et tout test qui monte `Layout` → `Header` →
 `ThemeProvider` levait « matchMedia is not a function » au montage, avant la
 première assertion. Aucun test ne montait le thème jusqu'à la page 404.
 
+### Une erreur de rendu ne laisse plus un écran blanc
+
+⚠️ Il n'existait **aucune frontière d'erreur**. Une seule exception pendant le
+rendu démontait tout l'arbre React : ni message, ni sortie, indistinguable
+d'une panne réseau ou d'une page qui n'a pas fini de charger.
+
+`components/ui/ErrorBoundary.jsx` est montée **deux fois**, et c'est voulu :
+
+| Où | Ce qu'elle couvre |
+|---|---|
+| Dans `Layout`, autour de `{children}` | une page qui casse — **l'en-tête et le pied restent**, donc la navigation |
+| Dans `App`, autour de `<Routes>` | les pages publiques (hors `Layout`), et le cas où `Layout` casserait |
+
+React s'arrête toujours à la frontière la plus proche ; l'imbrication fait donc
+exactement ce qu'on veut, et un test le vérifie.
+
+⚠️ **Une frontière ne se réarme pas toute seule.** Sans la clé sur
+`location.pathname`, cliquer « Retour au tableau de bord » changerait l'URL et
+laisserait le même message à l'écran — une sortie qui ne sort de rien. Vérifié
+par sabotage : retirer la clé fait rougir le test dédié.
+
+⚠️ Ce qu'elle **n'attrape pas**, et qu'il ne faut pas croire couvert : les
+erreurs asynchrones (promesses, `setTimeout`, gestionnaires d'événements) et
+le rendu serveur. Elle ne voit que le rendu et les cycles de vie de ses
+descendants. Les échecs d'appels réseau restent gérés par les thunks Redux.
+
+Le détail technique n'apparaît qu'en développement (`import.meta.env.DEV`) :
+en production il n'apprendrait rien à un apprenant et exposerait des noms de
+composants internes.
+
 ### Décision actée : stockage des jetons
 
 Rester en `localStorage`. Migrer vers des cookies `httpOnly` impliquerait de

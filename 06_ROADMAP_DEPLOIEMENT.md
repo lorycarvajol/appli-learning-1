@@ -225,8 +225,8 @@ complet, une coupure ne laisse pas d'archive tronquée qui *ressemble* à une
 sauvegarde), et un dump de moins de 10 Ko fait échouer la commande — c'est la
 signature d'une base vide ou d'une authentification refusée en silence.
 | D2.3 | Activer Sentry — déjà câblé (`production.py:90`), il suffit de fournir `SENTRY_DSN` | 🟡 |
-| D2.4 | Rotation des journaux Docker (`max-size`, `max-file`) | ❌ |
-| D2.5 | Page d'erreur correcte si le backend est absent (aujourd'hui : écran blanc) | ❌ |
+| D2.4 | Rotation des journaux Docker (`max-size`, `max-file`) — ancre `x-journaux`, les 7 services | ✅ |
+| D2.5 | Frontière d'erreur — plus d'écran blanc. Montée dans `Layout` (garde la navigation) **et** dans `App` (pages publiques) | ✅ |
 
 Les médias n'ont pas besoin de sauvegarde : ils sont versionnés dans le dépôt.
 
