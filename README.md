@@ -23,6 +23,11 @@
 
 ![Le tableau de bord d'un apprenant](docs/images/tableau-de-bord.jpg)
 
+<div align="center"><i>Le tableau de bord : là où l'on reprend son parcours.
+Le bandeau porte trois fichiers ouverts — <code>script.js</code>,
+<code>style.css</code>, <code>index.html</code> — les trois premiers chapitres
+du parcours.</i></div>
+
 ---
 
 ## Sommaire
